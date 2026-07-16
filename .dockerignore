@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+**/target
+platform-web/node_modules
+platform-web/dist
+data
+storage
+*.log
+.env

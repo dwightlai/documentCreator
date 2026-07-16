@@ -1,0 +1,103 @@
+CREATE TABLE ai_writing_task (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    task_name VARCHAR(200) NOT NULL,
+    document_type_code VARCHAR(20) NOT NULL,
+    document_category VARCHAR(20) NOT NULL,
+    writing_topic VARCHAR(500) NOT NULL,
+    writing_purpose TEXT,
+    direction VARCHAR(20),
+    target_audience VARCHAR(200),
+    primary_recipient VARCHAR(200),
+    writing_tone VARCHAR(20),
+    expected_length_min INTEGER,
+    expected_length_max INTEGER,
+    target_date DATE,
+    allow_external_knowledge BOOLEAN NOT NULL DEFAULT FALSE,
+    security_level VARCHAR(10) NOT NULL DEFAULT '普通',
+    output_template_id VARCHAR(32),
+    status VARCHAR(20) NOT NULL,
+    outline_confirmed_version INTEGER,
+    current_document_id VARCHAR(32),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT ck_writing_length CHECK (expected_length_min IS NULL OR expected_length_max IS NULL OR expected_length_max >= expected_length_min)
+);
+CREATE INDEX idx_writing_task_tenant_status ON ai_writing_task(tenant_id, status);
+CREATE INDEX idx_writing_task_tenant_type ON ai_writing_task(tenant_id, document_type_code);
+
+CREATE TABLE ai_writing_material (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    task_id VARCHAR(32) NOT NULL,
+    material_name VARCHAR(500) NOT NULL,
+    source_type VARCHAR(20) NOT NULL,
+    source_id VARCHAR(32),
+    authority_level VARCHAR(20) NOT NULL,
+    usage_mode VARCHAR(20) NOT NULL,
+    citation_purpose VARCHAR(20) NOT NULL,
+    effective_date DATE,
+    expiry_date DATE,
+    permission_status VARCHAR(10) NOT NULL DEFAULT '允许',
+    selected_fragment TEXT,
+    is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    file_hash VARCHAR(64),
+    file_path VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT fk_material_task FOREIGN KEY (task_id) REFERENCES ai_writing_task(id),
+    CONSTRAINT ck_material_dates CHECK (effective_date IS NULL OR expiry_date IS NULL OR expiry_date >= effective_date)
+);
+CREATE INDEX idx_material_task_source ON ai_writing_material(tenant_id, task_id, source_type);
+
+CREATE TABLE ai_writing_outline (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    task_id VARCHAR(32) NOT NULL,
+    outline_version INTEGER NOT NULL,
+    is_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_by VARCHAR(32),
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    structure_check_result TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT fk_outline_task FOREIGN KEY (task_id) REFERENCES ai_writing_task(id),
+    CONSTRAINT uq_outline_version UNIQUE (tenant_id, task_id, outline_version)
+);
+
+CREATE TABLE ai_writing_outline_node (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    outline_id VARCHAR(32) NOT NULL,
+    parent_node_id VARCHAR(32),
+    node_order INTEGER NOT NULL,
+    node_title VARCHAR(500) NOT NULL,
+    writing_purpose TEXT,
+    key_facts TEXT,
+    referenced_material_ids TEXT,
+    target_word_count INTEGER,
+    is_required BOOLEAN NOT NULL DEFAULT TRUE,
+    generation_status VARCHAR(10) NOT NULL DEFAULT '待生成',
+    human_note TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT fk_outline_node_outline FOREIGN KEY (outline_id) REFERENCES ai_writing_outline(id),
+    CONSTRAINT fk_outline_node_parent FOREIGN KEY (parent_node_id) REFERENCES ai_writing_outline_node(id)
+);
+CREATE INDEX idx_outline_node_order ON ai_writing_outline_node(tenant_id, outline_id, node_order);

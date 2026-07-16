@@ -1,0 +1,25 @@
+CREATE TABLE ai_writing_idea (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    task_id VARCHAR(32) NOT NULL,
+    version INTEGER NOT NULL,
+    main_theme TEXT,
+    core_viewpoints TEXT,
+    writing_sequence TEXT,
+    must_express_facts TEXT,
+    optional_content TEXT,
+    missing_materials TEXT,
+    risk_warnings TEXT,
+    is_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_by VARCHAR(32),
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT fk_writing_idea_task FOREIGN KEY (task_id) REFERENCES ai_writing_task(id),
+    CONSTRAINT uq_writing_idea_version UNIQUE (tenant_id, task_id, version)
+);
+CREATE INDEX idx_writing_idea_task ON ai_writing_idea(tenant_id, task_id, version);

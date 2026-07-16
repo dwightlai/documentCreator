@@ -1,0 +1,16 @@
+.idea/
+.vscode/
+*.iml
+*.log
+.env
+.DS_Store
+
+**/target/
+platform-web/node_modules/
+platform-web/dist/
+platform-web/playwright-report/
+platform-web/test-results/
+
+data/
+storage/
+tmp/

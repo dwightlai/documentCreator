@@ -1,0 +1,31 @@
+CREATE TABLE ai_generation_record (
+    id VARCHAR(32) PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    task_id VARCHAR(32) NOT NULL,
+    document_id VARCHAR(32),
+    paragraph_id VARCHAR(32),
+    generation_type VARCHAR(20) NOT NULL,
+    prompt_template_id VARCHAR(32) NOT NULL,
+    prompt_template_version INTEGER NOT NULL,
+    model_config_id VARCHAR(32) NOT NULL,
+    model_version VARCHAR(50),
+    material_snapshot_version INTEGER,
+    input_context_hash VARCHAR(64),
+    output_text TEXT,
+    output_hash VARCHAR(64),
+    duration_ms INTEGER,
+    token_count_input INTEGER,
+    token_count_output INTEGER,
+    is_streaming BOOLEAN NOT NULL DEFAULT FALSE,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    lock_version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT fk_generation_task FOREIGN KEY (task_id) REFERENCES ai_writing_task(id),
+    CONSTRAINT fk_generation_document FOREIGN KEY (document_id) REFERENCES ai_document(id)
+);
+CREATE INDEX idx_generation_task_type ON ai_generation_record(tenant_id, task_id, generation_type);
+CREATE INDEX idx_generation_document ON ai_generation_record(tenant_id, document_id, created_at);
