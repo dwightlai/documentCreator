@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -45,7 +45,7 @@ jobs:
     env:
       RUN_POSTGRES_TESTS: "true"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -64,7 +64,7 @@ jobs:
       run:
         working-directory: platform-web
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: platform-web/package.json
@@ -92,7 +92,7 @@ jobs:
       run:
         working-directory: platform-web
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -133,7 +133,7 @@ jobs:
     timeout-minutes: 30
     needs: [backend, frontend, browser-e2e, postgres-compatibility]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Validate Compose topology
         run: docker compose --env-file .env.example config --quiet
       - name: Scan repository dependencies, secrets and IaC
