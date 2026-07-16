@@ -39,7 +39,7 @@
         <springdoc.version>2.8.17</springdoc.version>
         <apache-poi.version>5.5.1</apache-poi.version>
         <docx4j.version>17.0.0</docx4j.version>
-        <pdfbox.version>3.0.7</pdfbox.version>
+        <pdfbox.version>3.0.8</pdfbox.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <commons-io.version>2.22.0</commons-io.version>
         <commons-logging.version>1.3.5</commons-logging.version>
