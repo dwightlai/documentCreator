@@ -22,6 +22,6 @@ WORKDIR /app
 COPY --from=build /workspace/platform-bootstrap/target/platform-bootstrap-*.jar app.jar
 RUN chown platform:platform app.jar
 USER platform
-EXPOSE 18080
+EXPOSE 18089
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

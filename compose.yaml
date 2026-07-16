@@ -129,7 +129,7 @@ services:
       minio-init: { condition: service_completed_successfully }
       oidc: { condition: service_started }
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18080/actuator/health/readiness | grep UP"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18089/actuator/health/readiness | grep UP"]
       interval: 15s
       timeout: 5s
       retries: 20

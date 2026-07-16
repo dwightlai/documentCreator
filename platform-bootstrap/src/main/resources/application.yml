@@ -12,7 +12,7 @@ spring:
     default-property-inclusion: non_null
 
 server:
-  port: ${SERVER_PORT:18080}
+  port: ${SERVER_PORT:18089}
   shutdown: graceful
   forward-headers-strategy: framework
 

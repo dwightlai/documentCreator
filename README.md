@@ -55,7 +55,7 @@ pnpm test
 pnpm dev
 ```
 
-前端地址为 `http://localhost:5175`，Vite 会将 `/api` 代理到 `http://localhost:18080`。OpenAPI 地址为 `http://localhost:18080/swagger-ui.html`。
+前端地址为 `http://localhost:5175`，Vite 会将 `/api` 代理到 `http://localhost:18089`。OpenAPI 地址为 `http://localhost:18089/swagger-ui.html`。
 
 ## 容器部署基线
 

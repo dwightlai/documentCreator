@@ -66,22 +66,22 @@ class DeploymentManifestTest {
         String reservedFrontendB = "51" + "74";
 
         assertThat(Files.readString(root.resolve("platform-bootstrap/src/main/resources/application.yml")))
-                .contains("port: ${SERVER_PORT:18080}")
+                .contains("port: ${SERVER_PORT:18089}")
                 .contains("http://localhost:5175")
                 .doesNotContain("${SERVER_PORT:" + reservedBackend + "}",
                         "localhost:" + reservedFrontendA, "localhost:" + reservedFrontendB);
         assertThat(Files.readString(root.resolve("platform-web/vite.config.ts")))
-                .contains("'http://localhost:18080'", "port: 5175", "strictPort: true")
+                .contains("'http://localhost:18089'", "port: 5175", "strictPort: true")
                 .doesNotContain("localhost:" + reservedBackend,
                         "port: " + reservedFrontendA, "port: " + reservedFrontendB);
         assertThat(Files.readString(root.resolve("compose.yaml")))
-                .contains("127.0.0.1:8180:8180", "http://oidc:8180", "127.0.0.1:18080")
+                .contains("127.0.0.1:8180:8180", "http://oidc:8180", "127.0.0.1:18089")
                 .doesNotContain(":" + reservedBackend);
         assertThat(Files.readString(root.resolve("platform-web/nginx.conf")))
-                .contains("backend:18080")
+                .contains("backend:18089")
                 .doesNotContain("backend:" + reservedBackend);
         assertThat(Files.readString(root.resolve("Dockerfile")))
-                .contains("EXPOSE 18080")
+                .contains("EXPOSE 18089")
                 .doesNotContain("EXPOSE " + reservedBackend);
     }
 }

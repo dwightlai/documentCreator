@@ -50,7 +50,7 @@ echo "Starting application and checking readiness"
 docker compose up -d backend web
 for attempt in $(seq 1 40); do
   if docker compose exec -T backend curl -fsS \
-      http://127.0.0.1:18080/actuator/health/readiness >/dev/null; then
+      http://127.0.0.1:18089/actuator/health/readiness >/dev/null; then
     restore_failed=0
     trap - EXIT
     echo "Restore completed and readiness is UP"

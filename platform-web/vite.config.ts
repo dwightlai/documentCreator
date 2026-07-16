@@ -7,7 +7,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:18080'
+  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:18089'
   const proxy = {
     '/api': { target: proxyTarget, changeOrigin: true },
     '/actuator': { target: proxyTarget, changeOrigin: true },
