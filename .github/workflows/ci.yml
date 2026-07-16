@@ -68,7 +68,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: platform-web/package.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -100,7 +100,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: platform-web/package.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
