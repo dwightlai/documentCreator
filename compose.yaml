@@ -63,7 +63,7 @@ services:
 
   oidc:
     image: quay.io/keycloak/keycloak:26.3.3
-    command: start --import-realm --health-enabled=true --http-enabled=true --hostname-strict=false --proxy-headers=xforwarded
+    command: start --import-realm --health-enabled=true --http-enabled=true --http-port=8180 --hostname-strict=false --proxy-headers=xforwarded
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
@@ -74,7 +74,7 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in .env}
     volumes:
       - ./target/keycloak/platform-realm.json:/opt/keycloak/data/import/platform-realm.json:ro
-    ports: ["127.0.0.1:8180:8080"]
+    ports: ["127.0.0.1:8180:8180"]
     depends_on:
       oidc-postgres: { condition: service_healthy }
     restart: unless-stopped
@@ -103,7 +103,7 @@ services:
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       OIDC_ISSUER_URI: ${OIDC_PUBLIC_URL:-http://localhost:8180}/realms/${OIDC_REALM:-document-platform}
-      OIDC_JWK_SET_URI: http://oidc:8080/realms/${OIDC_REALM:-document-platform}/protocol/openid-connect/certs
+      OIDC_JWK_SET_URI: http://oidc:8180/realms/${OIDC_REALM:-document-platform}/protocol/openid-connect/certs
       PLATFORM_ALLOWED_ORIGINS: ${PLATFORM_ALLOWED_ORIGINS:-http://localhost:8088}
       OA_CALLBACK_ALLOWLIST: ${OA_CALLBACK_ALLOWLIST:-}
       OA_SHARED_SECRET: ${OA_SHARED_SECRET:-}
@@ -129,7 +129,7 @@ services:
       minio-init: { condition: service_completed_successfully }
       oidc: { condition: service_started }
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep UP"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18080/actuator/health/readiness | grep UP"]
       interval: 15s
       timeout: 5s
       retries: 20

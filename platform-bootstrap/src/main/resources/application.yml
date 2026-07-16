@@ -12,7 +12,7 @@ spring:
     default-property-inclusion: non_null
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:18080}
   shutdown: graceful
   forward-headers-strategy: framework
 
@@ -47,7 +47,7 @@ springdoc:
 platform:
   security:
     local-header-enabled: false
-    allowed-origins: ${PLATFORM_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173}
+    allowed-origins: ${PLATFORM_ALLOWED_ORIGINS:http://localhost:5175,http://127.0.0.1:5175,http://localhost:4173,http://127.0.0.1:4173}
   integration:
     oa:
       callback-allowlist: ${OA_CALLBACK_ALLOWLIST:}

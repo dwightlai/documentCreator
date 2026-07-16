@@ -16,7 +16,7 @@ docker compose --env-file "${ENV_FILE}" up -d --remove-orphans
 ready=0
 for attempt in $(seq 1 60); do
   if docker compose --env-file "${ENV_FILE}" exec -T backend \
-      curl -fsS http://127.0.0.1:8080/actuator/health/readiness >/dev/null; then
+      curl -fsS http://127.0.0.1:18080/actuator/health/readiness >/dev/null; then
     ready=1
     break
   fi
