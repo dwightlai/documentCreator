@@ -35,6 +35,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(400, exception.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    ResponseEntity<ApiResponse<Void>> handleMissingPart(
+            org.springframework.web.multipart.support.MissingServletRequestPartException exception) {
+        return ResponseEntity.badRequest()
+            .body(ApiResponse.error(400, "缺少上传字段: " + exception.getRequestPartName()));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception) {
         log.error("Unhandled request failure", exception);

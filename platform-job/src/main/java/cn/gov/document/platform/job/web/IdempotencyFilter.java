@@ -52,14 +52,19 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
-        byte[] requestBody = request.getInputStream().readAllBytes();
-        if (requestBody.length > MAX_REQUEST_BYTES) {
+        String contentType = request.getContentType();
+        boolean multipart = contentType != null
+                && contentType.toLowerCase().startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
+
+        byte[] requestBody = multipart ? new byte[0] : request.getInputStream().readAllBytes();
+        if (!multipart && requestBody.length > MAX_REQUEST_BYTES) {
             writeError(response, 413, "带幂等键的请求体不能超过 25MB");
             return;
         }
         String endpoint = request.getMethod() + " " + request.getRequestURI();
         String requestHash = sha256(request.getMethod() + "\n" + request.getRequestURI() + "\n"
-                + String.valueOf(request.getQueryString()) + "\n", requestBody);
+                + String.valueOf(request.getQueryString()) + "\n"
+                + (multipart ? ("multipart:" + request.getContentLengthLong() + "\n") : ""), requestBody);
         IdempotencyService.Reservation reservation = service.reserve(endpoint, key, requestHash);
 
         switch (reservation.decision()) {
@@ -67,7 +72,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             case HASH_CONFLICT -> writeError(response, 409, "同一 Idempotency-Key 不能用于不同请求");
             case IN_PROGRESS -> writeError(response, 409, "同一幂等请求正在处理中，请稍后重试");
             case PROCEED -> executeAndCache(
-                    new CachedBodyHttpServletRequest(request, requestBody), response, chain, reservation.recordId());
+                    multipart ? request : new CachedBodyHttpServletRequest(request, requestBody),
+                    response, chain, reservation.recordId());
         }
     }
 

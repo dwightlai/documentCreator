@@ -24,11 +24,19 @@ http.interceptors.request.use(async (config) => {
     config.headers.set('X-User-Id', import.meta.env.VITE_USER_ID || 'local-user')
   }
   config.headers.set('X-Request-Id', crypto.randomUUID().replaceAll('-', ''))
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers.delete('Content-Type')
+  }
   return config
 })
 
 http.interceptors.response.use((response) => {
   const envelope = response.data as ApiEnvelope<unknown>
-  if (envelope.code >= 400) return Promise.reject(new Error(envelope.message || '请求失败'))
+  if (envelope && typeof envelope.code === 'number' && envelope.code >= 400) {
+    return Promise.reject(new Error(envelope.message || '请求失败'))
+  }
   return response
+}, (error) => {
+  const message = error?.response?.data?.message
+  return Promise.reject(message ? new Error(message) : error)
 })

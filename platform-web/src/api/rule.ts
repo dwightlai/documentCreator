@@ -84,6 +84,6 @@ export const importTerms = async (dictionaryId: string, file: File) => {
   const form = new FormData()
   form.append('file', file)
   return data(http.post<ApiEnvelope<{ totalRows: number; importedRows: number; skippedRows: number; errors: string[] }>>(
-    `/dictionaries/${dictionaryId}/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } },
+    `/dictionaries/${dictionaryId}/import`, form,
   ))
 }
