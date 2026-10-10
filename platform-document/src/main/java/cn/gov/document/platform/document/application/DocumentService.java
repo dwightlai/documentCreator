@@ -675,7 +675,12 @@ public class DocumentService {
 
     public EditLeaseResponse acquireEditLease(String taskId, String paragraphId) {
         DocumentEntity document = requireDocument(taskId);
-        DocumentParagraphEntity paragraph = requireCurrentParagraph(document, paragraphId);
+        // 页面可能停留在旧版本，按位置映射到当前版本中的同一段落
+        DocumentParagraphEntity base = requireAnyVersionParagraph(document, paragraphId);
+        DocumentParagraphEntity paragraph = paragraphs(document.getId(), document.getCurrentVersion()).stream()
+                .filter(p -> samePosition(p, base))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.conflict("段落在最新版本中已被删除或移动，请刷新后重试"));
         String key = leaseKey(document, paragraph);
         String user = RequestContext.userId();
         if (!coordination.tryLock(key, user, EDIT_LEASE_TTL)) throw BusinessException.conflict(leaseHolderMessage(key));
@@ -699,10 +704,7 @@ public class DocumentService {
      */
     private DocumentParagraphEntity resolveEditableParagraph(
             DocumentEntity document, String paragraphId, Integer lockVersion) {
-        DocumentParagraphEntity base = paragraphMapper.selectOne(new LambdaQueryWrapper<DocumentParagraphEntity>()
-                .eq(DocumentParagraphEntity::getId, paragraphId)
-                .eq(DocumentParagraphEntity::getDocumentId, document.getId()));
-        if (base == null) throw BusinessException.notFound("段落不存在");
+        DocumentParagraphEntity base = requireAnyVersionParagraph(document, paragraphId);
         if (base.getVersionNumber().equals(document.getCurrentVersion())) {
             if (!base.getLockVersion().equals(lockVersion)) throw BusinessException.conflict("段落已被其他用户修改，请比对最新内容后再保存");
             return base;
@@ -714,6 +716,14 @@ public class DocumentService {
         if (!Objects.equals(current.getPlainText(), base.getPlainText()))
             throw BusinessException.conflict("段落已被其他用户修改，请比对最新内容后再保存");
         return current;
+    }
+
+    private DocumentParagraphEntity requireAnyVersionParagraph(DocumentEntity document, String paragraphId) {
+        DocumentParagraphEntity paragraph = paragraphMapper.selectOne(new LambdaQueryWrapper<DocumentParagraphEntity>()
+                .eq(DocumentParagraphEntity::getId, paragraphId)
+                .eq(DocumentParagraphEntity::getDocumentId, document.getId()));
+        if (paragraph == null) throw BusinessException.notFound("段落不存在");
+        return paragraph;
     }
 
     private static boolean samePosition(DocumentParagraphEntity a, DocumentParagraphEntity b) {

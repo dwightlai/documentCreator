@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import { initiateReview } from '@/api/review'
+import { isConflict } from '@/api/http'
 import {
+  acquireEditLease,
   addOutlineNode,
   checkOutline,
   confirmOutline,
@@ -17,6 +19,7 @@ import {
   getWritingDocument,
   getWritingTask,
   listWritingMaterials,
+  releaseEditLease,
   setParagraphLock,
   snapshotWritingMaterials,
   streamDocumentSection,
@@ -46,6 +49,11 @@ const materialDialog = ref(false)
 const materialFile = ref<File>()
 const instruction = ref('突出事实依据，避免空泛表述')
 const streamText = ref('')
+/** 当前持有的段落编辑租约（§34B.1），编辑期间每 4 分钟续期一次。 */
+const LEASE_RENEW_MS = 4 * 60 * 1000
+const lease = ref<{ paragraphId: string; timer: ReturnType<typeof setInterval> }>()
+const leaseBlocked = reactive<Record<string, string>>({})
+const conflict = ref<{ mine: string; latest: DocumentParagraph; latestDocument: WritingDocument }>()
 const materialForm = reactive({ materialName:'', sourceType:'上传', authorityLevel:'正式公文', usageMode:'全文参考', citationPurpose:'事实依据', permissionStatus:'允许', selectedFragment:'', locked:true })
 
 const selectedNode = computed(() => outline.value?.nodes.find((item) => item.id === selectedNodeId.value))
@@ -96,13 +104,73 @@ async function generate(node:OutlineNode) {
   catch(error){ElMessage.error(message(error))}
   finally{generatingId.value=''}
 }
-async function saveParagraph(paragraph:DocumentParagraph) { try { document.value=await updateDocumentParagraph(taskId.value,paragraph); selectedParagraphId.value=document.value.paragraphs.find((item)=>item.outlineNodeId===paragraph.outlineNodeId)?.id??''; ElMessage.success('人工修改已保存为新版本') } catch(error){ElMessage.error(message(error))} }
+async function beginEditing(paragraph:DocumentParagraph) {
+  if (paragraph.locked || lease.value?.paragraphId === paragraph.id) return
+  await endEditing()
+  try {
+    await acquireEditLease(taskId.value, paragraph.id)
+    delete leaseBlocked[paragraph.id]
+    lease.value = { paragraphId: paragraph.id, timer: setInterval(() => renewLease(paragraph.id), LEASE_RENEW_MS) }
+  } catch (error) {
+    if (isConflict(error)) { leaseBlocked[paragraph.id] = message(error); ElMessage.warning(message(error)) }
+    else ElMessage.error(message(error))
+  }
+}
+async function renewLease(paragraphId:string) {
+  try { await acquireEditLease(taskId.value, paragraphId) }
+  catch { ElMessage.warning('段落编辑租约续期失败，保存时可能与他人修改冲突') }
+}
+async function endEditing() {
+  const current = lease.value
+  if (!current) return
+  clearInterval(current.timer)
+  lease.value = undefined
+  try { await releaseEditLease(taskId.value, current.paragraphId) } catch { /* 租约到期后自动释放 */ }
+}
+function samePosition(a:DocumentParagraph, b:DocumentParagraph) { return a.outlineNodeId === b.outlineNodeId && a.paragraphOrder === b.paragraphOrder }
+async function saveParagraph(paragraph:DocumentParagraph) {
+  try {
+    document.value = await updateDocumentParagraph(taskId.value, paragraph)
+    selectedParagraphId.value = document.value.paragraphs.find((item) => samePosition(item, paragraph))?.id ?? ''
+    await endEditing()
+    ElMessage.success('人工修改已保存为新版本')
+  } catch (error) {
+    if (!isConflict(error)) { ElMessage.error(message(error)); return }
+    try {
+      const latestDocument = await getWritingDocument(taskId.value)
+      const latest = latestDocument.paragraphs.find((item) => samePosition(item, paragraph))
+      if (!latest || latest.plainText === paragraph.plainText) { ElMessage.warning(message(error)); return }
+      conflict.value = { mine: paragraph.plainText, latest, latestDocument }
+    } catch (reloadError) { ElMessage.error(message(reloadError)) }
+  }
+}
+async function overwriteWithMine() {
+  const current = conflict.value
+  if (!current) return
+  try {
+    document.value = await updateDocumentParagraph(taskId.value, { ...current.latest, plainText: current.mine })
+    selectedParagraphId.value = document.value.paragraphs.find((item) => samePosition(item, current.latest))?.id ?? ''
+    conflict.value = undefined
+    await endEditing()
+    ElMessage.success('已用你的修改覆盖最新版本')
+  } catch (error) { ElMessage.error(message(error)) }
+}
+async function discardMine() {
+  const current = conflict.value
+  if (!current) return
+  document.value = current.latestDocument
+  selectedParagraphId.value = current.latest.id
+  conflict.value = undefined
+  await endEditing()
+  ElMessage.info('已放弃本次修改并载入最新内容')
+}
 async function toggleLock(paragraph:DocumentParagraph) { try { document.value=await setParagraphLock(taskId.value,paragraph.id,!paragraph.locked); ElMessage.success(paragraph.locked?'段落已解锁':'段落已锁定') } catch(error){ElMessage.error(message(error))} }
 async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
 async function startReview(){try{const review=await initiateReview(taskId.value);ElMessage.success('审校任务已创建，正在进入问题工作台');await router.push({path:'/review',query:{taskId:review.id}})}catch(error){ElMessage.error(message(error))}}
 function chooseMaterialFile(event:Event){materialFile.value=(event.target as HTMLInputElement).files?.[0]}
 
 onMounted(load)
+onBeforeUnmount(endEditing)
 </script>
 
 <template>
@@ -146,7 +214,7 @@ onMounted(load)
           <section v-if="document?.paragraphs.length" class="paper-sheet">
             <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
             <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':'可编辑' }}</b></div><textarea v-model="paragraph.plainText" :disabled="paragraph.locked" rows="8" @click.stop /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <div class="paragraph-meta"><span>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><textarea v-model="paragraph.plainText" :disabled="paragraph.locked" :readonly="!!leaseBlocked[paragraph.id]" @focus="beginEditing(paragraph)" rows="8" @click.stop /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
             </article>
           </section>
           <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
@@ -159,9 +227,23 @@ onMounted(load)
       <div class="material-form"><label class="file-drop">上传文件（DOCX / PDF / TXT，最大 20MB）<input type="file" accept=".docx,.pdf,.txt" @change="chooseMaterialFile"><span>{{ materialFile?.name || '选择本地文件，系统将提取文本并保存原文件哈希' }}</span></label><div class="manual-divider">或录入经核准的材料片段</div><label>材料名称<input v-model="materialForm.materialName" :disabled="Boolean(materialFile)" placeholder="例如：项目论证报告"></label><div><label>来源<select v-model="materialForm.sourceType" :disabled="Boolean(materialFile)"><option>上传</option><option>知识库</option><option>OA</option></select></label><label>权威级别<select v-model="materialForm.authorityLevel"><option>正式公文</option><option>权威资料</option><option>内部资料</option><option>参考资料</option></select></label></div><div><label>使用方式<select v-model="materialForm.usageMode"><option>全文参考</option><option>指定片段</option><option>仅作背景</option></select></label><label>引用目的<select v-model="materialForm.citationPurpose"><option>事实依据</option><option>政策依据</option><option>案例参考</option><option>表达参考</option></select></label></div><label>选用片段<textarea v-model="materialForm.selectedFragment" :disabled="Boolean(materialFile)" rows="5" placeholder="粘贴经核准、可供生成使用的材料片段" /></label></div>
       <template #footer><button class="secondary-button" type="button" @click="materialDialog=false">取消</button><button class="primary-button" type="button" @click="addMaterial">加入清单</button></template>
     </el-dialog>
+    <el-dialog :model-value="!!conflict" title="段落已被他人修改" width="760px" @close="conflict=undefined">
+      <p class="conflict-intro">你编辑期间，该段落已形成新版本。请比对后选择：用你的修改覆盖最新版本，或放弃你的修改。系统不会自动合并。</p>
+      <div v-if="conflict" class="conflict-compare">
+        <section><h4>你的修改</h4><p>{{ conflict.mine }}</p></section>
+        <section><h4>当前最新版本</h4><p>{{ conflict.latest.plainText }}</p></section>
+      </div>
+      <template #footer><button class="secondary-button" type="button" @click="conflict=undefined">继续编辑</button><button class="secondary-button" type="button" @click="discardMine">放弃我的修改</button><button class="primary-button" type="button" @click="overwriteWithMine">用我的修改覆盖</button></template>
+    </el-dialog>
   </AppShell>
 </template>
 
 <style scoped>
+.lease-blocked{margin:6px 0 0;padding:6px 10px;border-radius:6px;background:#fff4e5;color:#9a5b13;font-size:13px}
+.conflict-intro{margin:0 0 14px;color:#646a73;font-size:14px;line-height:1.7}
+.conflict-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.conflict-compare section{padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#f8f9fb}
+.conflict-compare h4{margin:0 0 8px;font-size:14px}
+.conflict-compare p{margin:0;white-space:pre-wrap;font-size:14px;line-height:1.8;max-height:320px;overflow:auto}
 .editor-workspace{padding:24px 28px 60px}.editor-command{background:#17231e;color:#f3efe7;padding:20px 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.editor-command a{color:#9fb0a7;font-size:13px;margin-right:14px}.editor-command h2{font:500 25px/1.2 "Noto Sans SC",sans-serif;margin:10px 0 5px}.editor-command p{margin:0;color:#aebbb5;font-size:14px}.editor-status{display:flex;align-items:center;gap:8px}.editor-status span{display:grid;padding:0 14px;border-right:1px solid #4b5751;color:#9fb0a7;font-size:13px}.editor-status b{color:#fff;margin-top:4px;font-size:14px}.editor-status button{border:1px solid #728078;background:transparent;color:#fff;padding:9px 12px;cursor:pointer}.editor-columns{display:grid;grid-template-columns:280px 340px minmax(500px,1fr);min-height:720px;border:1px solid #d8d3c8;border-top:0;background:#f1eee7}.material-column,.outline-column{border-right:1px solid #d8d3c8;padding:22px 18px;overflow:auto;max-height:calc(100vh - 190px)}.material-column>header,.outline-column>header,.document-column>header{display:flex;justify-content:space-between;align-items:center}.material-column h3,.outline-column h3,.document-column h3{font:600 20px/1 "Noto Sans SC",sans-serif;margin:7px 0}.material-column>header button,.outline-column>header button{width:34px;height:34px;border:1px solid #aaa397;background:transparent;cursor:pointer}.column-intro{color:#858078;font-size:13px;line-height:1.65;border-bottom:1px solid #d8d3c8;padding-bottom:16px}.material-column>article{background:#fff;border-left:3px solid #567363;padding:14px;margin-bottom:10px}.material-column>article[data-permission=拒绝]{border-color:#a33c32}.material-column article header{display:flex;justify-content:space-between;font-size:13px;color:#89837a}.material-column article h4{font-size:14px;margin:9px 0}.material-column article p{font-size:13px;color:#706c65;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.material-column article footer{display:flex;justify-content:space-between;align-items:end}.material-column article footer small{font-size:12px;color:#999}.material-column article button{border:0;background:none;color:#a33c32;cursor:pointer;font-size:13px}.snapshot-button,.append-node{width:100%;border:1px dashed #9c9589;background:transparent;padding:11px;cursor:pointer;color:#59564f}.outline-meta{display:flex;justify-content:space-between;margin:13px 0;font-size:13px}.outline-meta b{color:#a33c32}.outline-meta b.confirmed{color:#48705a}.outline-column>article{display:grid;grid-template-columns:30px 1fr 25px 20px;gap:6px;padding:12px 8px;border-top:1px solid #ddd8cf;cursor:pointer}.outline-column>article.active{background:#fff;border-left:2px solid #a33c32}.node-order{font:500 15px sans-serif;color:#a8a197}.outline-column article input,.outline-column article textarea{width:100%;box-sizing:border-box;border:0;background:transparent;resize:none;font:inherit}.outline-column article input{font-weight:700;color:#272d29}.outline-column article textarea{font-size:13px;color:#77736b;margin-top:7px;line-height:1.5}.outline-column article button{border:0;background:none;color:#8e877d;cursor:pointer}.outline-actions{display:flex;gap:8px;padding-top:16px}.outline-actions button{flex:1;border:1px solid #aaa397;background:#fff;padding:10px;cursor:pointer}.outline-actions button.confirm{background:#17231e;color:#fff;border-color:#17231e}.document-column{padding:22px 28px;position:relative;overflow:auto;max-height:calc(100vh - 190px)}.document-column>header>span{font-size:13px;color:#77736b}.generation-bar{display:flex;align-items:end;justify-content:space-between;gap:16px;background:#e5e0d6;padding:12px 16px;margin:18px 0}.generation-bar div{display:grid;gap:5px;flex:1}.generation-bar strong{font-size:14px}.generation-bar input{border:0;border-bottom:1px solid #aaa397;background:transparent;padding:5px 0}.generation-bar button{background:#a33c32;color:#fff;border:0;padding:11px 16px;cursor:pointer}.generation-bar button:disabled{background:#aaa69f}.paper-sheet{background:#fff;max-width:760px;margin:0 auto;padding:58px 72px;box-shadow:0 8px 24px rgba(55,50,40,.08)}.paper-sheet>header{text-align:center;border-bottom:1px solid #eee9df;padding-bottom:30px}.paper-sheet>header span,.paper-sheet>header small{font-size:13px;color:#999}.paper-sheet h1{font:600 26px/1.45 "Noto Sans SC",sans-serif}.paper-sheet>article{padding:24px 0;border-bottom:1px solid #eee9df}.paper-sheet>article.dimmed{opacity:.32}.paper-sheet>article.active{box-shadow:-3px 0 #a33c32;padding-left:18px}.paragraph-meta{display:flex;justify-content:space-between;font-size:12px;color:#999}.paper-sheet textarea{border:0;width:100%;box-sizing:border-box;resize:vertical;font:16px/2 "Noto Sans SC",sans-serif;color:#292d2a;margin-top:8px}.paper-sheet article footer{display:flex;justify-content:space-between;color:#999;font-size:12px}.paper-sheet article footer button{border:0;background:none;color:#6d6962;cursor:pointer;margin-left:10px}.document-empty{text-align:center;padding:130px 30px;color:#817c73}.document-empty>span{display:inline-grid;place-items:center;width:70px;height:70px;border:1px solid #aaa397;font:32px sans-serif}.document-empty h3{font:500 22px sans-serif}.paragraph-inspector{position:sticky;bottom:0;margin:20px 0 0 auto;background:#17231e;color:#fff;padding:10px 16px;width:max-content;display:flex;gap:12px;font-size:13px}.paragraph-inspector small{color:#9fb0a7}.editor-empty{padding:35px 12px;text-align:center;color:#918b82;font-size:13px;line-height:1.7}.material-form{display:grid;gap:15px}.material-form>div{display:grid;grid-template-columns:1fr 1fr;gap:14px}.material-form label{display:grid;gap:6px;color:#6c6861;font-size:14px}.material-form input,.material-form select,.material-form textarea{border:1px solid #c9c3b7;background:#fbfaf7;padding:10px;font:inherit;resize:vertical}.file-drop{border:1px dashed #9b9488;padding:18px;background:#f4f1ea;cursor:pointer}.file-drop span{color:#8a847b}.manual-divider{text-align:center!important;display:block!important;color:#aaa39a;font-size:13px}.manual-divider:before,.manual-divider:after{content:"";display:inline-block;width:32%;border-top:1px solid #ddd7cc;vertical-align:middle;margin:0 10px}@media(max-width:1200px){.editor-columns{grid-template-columns:240px 290px minmax(430px,1fr)}}
 .stream-preview{max-width:760px;margin:0 auto 14px;background:#17231e;color:#f5f0e7;padding:18px 24px}.stream-preview span{font-size:12px;letter-spacing:1.5px;color:#d8b36a}.stream-preview p{font:14px/1.9 "Noto Sans SC",sans-serif;white-space:pre-wrap;margin:10px 0 0}</style>

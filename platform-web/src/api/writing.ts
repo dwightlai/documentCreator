@@ -168,6 +168,9 @@ export async function streamDocumentSection(taskId:string,nodeId:string,instruct
 }
 export const updateDocumentParagraph = (taskId:string,paragraph:DocumentParagraph) => data(http.put<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraph.id}`,{plainText:paragraph.plainText,lockVersion:paragraph.lockVersion,changeDescription:'正文工作台人工编辑'}))
 export const setParagraphLock = (taskId:string,paragraphId:string,locked:boolean) => data(locked?http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`):http.delete<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`))
+export interface EditLease { paragraphId:string;holderId:string;expiresAt:string }
+export const acquireEditLease = (taskId:string,paragraphId:string) => data(http.post<ApiEnvelope<EditLease>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
+export const releaseEditLease = (taskId:string,paragraphId:string) => data(http.delete<ApiEnvelope<null>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
 export const downloadWritingDocument = async (taskId:string,format:'DOCX'|'PDF') => (await http.post(`/writing-tasks/${taskId}/document/export`,{format},{responseType:'blob'})).data as Blob
 
 function parseReferencedIds(value:string) {

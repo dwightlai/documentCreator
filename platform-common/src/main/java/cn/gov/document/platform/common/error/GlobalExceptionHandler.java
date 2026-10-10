@@ -34,6 +34,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(400, exception.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    ResponseEntity<ApiResponse<Void>> handleUnreadableBody(
+            org.springframework.http.converter.HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(400, "请求体格式错误或编码不是 UTF-8"));
+    }
+
     @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
     ResponseEntity<ApiResponse<Void>> handleMissingPart(
             org.springframework.web.multipart.support.MissingServletRequestPartException exception) {

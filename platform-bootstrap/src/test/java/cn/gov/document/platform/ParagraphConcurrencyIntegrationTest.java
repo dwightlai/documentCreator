@@ -79,6 +79,8 @@ class ParagraphConcurrencyIntegrationTest {
 
         // bob 基于旧版本编辑另一段：该段未被他人修改，变基到最新版本后保存成功
         save(taskId, first, "alice", "alice 的改写").andExpect(status().isOk());
+        // 页面停留在旧版本时仍可用旧段落 ID 获取租约（按位置映射到最新版本）
+        lease(taskId, second, "bob").andExpect(status().isOk());
         save(taskId, second, "bob", "bob 改写第二段")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.paragraphs[0].plainText").value("alice 的改写"))

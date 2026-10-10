@@ -38,5 +38,20 @@ http.interceptors.response.use((response) => {
   return response
 }, (error) => {
   const message = error?.response?.data?.message
-  return Promise.reject(message ? new Error(message) : error)
+  return Promise.reject(message ? new ApiError(message, error.response) : error)
 })
+
+/** 携带服务端业务消息的请求错误，保留 HTTP 状态以便调用方区分冲突、未找到等情况。 */
+export class ApiError extends Error {
+  readonly status?: number
+  readonly response?: { status?: number }
+
+  constructor(message: string, response?: { status?: number }) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = response?.status
+    this.response = response
+  }
+}
+
+export const isConflict = (error: unknown) => error instanceof ApiError && error.status === 409
