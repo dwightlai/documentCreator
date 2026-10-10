@@ -25,7 +25,15 @@ public final class DocumentDtos {
     public record UpdateParagraphRequest(
             @NotBlank @Size(max = 30000) String plainText,
             @NotNull Integer lockVersion,
-            @Size(max = 500) String changeDescription) {}
+            @Size(max = 500) String changeDescription,
+            Integer baseVersion) {
+        public UpdateParagraphRequest(String plainText, Integer lockVersion, String changeDescription) {
+            this(plainText, lockVersion, changeDescription, null);
+        }
+    }
+
+    /** 段落编辑租约：持有期间其他用户不能保存该段落。 */
+    public record EditLeaseResponse(String paragraphId, String holderId, java.time.Instant expiresAt) {}
 
     public record ExportRequest(String format, Boolean retainCitations) {}
 

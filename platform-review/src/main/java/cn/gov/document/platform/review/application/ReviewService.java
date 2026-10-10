@@ -1,6 +1,7 @@
 package cn.gov.document.platform.review.application;
 
 import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.common.coordination.ExclusiveGuard;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.file.DocxSecurityValidator;
 import cn.gov.document.platform.common.storage.ObjectStorage;
@@ -51,6 +52,10 @@ public class ReviewService {
     private final DocxFormatReviewService formatReviewService;
     private final OutputTemplateService outputTemplateService;
     private final ObjectStorage objectStorage;
+    private final ExclusiveGuard guard;
+
+    private static final java.time.Duration REVIEW_RUN_TTL = java.time.Duration.ofMinutes(10);
+    private static final java.time.Duration ISSUE_TTL = java.time.Duration.ofMinutes(2);
 
     public ReviewService(
             ReviewTaskMapper taskMapper,
@@ -63,7 +68,8 @@ public class ReviewService {
             DictionaryService dictionaryService,
             DocxFormatReviewService formatReviewService,
             OutputTemplateService outputTemplateService,
-            ObjectStorage objectStorage) {
+            ObjectStorage objectStorage,
+            ExclusiveGuard guard) {
         this.taskMapper = taskMapper;
         this.issueMapper = issueMapper;
         this.actionMapper = actionMapper;
@@ -75,6 +81,7 @@ public class ReviewService {
         this.formatReviewService = formatReviewService;
         this.outputTemplateService = outputTemplateService;
         this.objectStorage = objectStorage;
+        this.guard = guard;
     }
 
     @Transactional
@@ -168,6 +175,9 @@ public class ReviewService {
     public ReviewDtos.TaskResponse create(ReviewDtos.CreateRequest request) {
         WritingTaskEntity writingTask = writingTaskService.require(request.writingTaskId());
         DocumentService.ExportData data = documentService.exportData(request.writingTaskId());
+        // 同一文稿同一时刻只允许一个审校任务处于运行中（§34B.2）
+        guard.holdUntilTransactionEnd(
+                "review:document:" + data.document().getId(), REVIEW_RUN_TTL, "该文稿正在审校中，请等待当前审校完成后再试");
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setTenantId(RequestContext.tenantId());
         task.setSourceSystem("internal");
@@ -278,7 +288,10 @@ public class ReviewService {
         requireTask(taskId);
         List<ReviewDtos.IssueResponse> result = new java.util.ArrayList<>();
         for (String number : request.issueNumbers()) {
-            ReviewIssueEntity issue = requirePendingIssue(taskId, number);
+            lockIssue(taskId, number);
+            ReviewIssueEntity issue = requireIssue(taskId, number);
+            // 批量操作期间已被他人处理的问题直接跳过，前端按返回数量提示（§34B.2）
+            if (!"待处理".equals(issue.getProcessingStatus())) continue;
             if (!List.of("提示", "一般").contains(issue.getRiskLevel()))
                 throw BusinessException.unprocessable("批量忽略仅允许提示或一般问题");
             issue.setProcessingStatus("已忽略");
@@ -296,7 +309,8 @@ public class ReviewService {
     public List<ReviewDtos.IssueResponse> batchAccept(String taskId, ReviewDtos.BatchRequest request) {
         requireTask(taskId);
         List<ReviewIssueEntity> ordered = request.issueNumbers().stream()
-                .map(number -> requirePendingIssue(taskId, number))
+                .map(number -> requireIssue(taskId, number))
+                .filter(issue -> "待处理".equals(issue.getProcessingStatus()))
                 .sorted(java.util.Comparator.comparing(ReviewIssueEntity::getParagraphId)
                         .thenComparing(ReviewIssueEntity::getCharPositionStart, java.util.Comparator.reverseOrder()))
                 .toList();
@@ -422,9 +436,15 @@ public class ReviewService {
     }
 
     private ReviewIssueEntity requirePendingIssue(String taskId, String number) {
+        lockIssue(taskId, number);
         ReviewIssueEntity issue = requireIssue(taskId, number);
         if (!"待处理".equals(issue.getProcessingStatus())) throw BusinessException.conflict("该问题已处理");
         return issue;
+    }
+
+    /** 单条问题的处置互斥，避免两人同时采纳或忽略同一问题（§34B.2）。 */
+    private void lockIssue(String taskId, String number) {
+        guard.holdUntilTransactionEnd("review:" + taskId + ":issue:" + number, ISSUE_TTL, "该问题正在被其他用户处理，请刷新后查看");
     }
 
     private List<ReviewIssueEntity> findIssues(String taskId, String category, String risk, String status) {

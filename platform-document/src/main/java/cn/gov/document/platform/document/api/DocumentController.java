@@ -76,6 +76,19 @@ public class DocumentController {
         return ApiResponse.success(service.setLocked(taskId, paragraphId, false));
     }
 
+    /** 获取或续期段落编辑租约（默认 5 分钟），编辑期间需定期调用以续期。 */
+    @PostMapping("/paragraphs/{paragraphId}/edit-lease")
+    ApiResponse<DocumentDtos.EditLeaseResponse> acquireEditLease(
+            @PathVariable String taskId, @PathVariable String paragraphId) {
+        return ApiResponse.success(service.acquireEditLease(taskId, paragraphId));
+    }
+
+    @DeleteMapping("/paragraphs/{paragraphId}/edit-lease")
+    ApiResponse<Void> releaseEditLease(@PathVariable String taskId, @PathVariable String paragraphId) {
+        service.releaseEditLease(taskId, paragraphId);
+        return ApiResponse.success(null);
+    }
+
     @PostMapping("/export")
     ResponseEntity<byte[]> export(
             @PathVariable String taskId, @RequestBody(required = false) DocumentDtos.ExportRequest request) {

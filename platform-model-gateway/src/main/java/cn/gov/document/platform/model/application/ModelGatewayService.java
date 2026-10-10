@@ -1,6 +1,8 @@
 package cn.gov.document.platform.model.application;
 
 import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.common.coordination.CoordinationStore;
+import cn.gov.document.platform.common.coordination.ExclusiveGuard;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.model.ModelGenerationPort;
 import cn.gov.document.platform.model.api.ModelDtos;
@@ -12,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.time.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,19 +27,29 @@ public class ModelGatewayService implements ModelGenerationPort {
     private final ModelEndpointSecurity endpointSecurity;
     private final PromptTemplateService promptService;
     private final OpenAiCompatibleModelClient providerClient;
-    private final Map<String, ArrayDeque<Long>> rateWindows = new ConcurrentHashMap<>();
+    private final CoordinationStore coordination;
+    private final ModelCircuitBreaker circuitBreaker;
+
+    private static final List<Pattern> SENSITIVE_PATTERNS = List.of(
+            Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)"),
+            Pattern.compile("(?<![0-9A-Za-z])\\d{17}[0-9Xx](?![0-9A-Za-z])"),
+            Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"));
 
     public ModelGatewayService(
             ModelConfigMapper configMapper,
             ModelCallLogMapper logMapper,
             ModelEndpointSecurity endpointSecurity,
             PromptTemplateService promptService,
-            OpenAiCompatibleModelClient providerClient) {
+            OpenAiCompatibleModelClient providerClient,
+            CoordinationStore coordination,
+            ModelCircuitBreaker circuitBreaker) {
         this.configMapper = configMapper;
         this.logMapper = logMapper;
         this.endpointSecurity = endpointSecurity;
         this.promptService = promptService;
         this.providerClient = providerClient;
+        this.coordination = coordination;
+        this.circuitBreaker = circuitBreaker;
     }
 
     public List<ModelDtos.ConfigResponse> configs(String scene) {
@@ -92,39 +103,81 @@ public class ModelGatewayService implements ModelGenerationPort {
                 !isPrivate(route.config()));
     }
 
-    @Transactional
+    /**
+     * 按路由顺序依次尝试候选模型：熔断中的模型直接跳过；端点、上下文、配额、限流等配置性拒绝改试下一个；
+     * 调用失败计入熔断统计后改用备用模型（§27）。调用日志为追加型审计记录，失败时不回滚。
+     */
+    @Transactional(noRollbackFor = RuntimeException.class)
     public ModelDtos.InvokeResponse invoke(ModelDtos.InvokeRequest request) {
         long started = System.nanoTime();
-        Route route = route(request.scene(), request.dataLevel(), request.input());
-        ModelConfigEntity config = route.config();
-        if (!StringUtils.hasText(config.getEndpointUrl())) throw BusinessException.unprocessable("所选模型尚未配置实际调用端点");
-        endpointSecurity.validate(config.getEndpointUrl());
-        enforceRate(config);
-        int estimatedInput = estimate(route.redaction().text());
-        if (config.getMaxContextTokens() != null && estimatedInput > config.getMaxContextTokens())
-            throw BusinessException.unprocessable("输入超过模型最大上下文");
-        enforceDailyQuota(config, estimatedInput);
+        List<ModelConfigEntity> candidates = candidates(request.scene(), request.dataLevel());
         Map<String, Object> variables =
                 new LinkedHashMap<>(request.variables() == null ? Map.of() : request.variables());
         variables.put("input", PromptInjectionDefense.INPUT_PLACEHOLDER);
-        PromptTemplateService.ResolvedPrompt prompt = promptService
-                .resolve(request.scene(), request.documentTypeCode(), config.getModelName(), variables)
-                .orElseThrow(() -> BusinessException.unprocessable("当前场景、文种和模型没有已生效提示词模板"));
-        OpenAiCompatibleModelClient.Result result = null;
-        RuntimeException last = null;
-        int attempts = Math.max(1, config.getMaxRetries() + 1);
-        for (int i = 0; i < attempts; i++) {
+        BusinessException firstRejection = null;
+        RuntimeException lastFailure = null;
+        boolean anyClosed = false;
+        for (ModelConfigEntity config : candidates) {
+            if (circuitBreaker.isOpen(config.getId())) continue;
+            anyClosed = true;
+            Redaction redaction = redactionFor(config, request.input());
+            int estimatedInput = estimate(redaction.text());
+            PromptTemplateService.ResolvedPrompt prompt;
             try {
-                result = providerClient.invoke(
-                        config, prompt.prompt(), route.redaction().text(), prompt.modelParameters());
-                last = null;
-                break;
-            } catch (RuntimeException e) {
-                last = e;
+                if (!StringUtils.hasText(config.getEndpointUrl()))
+                    throw BusinessException.unprocessable("所选模型尚未配置实际调用端点");
+                endpointSecurity.validate(config.getEndpointUrl());
+                if (config.getMaxContextTokens() != null && estimatedInput > config.getMaxContextTokens())
+                    throw BusinessException.unprocessable("输入超过模型最大上下文");
+                enforceDailyQuota(config, estimatedInput);
+                prompt = promptService
+                        .resolve(request.scene(), request.documentTypeCode(), config.getModelName(), variables)
+                        .orElseThrow(() -> BusinessException.unprocessable("当前场景、文种和模型没有已生效提示词模板"));
+                enforceRate(config);
+            } catch (BusinessException rejection) {
+                if (firstRejection == null) firstRejection = rejection;
+                continue;
             }
-        }
-        int duration = Math.toIntExact(Math.min(Integer.MAX_VALUE, (System.nanoTime() - started) / 1_000_000L));
-        if (last != null) {
+            OpenAiCompatibleModelClient.Result result = null;
+            RuntimeException failure = null;
+            int attempts = Math.max(1, config.getMaxRetries() + 1);
+            for (int i = 0; i < attempts; i++) {
+                try {
+                    result = providerClient.invoke(config, prompt.prompt(), redaction.text(), prompt.modelParameters());
+                    failure = null;
+                    break;
+                } catch (RuntimeException e) {
+                    failure = e;
+                }
+            }
+            boolean emptyOutput = failure == null
+                    && Boolean.TRUE.equals(config.getOutputValidation())
+                    && !StringUtils.hasText(result.output());
+            if (emptyOutput) failure = BusinessException.unprocessable("模型输出校验失败");
+            int duration = elapsedMillis(started);
+            if (failure != null) {
+                circuitBreaker.recordFailure(config.getId());
+                appendLog(
+                        request.taskType(),
+                        request.taskId(),
+                        config,
+                        prompt,
+                        request.dataLevel(),
+                        request.input(),
+                        null,
+                        emptyOutput ? result.inputTokens() : estimatedInput,
+                        emptyOutput ? result.outputTokens() : 0,
+                        BigDecimal.ZERO,
+                        duration,
+                        false,
+                        emptyOutput ? "模型输出为空" : failure.getMessage());
+                lastFailure = failure;
+                continue;
+            }
+            circuitBreaker.recordSuccess(config.getId());
+            int in = result.inputTokens() > 0 ? result.inputTokens() : estimatedInput;
+            int out = result.outputTokens() > 0 ? result.outputTokens() : estimate(result.output());
+            BigDecimal cost = cost(config, in, out);
             appendLog(
                     request.taskType(),
                     request.taskId(),
@@ -132,60 +185,29 @@ public class ModelGatewayService implements ModelGenerationPort {
                     prompt,
                     request.dataLevel(),
                     request.input(),
-                    null,
-                    estimatedInput,
-                    0,
-                    BigDecimal.ZERO,
+                    result.output(),
+                    in,
+                    out,
+                    cost,
                     duration,
-                    false,
-                    last.getMessage());
-            throw last;
+                    true,
+                    null);
+            return new ModelDtos.InvokeResponse(
+                    config.getId(),
+                    prompt.templateId(),
+                    prompt.version(),
+                    config.getModelVersion(),
+                    redaction.restore(result.output()),
+                    redaction.count(),
+                    in,
+                    out,
+                    cost,
+                    duration);
         }
-        if (Boolean.TRUE.equals(config.getOutputValidation()) && !StringUtils.hasText(result.output())) {
-            appendLog(
-                    request.taskType(),
-                    request.taskId(),
-                    config,
-                    prompt,
-                    request.dataLevel(),
-                    request.input(),
-                    null,
-                    result.inputTokens(),
-                    result.outputTokens(),
-                    BigDecimal.ZERO,
-                    duration,
-                    false,
-                    "模型输出为空");
-            throw BusinessException.unprocessable("模型输出校验失败");
-        }
-        int in = result.inputTokens() > 0 ? result.inputTokens() : estimatedInput;
-        int out = result.outputTokens() > 0 ? result.outputTokens() : estimate(result.output());
-        BigDecimal cost = cost(config, in, out);
-        appendLog(
-                request.taskType(),
-                request.taskId(),
-                config,
-                prompt,
-                request.dataLevel(),
-                request.input(),
-                result.output(),
-                in,
-                out,
-                cost,
-                duration,
-                true,
-                null);
-        return new ModelDtos.InvokeResponse(
-                config.getId(),
-                prompt.templateId(),
-                prompt.version(),
-                config.getModelVersion(),
-                result.output(),
-                route.redaction().count(),
-                in,
-                out,
-                cost,
-                duration);
+        if (lastFailure != null) throw lastFailure;
+        if (firstRejection != null) throw firstRejection;
+        if (!anyClosed) throw BusinessException.unprocessable("当前场景可用模型均处于熔断保护中，请稍后重试");
+        throw BusinessException.unprocessable("当前场景没有允许处理该数据级别的可用模型");
     }
 
     @Override
@@ -229,35 +251,47 @@ public class ModelGatewayService implements ModelGenerationPort {
     }
 
     private Route route(String scene, String dataLevel, String input) {
+        ModelConfigEntity selected = candidates(scene, dataLevel).stream()
+                .filter(c -> !circuitBreaker.isOpen(c.getId()))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.unprocessable("当前场景可用模型均处于熔断保护中，请稍后重试"));
+        return new Route(selected, redactionFor(selected, input));
+    }
+
+    /** 允许处理该数据级别的模型，按私有优先、配置代码排序；首个为主模型，其余为备用模型。 */
+    private List<ModelConfigEntity> candidates(String scene, String dataLevel) {
         if ("涉密".equals(dataLevel)) throw BusinessException.unprocessable("涉密数据禁止通过模型网关处理");
         if (!LEVELS.contains(dataLevel)) throw BusinessException.unprocessable("无效数据级别");
-        List<ModelConfigEntity> configs = configMapper.selectList(new LambdaQueryWrapper<ModelConfigEntity>()
-                .eq(ModelConfigEntity::getScene, scene)
-                .eq(ModelConfigEntity::getIsActive, true));
-        ModelConfigEntity selected = configs.stream()
+        List<ModelConfigEntity> candidates = configMapper
+                .selectList(new LambdaQueryWrapper<ModelConfigEntity>()
+                        .eq(ModelConfigEntity::getScene, scene)
+                        .eq(ModelConfigEntity::getIsActive, true))
+                .stream()
                 .filter(c -> rank(c.getDataLevel()) >= rank(dataLevel))
                 .filter(c -> !"敏感".equals(dataLevel) || isPrivate(c))
                 .sorted(Comparator.comparing((ModelConfigEntity c) -> isPrivate(c) ? 0 : 1)
                         .thenComparing(ModelConfigEntity::getConfigCode))
-                .findFirst()
-                .orElseThrow(() -> BusinessException.unprocessable("当前场景没有允许处理该数据级别的可用模型"));
-        boolean cloud = !isPrivate(selected);
-        Redaction redaction = cloud || Boolean.TRUE.equals(selected.getSensitiveWordFilter())
-                ? redact(input)
-                : new Redaction(input, 0);
-        return new Route(selected, redaction);
+                .toList();
+        if (candidates.isEmpty()) throw BusinessException.unprocessable("当前场景没有允许处理该数据级别的可用模型");
+        return candidates;
     }
 
+    private Redaction redactionFor(ModelConfigEntity config, String input) {
+        return !isPrivate(config) || Boolean.TRUE.equals(config.getSensitiveWordFilter())
+                ? redact(input)
+                : new Redaction(input, Map.of());
+    }
+
+    private static int elapsedMillis(long startedNanos) {
+        return Math.toIntExact(Math.min(Integer.MAX_VALUE, (System.nanoTime() - startedNanos) / 1_000_000L));
+    }
+
+    /** QPS 计数保存在协调存储中，多实例部署时全局生效。 */
     private void enforceRate(ModelConfigEntity config) {
         if (config.getQpsLimit() == null) return;
-        String key = RequestContext.tenantId() + ":" + config.getId();
-        ArrayDeque<Long> queue = rateWindows.computeIfAbsent(key, k -> new ArrayDeque<>());
-        long now = System.currentTimeMillis();
-        synchronized (queue) {
-            while (!queue.isEmpty() && queue.peekFirst() < now - 1000) queue.removeFirst();
-            if (queue.size() >= config.getQpsLimit()) throw BusinessException.unprocessable("模型调用超过 QPS 限制");
-            queue.addLast(now);
-        }
+        String key = ExclusiveGuard.tenantKey("model:" + config.getId() + ":qps");
+        if (!coordination.tryAcquirePermit(key, config.getQpsLimit(), Duration.ofSeconds(1)))
+            throw BusinessException.unprocessable("模型调用超过 QPS 限制");
     }
 
     private void enforceDailyQuota(ModelConfigEntity config, int nextTokens) {
@@ -361,23 +395,29 @@ public class ModelGatewayService implements ModelGenerationPort {
         return LEVELS.indexOf(level);
     }
 
+    /**
+     * 将手机号、身份证号、邮箱替换为编号占位符并保留映射；模型输出中的占位符在返回前反替换为原值（§32.5）。
+     * 映射只存在于本次调用的内存中，不写入日志或数据库。
+     */
     private Redaction redact(String input) {
+        Map<String, String> mapping = new LinkedHashMap<>();
+        Map<String, String> assigned = new HashMap<>();
         String value = input;
-        int count = 0;
-        for (Pattern pattern : List.of(
-                Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)"),
-                Pattern.compile("(?<![0-9A-Za-z])\\d{17}[0-9Xx](?![0-9A-Za-z])"),
-                Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"))) {
+        for (Pattern pattern : SENSITIVE_PATTERNS) {
             Matcher matcher = pattern.matcher(value);
-            StringBuffer result = new StringBuffer();
+            StringBuilder result = new StringBuilder();
             while (matcher.find()) {
-                count++;
-                matcher.appendReplacement(result, "[已脱敏]");
+                String placeholder = assigned.computeIfAbsent(matcher.group(), original -> {
+                    String token = "[已脱敏-" + (mapping.size() + 1) + "]";
+                    mapping.put(token, original);
+                    return token;
+                });
+                matcher.appendReplacement(result, Matcher.quoteReplacement(placeholder));
             }
             matcher.appendTail(result);
             value = result.toString();
         }
-        return new Redaction(value, count);
+        return new Redaction(value, mapping);
     }
 
     private BigDecimal cost(ModelConfigEntity c, int in, int out) {
@@ -407,7 +447,19 @@ public class ModelGatewayService implements ModelGenerationPort {
         return v == null ? 0 : v;
     }
 
-    private record Redaction(String text, int count) {}
+    private record Redaction(String text, Map<String, String> mapping) {
+        int count() {
+            return mapping.size();
+        }
+
+        String restore(String output) {
+            if (output == null || mapping.isEmpty()) return output;
+            String restored = output;
+            for (Map.Entry<String, String> entry : mapping.entrySet())
+                restored = restored.replace(entry.getKey(), entry.getValue());
+            return restored;
+        }
+    }
 
     private record Route(ModelConfigEntity config, Redaction redaction) {}
 }

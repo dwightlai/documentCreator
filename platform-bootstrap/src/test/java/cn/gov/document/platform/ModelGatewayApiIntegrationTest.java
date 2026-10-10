@@ -48,7 +48,7 @@ class ModelGatewayApiIntegrationTest {
                 .andExpect(jsonPath("$.data.modelConfigId").value(cloudId))
                 .andExpect(jsonPath("$.data.cloudRoute").value(true))
                 .andExpect(jsonPath("$.data.redactedEntityCount").value(2))
-                .andExpect(jsonPath("$.data.preparedInput").value("联系人手机号[已脱敏]，邮箱[已脱敏]"));
+                .andExpect(jsonPath("$.data.preparedInput").value("联系人手机号[已脱敏-1]，邮箱[已脱敏-2]"));
         mockMvc.perform(
                         post("/api/v1/model-configs")
                                 .header("X-Tenant-Id", tenant)

@@ -36,6 +36,8 @@ management:
       show-details: never
 
 platform:
+  coordination:
+    type: ${PLATFORM_COORDINATION_TYPE:redis}
   security:
     local-header-enabled: false
     allowed-origins: ${PLATFORM_ALLOWED_ORIGINS}

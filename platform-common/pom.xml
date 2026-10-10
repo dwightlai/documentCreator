@@ -10,6 +10,7 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-resource-server</artifactId></dependency>
         <dependency><groupId>com.baomidou</groupId><artifactId>mybatis-plus-spring-boot3-starter</artifactId></dependency>
         <dependency><groupId>com.baomidou</groupId><artifactId>mybatis-plus-jsqlparser</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis</artifactId></dependency>
         <dependency><groupId>io.minio</groupId><artifactId>minio</artifactId><version>${minio.version}</version></dependency>
         <!-- OkHttp 5 的 Maven 多平台门面 JAR 不含 JVM 类；MinIO SDK 编译运行需显式引入 JVM 变体。 -->
         <dependency><groupId>com.squareup.okhttp3</groupId><artifactId>okhttp-jvm</artifactId><version>5.3.2</version></dependency>

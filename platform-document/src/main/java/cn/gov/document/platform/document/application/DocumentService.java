@@ -1,9 +1,12 @@
 package cn.gov.document.platform.document.application;
 
 import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.common.coordination.CoordinationStore;
+import cn.gov.document.platform.common.coordination.ExclusiveGuard;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.model.ModelGenerationPort;
 import cn.gov.document.platform.document.api.DocumentDtos.DocumentResponse;
+import cn.gov.document.platform.document.api.DocumentDtos.EditLeaseResponse;
 import cn.gov.document.platform.document.api.DocumentDtos.GenerateSectionRequest;
 import cn.gov.document.platform.document.api.DocumentDtos.UpdateParagraphRequest;
 import cn.gov.document.platform.document.api.DocumentDtos.VersionResponse;
@@ -30,10 +33,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +57,14 @@ public class DocumentService {
     private final WritingQaService qaService;
     private final WritingMaterialService materialService;
     private final ObjectProvider<ModelGenerationPort> modelPort;
+    private final CoordinationStore coordination;
+    private final ExclusiveGuard guard;
+
+    /** 段落编辑租约有效期，客户端需在到期前续期（§34B.1）。 */
+    public static final Duration EDIT_LEASE_TTL = Duration.ofMinutes(5);
+
+    private static final Duration DOCUMENT_WRITE_TTL = Duration.ofMinutes(10);
+    private static final Duration GENERATION_TTL = Duration.ofMinutes(10);
 
     public DocumentService(
             DocumentMapper documentMapper,
@@ -65,7 +78,9 @@ public class DocumentService {
             GenerationRecordMapper generationRecordMapper,
             WritingQaService qaService,
             WritingMaterialService materialService,
-            ObjectProvider<ModelGenerationPort> modelPort) {
+            ObjectProvider<ModelGenerationPort> modelPort,
+            CoordinationStore coordination,
+            ExclusiveGuard guard) {
         this.documentMapper = documentMapper;
         this.versionMapper = versionMapper;
         this.paragraphMapper = paragraphMapper;
@@ -78,6 +93,8 @@ public class DocumentService {
         this.qaService = qaService;
         this.materialService = materialService;
         this.modelPort = modelPort;
+        this.coordination = coordination;
+        this.guard = guard;
     }
 
     public DocumentResponse get(String taskId) {
@@ -117,6 +134,8 @@ public class DocumentService {
     private DocumentResponse generateSectionInternal(String taskId, GenerateSectionRequest request, boolean streaming) {
         long started = System.nanoTime();
         WritingTaskEntity task = taskService.require(taskId);
+        guard.holdUntilTransactionEnd("writing:" + taskId + ":generate", GENERATION_TTL, "该写作任务已有段落正在生成，请等待完成后再试");
+        lockDocumentWrites(taskId);
         if (task.getOutlineConfirmedVersion() == null) {
             throw BusinessException.unprocessable("生成正文前必须确认大纲");
         }
@@ -177,9 +196,12 @@ public class DocumentService {
             cn.gov.document.platform.document.api.DocumentDtos.TransformRequest request) {
         long started = System.nanoTime();
         WritingTaskEntity task = taskService.require(taskId);
+        guard.holdUntilTransactionEnd("writing:" + taskId + ":generate", GENERATION_TTL, "该写作任务已有段落正在生成，请等待完成后再试");
+        lockDocumentWrites(taskId);
         DocumentEntity document = requireDocument(taskId);
         DocumentParagraphEntity source = requireCurrentParagraph(document, request.paragraphId());
         if (Boolean.TRUE.equals(source.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能执行 AI 写作操作");
+        ensureNotLeasedByOthers(document, source);
         if (!source.getLockVersion().equals(request.lockVersion()))
             throw BusinessException.conflict("段落已被其他用户修改，请刷新后重试");
         if (!List.of("续写", "改写", "压缩", "扩写").contains(generationType))
@@ -238,6 +260,7 @@ public class DocumentService {
         if (!request.confirmed()) throw BusinessException.unprocessable("插入问答结果前必须由用户显式确认");
         WritingQaEntity qa = qaService.require(taskId, qaId);
         if (Boolean.TRUE.equals(qa.getInserted())) throw BusinessException.conflict("该问答结果已插入正文");
+        lockDocumentWrites(taskId);
         DocumentEntity document = requireDocument(taskId);
         List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
         DocumentParagraphEntity anchor;
@@ -286,11 +309,12 @@ public class DocumentService {
 
     @Transactional
     public DocumentResponse updateParagraph(String taskId, String paragraphId, UpdateParagraphRequest request) {
+        lockDocumentWrites(taskId);
         DocumentEntity document = requireDocument(taskId);
-        DocumentParagraphEntity source = requireCurrentParagraph(document, paragraphId);
+        DocumentParagraphEntity source = resolveEditableParagraph(document, paragraphId, request.lockVersion());
+        paragraphId = source.getId();
         if (Boolean.TRUE.equals(source.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能修改");
-        if (!source.getLockVersion().equals(request.lockVersion()))
-            throw BusinessException.conflict("段落已被其他用户修改，请刷新后重试");
+        ensureNotLeasedByOthers(document, source);
         int oldVersion = document.getCurrentVersion();
         int nextVersion = oldVersion + 1;
         List<DocumentParagraphEntity> oldParagraphs = paragraphs(document.getId(), oldVersion);
@@ -320,6 +344,7 @@ public class DocumentService {
 
     @Transactional
     public DocumentResponse restore(String taskId, int versionNumber) {
+        lockDocumentWrites(taskId);
         DocumentEntity document = requireDocument(taskId);
         requireVersion(document.getId(), versionNumber);
         List<DocumentParagraphEntity> restored = paragraphs(document.getId(), versionNumber);
@@ -646,6 +671,81 @@ public class DocumentService {
                     copy.setDisplayMode(source.getDisplayMode());
                     citationMapper.insert(copy);
                 });
+    }
+
+    public EditLeaseResponse acquireEditLease(String taskId, String paragraphId) {
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity paragraph = requireCurrentParagraph(document, paragraphId);
+        String key = leaseKey(document, paragraph);
+        String user = RequestContext.userId();
+        if (!coordination.tryLock(key, user, EDIT_LEASE_TTL)) throw BusinessException.conflict(leaseHolderMessage(key));
+        CoordinationStore.LockInfo info =
+                coordination.inspect(key).orElseThrow(() -> BusinessException.conflict("段落编辑租约获取失败，请重试"));
+        return new EditLeaseResponse(paragraph.getId(), info.owner(), info.expiresAt());
+    }
+
+    public void releaseEditLease(String taskId, String paragraphId) {
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity paragraph = paragraphMapper.selectOne(new LambdaQueryWrapper<DocumentParagraphEntity>()
+                .eq(DocumentParagraphEntity::getId, paragraphId)
+                .eq(DocumentParagraphEntity::getDocumentId, document.getId()));
+        if (paragraph == null) return;
+        coordination.unlock(leaseKey(document, paragraph), RequestContext.userId());
+    }
+
+    /**
+     * 每次保存都会克隆出新版本的段落行，旧段落 ID 随之失效。客户端基于旧版本编辑时，按“大纲节点 + 段落序号”定位当前版本中的同一段落：
+     * 若该段落自客户端读取后未被他人修改，则把本次修改变基到当前版本；否则返回冲突，由用户在前端比对后选择覆盖或放弃。
+     */
+    private DocumentParagraphEntity resolveEditableParagraph(
+            DocumentEntity document, String paragraphId, Integer lockVersion) {
+        DocumentParagraphEntity base = paragraphMapper.selectOne(new LambdaQueryWrapper<DocumentParagraphEntity>()
+                .eq(DocumentParagraphEntity::getId, paragraphId)
+                .eq(DocumentParagraphEntity::getDocumentId, document.getId()));
+        if (base == null) throw BusinessException.notFound("段落不存在");
+        if (base.getVersionNumber().equals(document.getCurrentVersion())) {
+            if (!base.getLockVersion().equals(lockVersion)) throw BusinessException.conflict("段落已被其他用户修改，请比对最新内容后再保存");
+            return base;
+        }
+        DocumentParagraphEntity current = paragraphs(document.getId(), document.getCurrentVersion()).stream()
+                .filter(p -> samePosition(p, base))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.conflict("段落在最新版本中已被删除或移动，请刷新后重试"));
+        if (!Objects.equals(current.getPlainText(), base.getPlainText()))
+            throw BusinessException.conflict("段落已被其他用户修改，请比对最新内容后再保存");
+        return current;
+    }
+
+    private static boolean samePosition(DocumentParagraphEntity a, DocumentParagraphEntity b) {
+        return Objects.equals(a.getOutlineNodeId(), b.getOutlineNodeId())
+                && Objects.equals(a.getParagraphOrder(), b.getParagraphOrder());
+    }
+
+    private void ensureNotLeasedByOthers(DocumentEntity document, DocumentParagraphEntity paragraph) {
+        String key = leaseKey(document, paragraph);
+        coordination
+                .inspect(key)
+                .filter(info -> !info.owner().equals(RequestContext.userId()))
+                .ifPresent(info -> {
+                    throw BusinessException.conflict(leaseHolderMessage(key));
+                });
+    }
+
+    private String leaseHolderMessage(String key) {
+        return coordination
+                .inspect(key)
+                .map(info -> "段落正在由用户 " + info.owner() + " 编辑，请稍后再试")
+                .orElse("段落正在被其他用户编辑，请稍后再试");
+    }
+
+    private static String leaseKey(DocumentEntity document, DocumentParagraphEntity paragraph) {
+        return ExclusiveGuard.tenantKey("doc:" + document.getId() + ":paragraph:" + paragraph.getOutlineNodeId() + ":"
+                + paragraph.getParagraphOrder() + ":lease");
+    }
+
+    /** 串行化同一文稿上所有会产生新版本的写操作，避免并发计算出相同的版本号。 */
+    private void lockDocumentWrites(String taskId) {
+        guard.holdUntilTransactionEnd("writing:" + taskId + ":document-write", DOCUMENT_WRITE_TTL, "文稿正在被其他操作更新，请稍后重试");
     }
 
     private DocumentParagraphEntity requireCurrentParagraph(DocumentEntity document, String paragraphId) {
