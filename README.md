@@ -48,6 +48,8 @@ java -jar platform-bootstrap/target/platform-bootstrap-0.1.0-SNAPSHOT.jar
 
 本地后端默认使用 `./data/platform` 下的 H2 文件数据库，并允许通过 `X-Tenant-Id`、`X-User-Id` 请求头模拟身份。该模式只能用于开发。
 
+提交前运行 `.mvnw.cmd spotless:apply` 统一 Java 格式；CI 会执行 `spotless:check`。
+
 ```powershell
 Set-Location platform-web
 pnpm install
