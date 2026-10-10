@@ -1,2 +1,31 @@
-package cn.gov.document.platform.review.api;import cn.gov.document.platform.common.api.ApiResponse;import cn.gov.document.platform.review.application.FalsePositiveService;import jakarta.validation.Valid;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.util.List;
-@RestController @RequestMapping("/api/v1/false-positives")public class FalsePositiveController{private final FalsePositiveService service;public FalsePositiveController(FalsePositiveService service){this.service=service;}@GetMapping @PreAuthorize("hasRole('platform.admin')")ApiResponse<List<FalsePositiveDtos.Response>>list(@RequestParam(required=false)String reviewStatus){return ApiResponse.success(service.list(reviewStatus));}@PatchMapping("/{id}/review")@PreAuthorize("hasRole('platform.admin')")ApiResponse<FalsePositiveDtos.Response>review(@PathVariable String id,@Valid @RequestBody FalsePositiveDtos.ReviewRequest request){return ApiResponse.success(service.review(id,request));}}
+package cn.gov.document.platform.review.api;
+
+import cn.gov.document.platform.common.api.ApiResponse;
+import cn.gov.document.platform.review.application.FalsePositiveService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/false-positives")
+public class FalsePositiveController {
+    private final FalsePositiveService service;
+
+    public FalsePositiveController(FalsePositiveService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<List<FalsePositiveDtos.Response>> list(@RequestParam(required = false) String reviewStatus) {
+        return ApiResponse.success(service.list(reviewStatus));
+    }
+
+    @PatchMapping("/{id}/review")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<FalsePositiveDtos.Response> review(
+            @PathVariable String id, @Valid @RequestBody FalsePositiveDtos.ReviewRequest request) {
+        return ApiResponse.success(service.review(id, request));
+    }
+}

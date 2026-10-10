@@ -1,6 +1,133 @@
 package cn.gov.document.platform.writing.application;
-import cn.gov.document.platform.common.context.RequestContext;import cn.gov.document.platform.common.error.BusinessException;import cn.gov.document.platform.knowledge.application.KnowledgeService;import cn.gov.document.platform.writing.api.WritingQaDtos;import cn.gov.document.platform.writing.domain.WritingQaEntity;import cn.gov.document.platform.writing.persistence.WritingQaMapper;import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;import com.fasterxml.jackson.core.*;import com.fasterxml.jackson.core.type.TypeReference;import com.fasterxml.jackson.databind.ObjectMapper;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import java.util.List;
-@Service public class WritingQaService{private final WritingQaMapper mapper;private final WritingTaskService taskService;private final KnowledgeService knowledgeService;private final ObjectMapper objectMapper;public WritingQaService(WritingQaMapper mapper,WritingTaskService taskService,KnowledgeService knowledgeService,ObjectMapper objectMapper){this.mapper=mapper;this.taskService=taskService;this.knowledgeService=knowledgeService;this.objectMapper=objectMapper;}
-@Transactional public WritingQaDtos.Response ask(String taskId,WritingQaDtos.QuestionRequest request){taskService.require(taskId);var hits=knowledgeService.search(searchTerms(request.question()),null,5);List<WritingQaDtos.SourceReference> sources=hits.stream().map(h->new WritingQaDtos.SourceReference(h.sourceId(),h.sourceName(),h.documentId(),h.documentTitle(),h.chunkId(),h.snippet(),h.authorityLevel(),h.fileHash(),h.score())).toList();String answer;if(sources.isEmpty())answer="当前权限范围内未检索到可直接支持该问题的知识材料。请补充材料或调整问题，不应据此形成事实结论。";else{StringBuilder value=new StringBuilder("根据当前权限范围内检索到的材料：");for(int i=0;i<sources.size();i++)value.append("\n").append(i+1).append(". ").append(sources.get(i).documentTitle()).append("：").append(sources.get(i).snippet());value.append("\n以上为材料原文片段汇总，关键事实仍须人工核对后使用。");answer=value.toString();}WritingQaEntity e=new WritingQaEntity();e.setTenantId(RequestContext.tenantId());e.setTaskId(taskId);e.setQuestionText(request.question().trim());e.setAnswerText(answer);e.setSourceReferences(write(sources));e.setAnswerType(sources.isEmpty()?"无依据提示":"原文摘录汇总");e.setInserted(false);mapper.insert(e);return response(e);}
-public List<WritingQaDtos.Response> list(String taskId){taskService.require(taskId);return mapper.selectList(new LambdaQueryWrapper<WritingQaEntity>().eq(WritingQaEntity::getTaskId,taskId).orderByDesc(WritingQaEntity::getCreatedAt)).stream().map(this::response).toList();}public WritingQaEntity require(String taskId,String id){taskService.require(taskId);WritingQaEntity e=mapper.selectOne(new LambdaQueryWrapper<WritingQaEntity>().eq(WritingQaEntity::getId,id).eq(WritingQaEntity::getTaskId,taskId));if(e==null)throw BusinessException.notFound("写作问答不存在");return e;}@Transactional public void markInserted(WritingQaEntity e,String documentId,String paragraphId){if(Boolean.TRUE.equals(e.getInserted()))throw BusinessException.conflict("该问答结果已插入正文");e.setInserted(true);e.setInsertedDocumentId(documentId);e.setInsertedParagraphId(paragraphId);mapper.updateById(e);}
-private String searchTerms(String question){String value=question.replaceAll("[？?，。；：\"“”]"," ").trim();String[] words=value.split("\\s+");return java.util.Arrays.stream(words).max(java.util.Comparator.comparingInt(String::length)).orElse(value);}private WritingQaDtos.Response response(WritingQaEntity e){return WritingQaDtos.Response.from(e,read(e.getSourceReferences()));}private String write(List<WritingQaDtos.SourceReference> v){try{return objectMapper.writeValueAsString(v);}catch(JsonProcessingException e){throw new IllegalStateException(e);}}private List<WritingQaDtos.SourceReference> read(String v){try{return v==null?List.of():objectMapper.readValue(v,new TypeReference<>(){});}catch(JsonProcessingException e){throw new IllegalStateException("问答来源数据损坏",e);}}}
+
+import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.common.error.BusinessException;
+import cn.gov.document.platform.knowledge.application.KnowledgeService;
+import cn.gov.document.platform.writing.api.WritingQaDtos;
+import cn.gov.document.platform.writing.domain.WritingQaEntity;
+import cn.gov.document.platform.writing.persistence.WritingQaMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class WritingQaService {
+    private final WritingQaMapper mapper;
+    private final WritingTaskService taskService;
+    private final KnowledgeService knowledgeService;
+    private final ObjectMapper objectMapper;
+
+    public WritingQaService(
+            WritingQaMapper mapper,
+            WritingTaskService taskService,
+            KnowledgeService knowledgeService,
+            ObjectMapper objectMapper) {
+        this.mapper = mapper;
+        this.taskService = taskService;
+        this.knowledgeService = knowledgeService;
+        this.objectMapper = objectMapper;
+    }
+
+    @Transactional
+    public WritingQaDtos.Response ask(String taskId, WritingQaDtos.QuestionRequest request) {
+        taskService.require(taskId);
+        var hits = knowledgeService.search(searchTerms(request.question()), null, 5);
+        List<WritingQaDtos.SourceReference> sources = hits.stream()
+                .map(h -> new WritingQaDtos.SourceReference(
+                        h.sourceId(),
+                        h.sourceName(),
+                        h.documentId(),
+                        h.documentTitle(),
+                        h.chunkId(),
+                        h.snippet(),
+                        h.authorityLevel(),
+                        h.fileHash(),
+                        h.score()))
+                .toList();
+        String answer;
+        if (sources.isEmpty()) answer = "当前权限范围内未检索到可直接支持该问题的知识材料。请补充材料或调整问题，不应据此形成事实结论。";
+        else {
+            StringBuilder value = new StringBuilder("根据当前权限范围内检索到的材料：");
+            for (int i = 0; i < sources.size(); i++)
+                value.append("\n")
+                        .append(i + 1)
+                        .append(". ")
+                        .append(sources.get(i).documentTitle())
+                        .append("：")
+                        .append(sources.get(i).snippet());
+            value.append("\n以上为材料原文片段汇总，关键事实仍须人工核对后使用。");
+            answer = value.toString();
+        }
+        WritingQaEntity e = new WritingQaEntity();
+        e.setTenantId(RequestContext.tenantId());
+        e.setTaskId(taskId);
+        e.setQuestionText(request.question().trim());
+        e.setAnswerText(answer);
+        e.setSourceReferences(write(sources));
+        e.setAnswerType(sources.isEmpty() ? "无依据提示" : "原文摘录汇总");
+        e.setInserted(false);
+        mapper.insert(e);
+        return response(e);
+    }
+
+    public List<WritingQaDtos.Response> list(String taskId) {
+        taskService.require(taskId);
+        return mapper
+                .selectList(new LambdaQueryWrapper<WritingQaEntity>()
+                        .eq(WritingQaEntity::getTaskId, taskId)
+                        .orderByDesc(WritingQaEntity::getCreatedAt))
+                .stream()
+                .map(this::response)
+                .toList();
+    }
+
+    public WritingQaEntity require(String taskId, String id) {
+        taskService.require(taskId);
+        WritingQaEntity e = mapper.selectOne(new LambdaQueryWrapper<WritingQaEntity>()
+                .eq(WritingQaEntity::getId, id)
+                .eq(WritingQaEntity::getTaskId, taskId));
+        if (e == null) throw BusinessException.notFound("写作问答不存在");
+        return e;
+    }
+
+    @Transactional
+    public void markInserted(WritingQaEntity e, String documentId, String paragraphId) {
+        if (Boolean.TRUE.equals(e.getInserted())) throw BusinessException.conflict("该问答结果已插入正文");
+        e.setInserted(true);
+        e.setInsertedDocumentId(documentId);
+        e.setInsertedParagraphId(paragraphId);
+        mapper.updateById(e);
+    }
+
+    private String searchTerms(String question) {
+        String value = question.replaceAll("[？?，。；：\"“”]", " ").trim();
+        String[] words = value.split("\\s+");
+        return java.util.Arrays.stream(words)
+                .max(java.util.Comparator.comparingInt(String::length))
+                .orElse(value);
+    }
+
+    private WritingQaDtos.Response response(WritingQaEntity e) {
+        return WritingQaDtos.Response.from(e, read(e.getSourceReferences()));
+    }
+
+    private String write(List<WritingQaDtos.SourceReference> v) {
+        try {
+            return objectMapper.writeValueAsString(v);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private List<WritingQaDtos.SourceReference> read(String v) {
+        try {
+            return v == null ? List.of() : objectMapper.readValue(v, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("问答来源数据损坏", e);
+        }
+    }
+}

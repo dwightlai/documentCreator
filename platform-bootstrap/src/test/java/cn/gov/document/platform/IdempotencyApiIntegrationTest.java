@@ -1,5 +1,12 @@
 package cn.gov.document.platform;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,13 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -56,14 +56,11 @@ class IdempotencyApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1));
 
-        create("another-idempotency-tenant", KEY, requestBody)
-                .andExpect(status().isOk());
+        create("another-idempotency-tenant", KEY, requestBody).andExpect(status().isOk());
     }
 
-    private org.springframework.test.web.servlet.ResultActions create(
-            String tenant,
-            String key,
-            String body) throws Exception {
+    private org.springframework.test.web.servlet.ResultActions create(String tenant, String key, String body)
+            throws Exception {
         return mockMvc.perform(post("/api/v1/model-configs")
                 .header("X-Tenant-Id", tenant)
                 .header("X-User-Id", "idempotency-admin")

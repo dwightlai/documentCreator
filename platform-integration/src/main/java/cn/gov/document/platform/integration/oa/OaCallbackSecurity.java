@@ -1,16 +1,15 @@
 package cn.gov.document.platform.integration.oa;
 
 import cn.gov.document.platform.common.error.BusinessException;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class OaCallbackSecurity {
@@ -30,8 +29,10 @@ public class OaCallbackSecurity {
         } catch (IllegalArgumentException invalidUri) {
             throw BusinessException.unprocessable("OA 回调地址格式无效");
         }
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || !StringUtils.hasText(uri.getHost())
-                || uri.getUserInfo() != null || uri.getFragment() != null) {
+        if (!"https".equalsIgnoreCase(uri.getScheme())
+                || !StringUtils.hasText(uri.getHost())
+                || uri.getUserInfo() != null
+                || uri.getFragment() != null) {
             throw BusinessException.unprocessable("OA 回调地址必须是白名单内的 HTTPS 地址");
         }
         boolean allowed = properties.getCallbackAllowlist().stream()

@@ -1,5 +1,8 @@
 package cn.gov.document.platform.document.persistence;
+
 import cn.gov.document.platform.document.domain.DocumentCommentEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
-@Mapper public interface DocumentCommentMapper extends BaseMapper<DocumentCommentEntity>{ }
+
+@Mapper
+public interface DocumentCommentMapper extends BaseMapper<DocumentCommentEntity> {}

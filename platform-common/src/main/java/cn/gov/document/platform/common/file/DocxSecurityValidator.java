@@ -1,7 +1,6 @@
 package cn.gov.document.platform.common.file;
 
 import cn.gov.document.platform.common.error.BusinessException;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,11 +17,10 @@ public final class DocxSecurityValidator {
     private static final long MAX_UNCOMPRESSED_BYTES = 100L * 1024 * 1024;
     private static final int MAX_ZIP_ENTRIES = 5_000;
     private static final int MAX_RELATIONSHIP_BYTES = 2_000_000;
-    private static final Pattern EXTERNAL_RELATIONSHIP = Pattern.compile(
-            "TargetMode\\s*=\\s*[\"']External[\"']", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EXTERNAL_RELATIONSHIP =
+            Pattern.compile("TargetMode\\s*=\\s*[\"']External[\"']", Pattern.CASE_INSENSITIVE);
 
-    private DocxSecurityValidator() {
-    }
+    private DocxSecurityValidator() {}
 
     public static void validate(String fileName, byte[] bytes, long maxCompressedBytes, String label) {
         String safeLabel = label == null || label.isBlank() ? "DOCX 文件" : label;
@@ -50,14 +48,19 @@ public final class DocxSecurityValidator {
                 }
                 String originalName = entry.getName().replace('\\', '/');
                 String name = originalName.toLowerCase(Locale.ROOT);
-                if (originalName.startsWith("/") || originalName.matches("^[a-zA-Z]:.*")
-                        || originalName.contains("../") || originalName.equals("..")) {
+                if (originalName.startsWith("/")
+                        || originalName.matches("^[a-zA-Z]:.*")
+                        || originalName.contains("../")
+                        || originalName.equals("..")) {
                     throw BusinessException.unprocessable(safeLabel + "包含不安全 ZIP 路径");
                 }
                 hasContentTypes |= "[content_types].xml".equals(name);
                 hasDocument |= "word/document.xml".equals(name);
-                if (name.contains("vbaproject.bin") || name.startsWith("word/embeddings/")
-                        || name.contains("oleobject") || name.endsWith(".exe") || name.endsWith(".dll")) {
+                if (name.contains("vbaproject.bin")
+                        || name.startsWith("word/embeddings/")
+                        || name.contains("oleobject")
+                        || name.endsWith(".exe")
+                        || name.endsWith(".dll")) {
                     throw BusinessException.unprocessable(safeLabel + "禁止宏、可执行文件、嵌入对象和 OLE 内容");
                 }
 
@@ -75,8 +78,10 @@ public final class DocxSecurityValidator {
                         relationship.write(buffer, 0, read);
                     }
                 }
-                if (relationship != null && EXTERNAL_RELATIONSHIP.matcher(
-                        relationship.toString(StandardCharsets.UTF_8)).find()) {
+                if (relationship != null
+                        && EXTERNAL_RELATIONSHIP
+                                .matcher(relationship.toString(StandardCharsets.UTF_8))
+                                .find()) {
                     throw BusinessException.unprocessable(safeLabel + "禁止外部链接关系");
                 }
             }

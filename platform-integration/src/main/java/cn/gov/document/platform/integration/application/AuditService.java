@@ -1,2 +1,56 @@
-package cn.gov.document.platform.integration.application;import cn.gov.document.platform.common.context.RequestContext;import cn.gov.document.platform.integration.api.AuditDtos;import cn.gov.document.platform.integration.domain.AuditLogEntity;import cn.gov.document.platform.integration.persistence.AuditLogMapper;import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;import org.springframework.stereotype.Service;import java.time.OffsetDateTime;import java.util.List;
-@Service public class AuditService{private final AuditLogMapper mapper;public AuditService(AuditLogMapper mapper){this.mapper=mapper;}public void append(String type,String roles,String targetType,String targetId,String action,String detail,String level,String ip){AuditLogEntity e=new AuditLogEntity();e.setTenantId(RequestContext.tenantId());e.setAuditType(type);e.setOperatorId(RequestContext.userId());e.setOperatorRole(roles);e.setTargetType(targetType);e.setTargetId(targetId);e.setAction(action);e.setDetail(detail);e.setDataLevel(level);e.setIpAddress(ip);e.setOccurredAt(OffsetDateTime.now());mapper.insert(e);}public List<AuditDtos.Response> list(String type,String targetId,int limit){int safe=Math.min(1000,Math.max(1,limit));return mapper.selectList(new LambdaQueryWrapper<AuditLogEntity>().eq(type!=null&&!type.isBlank(),AuditLogEntity::getAuditType,type).eq(targetId!=null&&!targetId.isBlank(),AuditLogEntity::getTargetId,targetId).orderByDesc(AuditLogEntity::getOccurredAt).last("LIMIT "+safe)).stream().map(AuditDtos.Response::from).toList();}}
+package cn.gov.document.platform.integration.application;
+
+import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.integration.api.AuditDtos;
+import cn.gov.document.platform.integration.domain.AuditLogEntity;
+import cn.gov.document.platform.integration.persistence.AuditLogMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.OffsetDateTime;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuditService {
+    private final AuditLogMapper mapper;
+
+    public AuditService(AuditLogMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    public void append(
+            String type,
+            String roles,
+            String targetType,
+            String targetId,
+            String action,
+            String detail,
+            String level,
+            String ip) {
+        AuditLogEntity e = new AuditLogEntity();
+        e.setTenantId(RequestContext.tenantId());
+        e.setAuditType(type);
+        e.setOperatorId(RequestContext.userId());
+        e.setOperatorRole(roles);
+        e.setTargetType(targetType);
+        e.setTargetId(targetId);
+        e.setAction(action);
+        e.setDetail(detail);
+        e.setDataLevel(level);
+        e.setIpAddress(ip);
+        e.setOccurredAt(OffsetDateTime.now());
+        mapper.insert(e);
+    }
+
+    public List<AuditDtos.Response> list(String type, String targetId, int limit) {
+        int safe = Math.min(1000, Math.max(1, limit));
+        return mapper
+                .selectList(new LambdaQueryWrapper<AuditLogEntity>()
+                        .eq(type != null && !type.isBlank(), AuditLogEntity::getAuditType, type)
+                        .eq(targetId != null && !targetId.isBlank(), AuditLogEntity::getTargetId, targetId)
+                        .orderByDesc(AuditLogEntity::getOccurredAt)
+                        .last("LIMIT " + safe))
+                .stream()
+                .map(AuditDtos.Response::from)
+                .toList();
+    }
+}

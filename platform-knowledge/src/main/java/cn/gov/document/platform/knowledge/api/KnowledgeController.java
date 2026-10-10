@@ -7,16 +7,15 @@ import cn.gov.document.platform.knowledge.application.KnowledgeService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
+import java.net.URI;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.net.URI;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/knowledge")
@@ -64,20 +63,17 @@ public class KnowledgeController {
 
     @PostMapping("/sources/{sourceId}/documents/{documentId}/parse")
     @PreAuthorize("hasRole('platform.admin')")
-    ApiResponse<KnowledgeDtos.ParseResponse> parse(
-            @PathVariable String sourceId,
-            @PathVariable String documentId) {
+    ApiResponse<KnowledgeDtos.ParseResponse> parse(@PathVariable String sourceId, @PathVariable String documentId) {
         return ApiResponse.success(service.parse(sourceId, documentId));
     }
 
     @PostMapping("/sources/{sourceId}/documents/{documentId}/parse-async")
     @PreAuthorize("hasRole('platform.admin')")
     ResponseEntity<ApiResponse<AsyncJobDtos.Response>> parseAsync(
-            @PathVariable String sourceId,
-            @PathVariable String documentId) throws JsonProcessingException {
+            @PathVariable String sourceId, @PathVariable String documentId) throws JsonProcessingException {
         String payload = objectMapper.writeValueAsString(Map.of("sourceId", sourceId, "documentId", documentId));
-        AsyncJobDtos.Response job = jobService.submit(
-                new AsyncJobDtos.SubmitRequest("KNOWLEDGE_PARSE", documentId, payload, 5));
+        AsyncJobDtos.Response job =
+                jobService.submit(new AsyncJobDtos.SubmitRequest("KNOWLEDGE_PARSE", documentId, payload, 5));
         return ResponseEntity.accepted()
                 .location(URI.create("/api/v1/jobs/" + job.id()))
                 .body(ApiResponse.success(job));
@@ -86,8 +82,7 @@ public class KnowledgeController {
     @PostMapping("/sources/{sourceId}/documents/{documentId}/vectorize")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<Void> vectorize(@PathVariable String sourceId, @PathVariable String documentId) {
-        throw cn.gov.document.platform.common.error.BusinessException.unprocessable(
-                "向量服务尚未配置；当前仅启用权限前置的全文检索降级");
+        throw cn.gov.document.platform.common.error.BusinessException.unprocessable("向量服务尚未配置；当前仅启用权限前置的全文检索降级");
     }
 
     @GetMapping("/search")

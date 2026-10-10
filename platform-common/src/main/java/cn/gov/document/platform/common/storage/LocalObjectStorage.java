@@ -1,7 +1,6 @@
 package cn.gov.document.platform.common.storage;
 
 import cn.gov.document.platform.common.error.BusinessException;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

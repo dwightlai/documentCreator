@@ -1,46 +1,413 @@
 package cn.gov.document.platform.model.application;
 
-import cn.gov.document.platform.common.context.RequestContext;import cn.gov.document.platform.common.error.BusinessException;import cn.gov.document.platform.common.model.ModelGenerationPort;
-import cn.gov.document.platform.model.api.ModelDtos;import cn.gov.document.platform.model.domain.*;import cn.gov.document.platform.model.persistence.*;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import org.springframework.util.StringUtils;
-import java.math.*;import java.nio.charset.StandardCharsets;import java.security.*;import java.time.*;import java.util.*;import java.util.concurrent.ConcurrentHashMap;import java.util.regex.*;
+import cn.gov.document.platform.common.context.RequestContext;
+import cn.gov.document.platform.common.error.BusinessException;
+import cn.gov.document.platform.common.model.ModelGenerationPort;
+import cn.gov.document.platform.model.api.ModelDtos;
+import cn.gov.document.platform.model.domain.*;
+import cn.gov.document.platform.model.persistence.*;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.math.*;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-@Service public class ModelGatewayService implements ModelGenerationPort {
-    private static final List<String> LEVELS=List.of("普通","内部","敏感","涉密");
-    private final ModelConfigMapper configMapper;private final ModelCallLogMapper logMapper;private final ModelEndpointSecurity endpointSecurity;
-    private final PromptTemplateService promptService;private final OpenAiCompatibleModelClient providerClient;
-    private final Map<String,ArrayDeque<Long>> rateWindows=new ConcurrentHashMap<>();
-    public ModelGatewayService(ModelConfigMapper configMapper,ModelCallLogMapper logMapper,ModelEndpointSecurity endpointSecurity,
-        PromptTemplateService promptService,OpenAiCompatibleModelClient providerClient){this.configMapper=configMapper;this.logMapper=logMapper;this.endpointSecurity=endpointSecurity;this.promptService=promptService;this.providerClient=providerClient;}
+@Service
+public class ModelGatewayService implements ModelGenerationPort {
+    private static final List<String> LEVELS = List.of("普通", "内部", "敏感", "涉密");
+    private final ModelConfigMapper configMapper;
+    private final ModelCallLogMapper logMapper;
+    private final ModelEndpointSecurity endpointSecurity;
+    private final PromptTemplateService promptService;
+    private final OpenAiCompatibleModelClient providerClient;
+    private final Map<String, ArrayDeque<Long>> rateWindows = new ConcurrentHashMap<>();
 
-    public List<ModelDtos.ConfigResponse> configs(String scene){return configMapper.selectList(new LambdaQueryWrapper<ModelConfigEntity>()
-        .eq(StringUtils.hasText(scene),ModelConfigEntity::getScene,scene).orderByAsc(ModelConfigEntity::getScene).orderByAsc(ModelConfigEntity::getConfigCode)).stream().map(ModelDtos.ConfigResponse::from).toList();}
-    @Transactional public ModelDtos.ConfigResponse create(ModelDtos.ConfigRequest r){validate(r);if(configMapper.selectCount(new LambdaQueryWrapper<ModelConfigEntity>().eq(ModelConfigEntity::getConfigCode,r.configCode().trim()))>0)throw BusinessException.conflict("模型配置代码已存在");ModelConfigEntity e=new ModelConfigEntity();e.setTenantId(RequestContext.tenantId());apply(e,r);configMapper.insert(e);return ModelDtos.ConfigResponse.from(e);}
-    @Transactional public ModelDtos.ConfigResponse update(String id,ModelDtos.ConfigRequest r){validate(r);ModelConfigEntity e=require(id);if(r.lockVersion()==null)throw BusinessException.unprocessable("更新模型配置必须提交 lockVersion");ModelConfigEntity duplicate=configMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>().eq(ModelConfigEntity::getConfigCode,r.configCode().trim()));if(duplicate!=null&&!duplicate.getId().equals(id))throw BusinessException.conflict("模型配置代码已存在");e.setLockVersion(r.lockVersion());apply(e,r);if(configMapper.updateById(e)!=1)throw BusinessException.conflict("模型配置已被其他用户修改");return ModelDtos.ConfigResponse.from(configMapper.selectById(id));}
+    public ModelGatewayService(
+            ModelConfigMapper configMapper,
+            ModelCallLogMapper logMapper,
+            ModelEndpointSecurity endpointSecurity,
+            PromptTemplateService promptService,
+            OpenAiCompatibleModelClient providerClient) {
+        this.configMapper = configMapper;
+        this.logMapper = logMapper;
+        this.endpointSecurity = endpointSecurity;
+        this.promptService = promptService;
+        this.providerClient = providerClient;
+    }
 
-    public ModelDtos.RoutePreviewResponse prepare(ModelDtos.RoutePreviewRequest request){Route route=route(request.scene(),request.dataLevel(),request.input());return new ModelDtos.RoutePreviewResponse(route.config().getId(),route.config().getConfigCode(),route.config().getProvider(),route.config().getModelName(),route.config().getDataLevel(),route.redaction().text(),route.redaction().count(),!isPrivate(route.config()));}
+    public List<ModelDtos.ConfigResponse> configs(String scene) {
+        return configMapper
+                .selectList(new LambdaQueryWrapper<ModelConfigEntity>()
+                        .eq(StringUtils.hasText(scene), ModelConfigEntity::getScene, scene)
+                        .orderByAsc(ModelConfigEntity::getScene)
+                        .orderByAsc(ModelConfigEntity::getConfigCode))
+                .stream()
+                .map(ModelDtos.ConfigResponse::from)
+                .toList();
+    }
 
-    @Transactional public ModelDtos.InvokeResponse invoke(ModelDtos.InvokeRequest request){long started=System.nanoTime();Route route=route(request.scene(),request.dataLevel(),request.input());ModelConfigEntity config=route.config();if(!StringUtils.hasText(config.getEndpointUrl()))throw BusinessException.unprocessable("所选模型尚未配置实际调用端点");endpointSecurity.validate(config.getEndpointUrl());enforceRate(config);int estimatedInput=estimate(route.redaction().text());if(config.getMaxContextTokens()!=null&&estimatedInput>config.getMaxContextTokens())throw BusinessException.unprocessable("输入超过模型最大上下文");enforceDailyQuota(config,estimatedInput);
-        Map<String,Object> variables=new LinkedHashMap<>(request.variables()==null?Map.of():request.variables());variables.put("input",PromptInjectionDefense.INPUT_PLACEHOLDER);PromptTemplateService.ResolvedPrompt prompt=promptService.resolve(request.scene(),request.documentTypeCode(),config.getModelName(),variables).orElseThrow(()->BusinessException.unprocessable("当前场景、文种和模型没有已生效提示词模板"));
-        OpenAiCompatibleModelClient.Result result=null;RuntimeException last=null;int attempts=Math.max(1,config.getMaxRetries()+1);for(int i=0;i<attempts;i++){try{result=providerClient.invoke(config,prompt.prompt(),route.redaction().text(),prompt.modelParameters());last=null;break;}catch(RuntimeException e){last=e;}}
-        int duration=Math.toIntExact(Math.min(Integer.MAX_VALUE,(System.nanoTime()-started)/1_000_000L));if(last!=null){appendLog(request.taskType(),request.taskId(),config,prompt,request.dataLevel(),request.input(),null,estimatedInput,0,BigDecimal.ZERO,duration,false,last.getMessage());throw last;}
-        if(Boolean.TRUE.equals(config.getOutputValidation())&&!StringUtils.hasText(result.output())){appendLog(request.taskType(),request.taskId(),config,prompt,request.dataLevel(),request.input(),null,result.inputTokens(),result.outputTokens(),BigDecimal.ZERO,duration,false,"模型输出为空");throw BusinessException.unprocessable("模型输出校验失败");}
-        int in=result.inputTokens()>0?result.inputTokens():estimatedInput;int out=result.outputTokens()>0?result.outputTokens():estimate(result.output());BigDecimal cost=cost(config,in,out);appendLog(request.taskType(),request.taskId(),config,prompt,request.dataLevel(),request.input(),result.output(),in,out,cost,duration,true,null);return new ModelDtos.InvokeResponse(config.getId(),prompt.templateId(),prompt.version(),config.getModelVersion(),result.output(),route.redaction().count(),in,out,cost,duration);}
+    @Transactional
+    public ModelDtos.ConfigResponse create(ModelDtos.ConfigRequest r) {
+        validate(r);
+        if (configMapper.selectCount(new LambdaQueryWrapper<ModelConfigEntity>()
+                        .eq(ModelConfigEntity::getConfigCode, r.configCode().trim()))
+                > 0) throw BusinessException.conflict("模型配置代码已存在");
+        ModelConfigEntity e = new ModelConfigEntity();
+        e.setTenantId(RequestContext.tenantId());
+        apply(e, r);
+        configMapper.insert(e);
+        return ModelDtos.ConfigResponse.from(e);
+    }
 
-    @Override @Transactional public Optional<ModelGenerationPort.Result> generate(String scene,String dataLevel,String documentTypeCode,String input,Map<String,Object> variables,String taskType,String taskId){long available=configMapper.selectCount(new LambdaQueryWrapper<ModelConfigEntity>().eq(ModelConfigEntity::getScene,scene).eq(ModelConfigEntity::getIsActive,true).isNotNull(ModelConfigEntity::getEndpointUrl));if(available==0)return Optional.empty();ModelDtos.InvokeResponse response=invoke(new ModelDtos.InvokeRequest(scene,dataLevel,documentTypeCode,input,variables,taskType,taskId));return Optional.of(new ModelGenerationPort.Result(response.output(),response.modelConfigId(),response.modelVersion(),response.promptTemplateId(),response.promptTemplateVersion(),response.inputTokens(),response.outputTokens(),response.durationMs()));}
+    @Transactional
+    public ModelDtos.ConfigResponse update(String id, ModelDtos.ConfigRequest r) {
+        validate(r);
+        ModelConfigEntity e = require(id);
+        if (r.lockVersion() == null) throw BusinessException.unprocessable("更新模型配置必须提交 lockVersion");
+        ModelConfigEntity duplicate = configMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
+                .eq(ModelConfigEntity::getConfigCode, r.configCode().trim()));
+        if (duplicate != null && !duplicate.getId().equals(id)) throw BusinessException.conflict("模型配置代码已存在");
+        e.setLockVersion(r.lockVersion());
+        apply(e, r);
+        if (configMapper.updateById(e) != 1) throw BusinessException.conflict("模型配置已被其他用户修改");
+        return ModelDtos.ConfigResponse.from(configMapper.selectById(id));
+    }
 
-    public List<ModelDtos.LogResponse> logs(String taskType,String taskId){return logMapper.selectList(new LambdaQueryWrapper<ModelCallLogEntity>()
-        .eq(StringUtils.hasText(taskType),ModelCallLogEntity::getTaskType,taskType).eq(StringUtils.hasText(taskId),ModelCallLogEntity::getTaskId,taskId)
-        .orderByDesc(ModelCallLogEntity::getCalledAt).last("LIMIT 500")).stream().map(ModelDtos.LogResponse::from).toList();}
+    public ModelDtos.RoutePreviewResponse prepare(ModelDtos.RoutePreviewRequest request) {
+        Route route = route(request.scene(), request.dataLevel(), request.input());
+        return new ModelDtos.RoutePreviewResponse(
+                route.config().getId(),
+                route.config().getConfigCode(),
+                route.config().getProvider(),
+                route.config().getModelName(),
+                route.config().getDataLevel(),
+                route.redaction().text(),
+                route.redaction().count(),
+                !isPrivate(route.config()));
+    }
 
-    private Route route(String scene,String dataLevel,String input){if("涉密".equals(dataLevel))throw BusinessException.unprocessable("涉密数据禁止通过模型网关处理");if(!LEVELS.contains(dataLevel))throw BusinessException.unprocessable("无效数据级别");List<ModelConfigEntity> configs=configMapper.selectList(new LambdaQueryWrapper<ModelConfigEntity>().eq(ModelConfigEntity::getScene,scene).eq(ModelConfigEntity::getIsActive,true));ModelConfigEntity selected=configs.stream().filter(c->rank(c.getDataLevel())>=rank(dataLevel)).filter(c->!"敏感".equals(dataLevel)||isPrivate(c)).sorted(Comparator.comparing((ModelConfigEntity c)->isPrivate(c)?0:1).thenComparing(ModelConfigEntity::getConfigCode)).findFirst().orElseThrow(()->BusinessException.unprocessable("当前场景没有允许处理该数据级别的可用模型"));boolean cloud=!isPrivate(selected);Redaction redaction=cloud||Boolean.TRUE.equals(selected.getSensitiveWordFilter())?redact(input):new Redaction(input,0);return new Route(selected,redaction);}
-    private void enforceRate(ModelConfigEntity config){if(config.getQpsLimit()==null)return;String key=RequestContext.tenantId()+":"+config.getId();ArrayDeque<Long> queue=rateWindows.computeIfAbsent(key,k->new ArrayDeque<>());long now=System.currentTimeMillis();synchronized(queue){while(!queue.isEmpty()&&queue.peekFirst()<now-1000)queue.removeFirst();if(queue.size()>=config.getQpsLimit())throw BusinessException.unprocessable("模型调用超过 QPS 限制");queue.addLast(now);}}
-    private void enforceDailyQuota(ModelConfigEntity config,int nextTokens){if(config.getDailyTokenLimit()==null&&config.getCostLimitDaily()==null)return;OffsetDateTime start=LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();List<ModelCallLogEntity> logs=logMapper.selectList(new LambdaQueryWrapper<ModelCallLogEntity>().eq(ModelCallLogEntity::getModelConfigId,config.getId()).ge(ModelCallLogEntity::getCalledAt,start).eq(ModelCallLogEntity::getSuccess,true));long tokens=logs.stream().mapToLong(v->zero(v.getTokenCountInput())+zero(v.getTokenCountOutput())).sum();BigDecimal cost=logs.stream().map(v->v.getCostAmount()==null?BigDecimal.ZERO:v.getCostAmount()).reduce(BigDecimal.ZERO,BigDecimal::add);if(config.getDailyTokenLimit()!=null&&tokens+nextTokens>config.getDailyTokenLimit())throw BusinessException.unprocessable("模型日 Token 配额不足");if(config.getCostLimitDaily()!=null&&cost.compareTo(config.getCostLimitDaily())>=0)throw BusinessException.unprocessable("模型日费用额度已用尽");}
-    private void appendLog(String taskType,String taskId,ModelConfigEntity config,PromptTemplateService.ResolvedPrompt prompt,String dataLevel,String input,String output,int inputTokens,int outputTokens,BigDecimal cost,int duration,boolean success,String error){ModelCallLogEntity e=new ModelCallLogEntity();e.setTenantId(RequestContext.tenantId());e.setTaskType(taskType);e.setTaskId(taskId);e.setModelConfigId(config.getId());e.setPromptTemplateId(prompt.templateId());e.setPromptTemplateVersion(prompt.version());e.setInputHash(sha256(input));e.setInputDataLevel(dataLevel);e.setInputSummary("chars="+input.codePointCount(0,input.length())+"; raw_content_logged=false");e.setOutputHash(output==null?null:sha256(output));e.setTokenCountInput(inputTokens);e.setTokenCountOutput(outputTokens);e.setDurationMs(duration);e.setCostAmount(cost);e.setSuccess(success);e.setErrorMessage(error==null?null:error.substring(0,Math.min(2000,error.length())));e.setCalledAt(OffsetDateTime.now());logMapper.insert(e);}
-    private void validate(ModelDtos.ConfigRequest r){if(!LEVELS.contains(r.dataLevel()))throw BusinessException.unprocessable("无效数据级别");if(r.provider().contains("云")&&"涉密".equals(r.dataLevel()))throw BusinessException.unprocessable("云端模型不得配置为处理涉密数据");if(StringUtils.hasText(r.endpointUrl()))endpointSecurity.validate(r.endpointUrl());if(StringUtils.hasText(r.credentialRef())&&!r.credentialRef().matches("[A-Z][A-Z0-9_]{2,99}"))throw BusinessException.unprocessable("模型密钥引用名称不合法");}
-    private void apply(ModelConfigEntity e,ModelDtos.ConfigRequest r){e.setConfigCode(r.configCode().trim());e.setConfigName(r.configName().trim());e.setProvider(r.provider());e.setModelName(r.modelName());e.setModelVersion(r.modelVersion());e.setScene(r.scene());e.setDataLevel(r.dataLevel());e.setMaxContextTokens(r.maxContextTokens());e.setTimeoutMs(r.timeoutMs()==null?60000:r.timeoutMs());e.setMaxRetries(r.maxRetries()==null?3:r.maxRetries());e.setCostLimitDaily(r.costLimitDaily());e.setSensitiveWordFilter(r.sensitiveWordFilter());e.setOutputValidation(r.outputValidation());e.setIsActive(r.active());e.setEndpointUrl(r.endpointUrl());e.setCredentialRef(r.credentialRef());e.setInputCostPer1k(r.inputCostPer1k());e.setOutputCostPer1k(r.outputCostPer1k());e.setQpsLimit(r.qpsLimit());e.setDailyTokenLimit(r.dailyTokenLimit());}
-    private ModelConfigEntity require(String id){ModelConfigEntity e=configMapper.selectById(id);if(e==null)throw BusinessException.notFound("模型配置不存在");return e;}private boolean isPrivate(ModelConfigEntity e){return e.getProvider().contains("本地")||e.getProvider().contains("私有");}private int rank(String level){return LEVELS.indexOf(level);}
-    private Redaction redact(String input){String value=input;int count=0;for(Pattern pattern:List.of(Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)"),Pattern.compile("(?<![0-9A-Za-z])\\d{17}[0-9Xx](?![0-9A-Za-z])"),Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"))){Matcher matcher=pattern.matcher(value);StringBuffer result=new StringBuffer();while(matcher.find()){count++;matcher.appendReplacement(result,"[已脱敏]");}matcher.appendTail(result);value=result.toString();}return new Redaction(value,count);}
-    private BigDecimal cost(ModelConfigEntity c,int in,int out){BigDecimal input=c.getInputCostPer1k()==null?BigDecimal.ZERO:c.getInputCostPer1k().multiply(BigDecimal.valueOf(in));BigDecimal output=c.getOutputCostPer1k()==null?BigDecimal.ZERO:c.getOutputCostPer1k().multiply(BigDecimal.valueOf(out));return input.add(output).divide(BigDecimal.valueOf(1000),4,RoundingMode.HALF_UP);}
-    private String sha256(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}}private int estimate(String v){return Math.max(1,(int)Math.ceil(v.codePointCount(0,v.length())/1.8));}private int zero(Integer v){return v==null?0:v;}private record Redaction(String text,int count){}private record Route(ModelConfigEntity config,Redaction redaction){}
+    @Transactional
+    public ModelDtos.InvokeResponse invoke(ModelDtos.InvokeRequest request) {
+        long started = System.nanoTime();
+        Route route = route(request.scene(), request.dataLevel(), request.input());
+        ModelConfigEntity config = route.config();
+        if (!StringUtils.hasText(config.getEndpointUrl())) throw BusinessException.unprocessable("所选模型尚未配置实际调用端点");
+        endpointSecurity.validate(config.getEndpointUrl());
+        enforceRate(config);
+        int estimatedInput = estimate(route.redaction().text());
+        if (config.getMaxContextTokens() != null && estimatedInput > config.getMaxContextTokens())
+            throw BusinessException.unprocessable("输入超过模型最大上下文");
+        enforceDailyQuota(config, estimatedInput);
+        Map<String, Object> variables =
+                new LinkedHashMap<>(request.variables() == null ? Map.of() : request.variables());
+        variables.put("input", PromptInjectionDefense.INPUT_PLACEHOLDER);
+        PromptTemplateService.ResolvedPrompt prompt = promptService
+                .resolve(request.scene(), request.documentTypeCode(), config.getModelName(), variables)
+                .orElseThrow(() -> BusinessException.unprocessable("当前场景、文种和模型没有已生效提示词模板"));
+        OpenAiCompatibleModelClient.Result result = null;
+        RuntimeException last = null;
+        int attempts = Math.max(1, config.getMaxRetries() + 1);
+        for (int i = 0; i < attempts; i++) {
+            try {
+                result = providerClient.invoke(
+                        config, prompt.prompt(), route.redaction().text(), prompt.modelParameters());
+                last = null;
+                break;
+            } catch (RuntimeException e) {
+                last = e;
+            }
+        }
+        int duration = Math.toIntExact(Math.min(Integer.MAX_VALUE, (System.nanoTime() - started) / 1_000_000L));
+        if (last != null) {
+            appendLog(
+                    request.taskType(),
+                    request.taskId(),
+                    config,
+                    prompt,
+                    request.dataLevel(),
+                    request.input(),
+                    null,
+                    estimatedInput,
+                    0,
+                    BigDecimal.ZERO,
+                    duration,
+                    false,
+                    last.getMessage());
+            throw last;
+        }
+        if (Boolean.TRUE.equals(config.getOutputValidation()) && !StringUtils.hasText(result.output())) {
+            appendLog(
+                    request.taskType(),
+                    request.taskId(),
+                    config,
+                    prompt,
+                    request.dataLevel(),
+                    request.input(),
+                    null,
+                    result.inputTokens(),
+                    result.outputTokens(),
+                    BigDecimal.ZERO,
+                    duration,
+                    false,
+                    "模型输出为空");
+            throw BusinessException.unprocessable("模型输出校验失败");
+        }
+        int in = result.inputTokens() > 0 ? result.inputTokens() : estimatedInput;
+        int out = result.outputTokens() > 0 ? result.outputTokens() : estimate(result.output());
+        BigDecimal cost = cost(config, in, out);
+        appendLog(
+                request.taskType(),
+                request.taskId(),
+                config,
+                prompt,
+                request.dataLevel(),
+                request.input(),
+                result.output(),
+                in,
+                out,
+                cost,
+                duration,
+                true,
+                null);
+        return new ModelDtos.InvokeResponse(
+                config.getId(),
+                prompt.templateId(),
+                prompt.version(),
+                config.getModelVersion(),
+                result.output(),
+                route.redaction().count(),
+                in,
+                out,
+                cost,
+                duration);
+    }
+
+    @Override
+    @Transactional
+    public Optional<ModelGenerationPort.Result> generate(
+            String scene,
+            String dataLevel,
+            String documentTypeCode,
+            String input,
+            Map<String, Object> variables,
+            String taskType,
+            String taskId) {
+        long available = configMapper.selectCount(new LambdaQueryWrapper<ModelConfigEntity>()
+                .eq(ModelConfigEntity::getScene, scene)
+                .eq(ModelConfigEntity::getIsActive, true)
+                .isNotNull(ModelConfigEntity::getEndpointUrl));
+        if (available == 0) return Optional.empty();
+        ModelDtos.InvokeResponse response = invoke(
+                new ModelDtos.InvokeRequest(scene, dataLevel, documentTypeCode, input, variables, taskType, taskId));
+        return Optional.of(new ModelGenerationPort.Result(
+                response.output(),
+                response.modelConfigId(),
+                response.modelVersion(),
+                response.promptTemplateId(),
+                response.promptTemplateVersion(),
+                response.inputTokens(),
+                response.outputTokens(),
+                response.durationMs()));
+    }
+
+    public List<ModelDtos.LogResponse> logs(String taskType, String taskId) {
+        return logMapper
+                .selectList(new LambdaQueryWrapper<ModelCallLogEntity>()
+                        .eq(StringUtils.hasText(taskType), ModelCallLogEntity::getTaskType, taskType)
+                        .eq(StringUtils.hasText(taskId), ModelCallLogEntity::getTaskId, taskId)
+                        .orderByDesc(ModelCallLogEntity::getCalledAt)
+                        .last("LIMIT 500"))
+                .stream()
+                .map(ModelDtos.LogResponse::from)
+                .toList();
+    }
+
+    private Route route(String scene, String dataLevel, String input) {
+        if ("涉密".equals(dataLevel)) throw BusinessException.unprocessable("涉密数据禁止通过模型网关处理");
+        if (!LEVELS.contains(dataLevel)) throw BusinessException.unprocessable("无效数据级别");
+        List<ModelConfigEntity> configs = configMapper.selectList(new LambdaQueryWrapper<ModelConfigEntity>()
+                .eq(ModelConfigEntity::getScene, scene)
+                .eq(ModelConfigEntity::getIsActive, true));
+        ModelConfigEntity selected = configs.stream()
+                .filter(c -> rank(c.getDataLevel()) >= rank(dataLevel))
+                .filter(c -> !"敏感".equals(dataLevel) || isPrivate(c))
+                .sorted(Comparator.comparing((ModelConfigEntity c) -> isPrivate(c) ? 0 : 1)
+                        .thenComparing(ModelConfigEntity::getConfigCode))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.unprocessable("当前场景没有允许处理该数据级别的可用模型"));
+        boolean cloud = !isPrivate(selected);
+        Redaction redaction = cloud || Boolean.TRUE.equals(selected.getSensitiveWordFilter())
+                ? redact(input)
+                : new Redaction(input, 0);
+        return new Route(selected, redaction);
+    }
+
+    private void enforceRate(ModelConfigEntity config) {
+        if (config.getQpsLimit() == null) return;
+        String key = RequestContext.tenantId() + ":" + config.getId();
+        ArrayDeque<Long> queue = rateWindows.computeIfAbsent(key, k -> new ArrayDeque<>());
+        long now = System.currentTimeMillis();
+        synchronized (queue) {
+            while (!queue.isEmpty() && queue.peekFirst() < now - 1000) queue.removeFirst();
+            if (queue.size() >= config.getQpsLimit()) throw BusinessException.unprocessable("模型调用超过 QPS 限制");
+            queue.addLast(now);
+        }
+    }
+
+    private void enforceDailyQuota(ModelConfigEntity config, int nextTokens) {
+        if (config.getDailyTokenLimit() == null && config.getCostLimitDaily() == null) return;
+        OffsetDateTime start =
+                LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+        List<ModelCallLogEntity> logs = logMapper.selectList(new LambdaQueryWrapper<ModelCallLogEntity>()
+                .eq(ModelCallLogEntity::getModelConfigId, config.getId())
+                .ge(ModelCallLogEntity::getCalledAt, start)
+                .eq(ModelCallLogEntity::getSuccess, true));
+        long tokens = logs.stream()
+                .mapToLong(v -> zero(v.getTokenCountInput()) + zero(v.getTokenCountOutput()))
+                .sum();
+        BigDecimal cost = logs.stream()
+                .map(v -> v.getCostAmount() == null ? BigDecimal.ZERO : v.getCostAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (config.getDailyTokenLimit() != null && tokens + nextTokens > config.getDailyTokenLimit())
+            throw BusinessException.unprocessable("模型日 Token 配额不足");
+        if (config.getCostLimitDaily() != null && cost.compareTo(config.getCostLimitDaily()) >= 0)
+            throw BusinessException.unprocessable("模型日费用额度已用尽");
+    }
+
+    private void appendLog(
+            String taskType,
+            String taskId,
+            ModelConfigEntity config,
+            PromptTemplateService.ResolvedPrompt prompt,
+            String dataLevel,
+            String input,
+            String output,
+            int inputTokens,
+            int outputTokens,
+            BigDecimal cost,
+            int duration,
+            boolean success,
+            String error) {
+        ModelCallLogEntity e = new ModelCallLogEntity();
+        e.setTenantId(RequestContext.tenantId());
+        e.setTaskType(taskType);
+        e.setTaskId(taskId);
+        e.setModelConfigId(config.getId());
+        e.setPromptTemplateId(prompt.templateId());
+        e.setPromptTemplateVersion(prompt.version());
+        e.setInputHash(sha256(input));
+        e.setInputDataLevel(dataLevel);
+        e.setInputSummary("chars=" + input.codePointCount(0, input.length()) + "; raw_content_logged=false");
+        e.setOutputHash(output == null ? null : sha256(output));
+        e.setTokenCountInput(inputTokens);
+        e.setTokenCountOutput(outputTokens);
+        e.setDurationMs(duration);
+        e.setCostAmount(cost);
+        e.setSuccess(success);
+        e.setErrorMessage(error == null ? null : error.substring(0, Math.min(2000, error.length())));
+        e.setCalledAt(OffsetDateTime.now());
+        logMapper.insert(e);
+    }
+
+    private void validate(ModelDtos.ConfigRequest r) {
+        if (!LEVELS.contains(r.dataLevel())) throw BusinessException.unprocessable("无效数据级别");
+        if (r.provider().contains("云") && "涉密".equals(r.dataLevel()))
+            throw BusinessException.unprocessable("云端模型不得配置为处理涉密数据");
+        if (StringUtils.hasText(r.endpointUrl())) endpointSecurity.validate(r.endpointUrl());
+        if (StringUtils.hasText(r.credentialRef()) && !r.credentialRef().matches("[A-Z][A-Z0-9_]{2,99}"))
+            throw BusinessException.unprocessable("模型密钥引用名称不合法");
+    }
+
+    private void apply(ModelConfigEntity e, ModelDtos.ConfigRequest r) {
+        e.setConfigCode(r.configCode().trim());
+        e.setConfigName(r.configName().trim());
+        e.setProvider(r.provider());
+        e.setModelName(r.modelName());
+        e.setModelVersion(r.modelVersion());
+        e.setScene(r.scene());
+        e.setDataLevel(r.dataLevel());
+        e.setMaxContextTokens(r.maxContextTokens());
+        e.setTimeoutMs(r.timeoutMs() == null ? 60000 : r.timeoutMs());
+        e.setMaxRetries(r.maxRetries() == null ? 3 : r.maxRetries());
+        e.setCostLimitDaily(r.costLimitDaily());
+        e.setSensitiveWordFilter(r.sensitiveWordFilter());
+        e.setOutputValidation(r.outputValidation());
+        e.setIsActive(r.active());
+        e.setEndpointUrl(r.endpointUrl());
+        e.setCredentialRef(r.credentialRef());
+        e.setInputCostPer1k(r.inputCostPer1k());
+        e.setOutputCostPer1k(r.outputCostPer1k());
+        e.setQpsLimit(r.qpsLimit());
+        e.setDailyTokenLimit(r.dailyTokenLimit());
+    }
+
+    private ModelConfigEntity require(String id) {
+        ModelConfigEntity e = configMapper.selectById(id);
+        if (e == null) throw BusinessException.notFound("模型配置不存在");
+        return e;
+    }
+
+    private boolean isPrivate(ModelConfigEntity e) {
+        return e.getProvider().contains("本地") || e.getProvider().contains("私有");
+    }
+
+    private int rank(String level) {
+        return LEVELS.indexOf(level);
+    }
+
+    private Redaction redact(String input) {
+        String value = input;
+        int count = 0;
+        for (Pattern pattern : List.of(
+                Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)"),
+                Pattern.compile("(?<![0-9A-Za-z])\\d{17}[0-9Xx](?![0-9A-Za-z])"),
+                Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"))) {
+            Matcher matcher = pattern.matcher(value);
+            StringBuffer result = new StringBuffer();
+            while (matcher.find()) {
+                count++;
+                matcher.appendReplacement(result, "[已脱敏]");
+            }
+            matcher.appendTail(result);
+            value = result.toString();
+        }
+        return new Redaction(value, count);
+    }
+
+    private BigDecimal cost(ModelConfigEntity c, int in, int out) {
+        BigDecimal input = c.getInputCostPer1k() == null
+                ? BigDecimal.ZERO
+                : c.getInputCostPer1k().multiply(BigDecimal.valueOf(in));
+        BigDecimal output = c.getOutputCostPer1k() == null
+                ? BigDecimal.ZERO
+                : c.getOutputCostPer1k().multiply(BigDecimal.valueOf(out));
+        return input.add(output).divide(BigDecimal.valueOf(1000), 4, RoundingMode.HALF_UP);
+    }
+
+    private String sha256(String value) {
+        try {
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private int estimate(String v) {
+        return Math.max(1, (int) Math.ceil(v.codePointCount(0, v.length()) / 1.8));
+    }
+
+    private int zero(Integer v) {
+        return v == null ? 0 : v;
+    }
+
+    private record Redaction(String text, int count) {}
+
+    private record Route(ModelConfigEntity config, Redaction redaction) {}
 }

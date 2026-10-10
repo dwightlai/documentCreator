@@ -1,7 +1,6 @@
 package cn.gov.document.platform.writing.domain;
 
 import cn.gov.document.platform.common.error.BusinessException;
-
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
@@ -20,27 +19,35 @@ public enum WritingTaskStatus {
 
     private final String code;
 
-    WritingTaskStatus(String code) { this.code = code; }
-    public String code() { return code; }
+    WritingTaskStatus(String code) {
+        this.code = code;
+    }
+
+    public String code() {
+        return code;
+    }
 
     public static WritingTaskStatus fromCode(String code) {
-        return Arrays.stream(values()).filter(value -> value.code.equals(code)).findFirst()
-            .orElseThrow(() -> BusinessException.unprocessable("未知写作任务状态: " + code));
+        return Arrays.stream(values())
+                .filter(value -> value.code.equals(code))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.unprocessable("未知写作任务状态: " + code));
     }
 
     public boolean canTransitionTo(WritingTaskStatus target) {
         if (target == CLOSED) return this != CLOSED;
-        Set<WritingTaskStatus> allowed = switch (this) {
-            case DRAFT -> EnumSet.of(MATERIAL_PREPARING);
-            case MATERIAL_PREPARING -> EnumSet.of(OUTLINE_PENDING);
-            case OUTLINE_PENDING -> EnumSet.of(GENERATING);
-            case GENERATING -> EnumSet.of(EDITING);
-            case EDITING -> EnumSet.of(REVIEW_PENDING);
-            case REVIEW_PENDING -> EnumSet.of(REVIEWING, EDITING);
-            case REVIEWING -> EnumSet.of(SUBMIT_PENDING, EDITING);
-            case SUBMIT_PENDING -> EnumSet.of(SUBMITTED, EDITING);
-            case SUBMITTED, CLOSED -> EnumSet.noneOf(WritingTaskStatus.class);
-        };
+        Set<WritingTaskStatus> allowed =
+                switch (this) {
+                    case DRAFT -> EnumSet.of(MATERIAL_PREPARING);
+                    case MATERIAL_PREPARING -> EnumSet.of(OUTLINE_PENDING);
+                    case OUTLINE_PENDING -> EnumSet.of(GENERATING);
+                    case GENERATING -> EnumSet.of(EDITING);
+                    case EDITING -> EnumSet.of(REVIEW_PENDING);
+                    case REVIEW_PENDING -> EnumSet.of(REVIEWING, EDITING);
+                    case REVIEWING -> EnumSet.of(SUBMIT_PENDING, EDITING);
+                    case SUBMIT_PENDING -> EnumSet.of(SUBMITTED, EDITING);
+                    case SUBMITTED, CLOSED -> EnumSet.noneOf(WritingTaskStatus.class);
+                };
         return allowed.contains(target);
     }
 }

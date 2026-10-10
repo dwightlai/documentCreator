@@ -3,16 +3,15 @@ package cn.gov.document.platform.document.application;
 import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.document.api.DocumentDtos;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import org.springframework.http.HttpStatus;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 public class DocumentGenerationStreamService {
@@ -20,8 +19,8 @@ public class DocumentGenerationStreamService {
     private final DocumentService documentService;
     private final TaskExecutor executor;
 
-    public DocumentGenerationStreamService(DocumentService documentService,
-            @Qualifier("generationStreamExecutor") TaskExecutor executor) {
+    public DocumentGenerationStreamService(
+            DocumentService documentService, @Qualifier("generationStreamExecutor") TaskExecutor executor) {
         this.documentService = documentService;
         this.executor = executor;
     }
@@ -39,14 +38,20 @@ public class DocumentGenerationStreamService {
         return emitter;
     }
 
-    private void run(SseEmitter emitter, String requestId, String tenantId, String userId, String taskId,
-                     DocumentDtos.GenerateSectionRequest request) {
+    private void run(
+            SseEmitter emitter,
+            String requestId,
+            String tenantId,
+            String userId,
+            String taskId,
+            DocumentDtos.GenerateSectionRequest request) {
         AtomicLong sequence = new AtomicLong();
         try {
             RequestContext.set(requestId, tenantId, userId);
             send(emitter, sequence, "start", Map.of("taskId", taskId, "message", "生成请求已进入执行队列"));
             DocumentDtos.DocumentResponse response = documentService.generateSectionStreaming(taskId, request);
-            DocumentDtos.ParagraphResponse paragraph = response.paragraphs().get(response.paragraphs().size() - 1);
+            DocumentDtos.ParagraphResponse paragraph =
+                    response.paragraphs().get(response.paragraphs().size() - 1);
             String output = paragraph.plainText();
             int offset = 0;
             while (offset < output.length()) {
@@ -55,12 +60,25 @@ public class DocumentGenerationStreamService {
                 send(emitter, sequence, "delta", Map.of("text", output.substring(offset, end)));
                 offset = end;
             }
-            send(emitter, sequence, "completed", Map.of("documentId", response.id(), "paragraphId", paragraph.id(),
-                    "documentVersion", response.currentVersion(), "wordCount", response.totalWordCount()));
+            send(
+                    emitter,
+                    sequence,
+                    "completed",
+                    Map.of(
+                            "documentId",
+                            response.id(),
+                            "paragraphId",
+                            paragraph.id(),
+                            "documentVersion",
+                            response.currentVersion(),
+                            "wordCount",
+                            response.totalWordCount()));
             emitter.complete();
         } catch (Exception exception) {
-            try { send(emitter, sequence, "error", Map.of("message", safeMessage(exception))); }
-            catch (Exception ignored) { }
+            try {
+                send(emitter, sequence, "error", Map.of("message", safeMessage(exception)));
+            } catch (Exception ignored) {
+            }
             emitter.complete();
         } finally {
             RequestContext.clear();
@@ -68,7 +86,10 @@ public class DocumentGenerationStreamService {
     }
 
     private void send(SseEmitter emitter, AtomicLong sequence, String event, Object data) throws IOException {
-        emitter.send(SseEmitter.event().id(Long.toString(sequence.incrementAndGet())).name(event).data(data));
+        emitter.send(SseEmitter.event()
+                .id(Long.toString(sequence.incrementAndGet()))
+                .name(event)
+                .data(data));
     }
 
     private String safeMessage(Exception exception) {

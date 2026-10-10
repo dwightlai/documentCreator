@@ -5,8 +5,7 @@ import java.util.Optional;
 public final class RequestContext {
     private static final ThreadLocal<Context> CURRENT = new ThreadLocal<>();
 
-    private RequestContext() {
-    }
+    private RequestContext() {}
 
     public static void set(String requestId, String tenantId, String userId) {
         CURRENT.set(new Context(requestId, tenantId, userId));
@@ -17,8 +16,9 @@ public final class RequestContext {
     }
 
     public static String tenantId() {
-        return Optional.ofNullable(CURRENT.get()).map(Context::tenantId)
-            .orElseThrow(() -> new IllegalStateException("缺少租户上下文"));
+        return Optional.ofNullable(CURRENT.get())
+                .map(Context::tenantId)
+                .orElseThrow(() -> new IllegalStateException("缺少租户上下文"));
     }
 
     public static String userId() {
@@ -29,6 +29,5 @@ public final class RequestContext {
         CURRENT.remove();
     }
 
-    private record Context(String requestId, String tenantId, String userId) {
-    }
+    private record Context(String requestId, String tenantId, String userId) {}
 }

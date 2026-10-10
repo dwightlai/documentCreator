@@ -2,6 +2,9 @@ package cn.gov.document.platform.document.template;
 
 import cn.gov.document.platform.common.api.ApiResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,15 +21,11 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/output-templates")
 public class OutputTemplateController {
-    private static final MediaType DOCX = MediaType.parseMediaType(
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    private static final MediaType DOCX =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     private final OutputTemplateService service;
     private final DocxFormatReviewService formatReviewService;
 
@@ -51,15 +50,15 @@ public class OutputTemplateController {
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<OutputTemplateDtos.Response> create(
             @RequestPart("metadata") @Valid OutputTemplateDtos.CreateMetadata metadata,
-            @RequestPart("file") MultipartFile file) throws IOException {
+            @RequestPart("file") MultipartFile file)
+            throws IOException {
         return ApiResponse.success(service.create(metadata, file.getOriginalFilename(), file.getBytes()));
     }
 
     @PutMapping("/{templateId}")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<OutputTemplateDtos.Response> update(
-            @PathVariable String templateId,
-            @Valid @RequestBody OutputTemplateDtos.UpdateMetadata request) {
+            @PathVariable String templateId, @Valid @RequestBody OutputTemplateDtos.UpdateMetadata request) {
         return ApiResponse.success(service.update(templateId, request));
     }
 
@@ -68,9 +67,10 @@ public class OutputTemplateController {
     ApiResponse<OutputTemplateDtos.Response> replaceFile(
             @PathVariable String templateId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) String changeNote) throws IOException {
-        return ApiResponse.success(service.replaceFile(
-                templateId, file.getOriginalFilename(), file.getBytes(), changeNote));
+            @RequestParam(required = false) String changeNote)
+            throws IOException {
+        return ApiResponse.success(
+                service.replaceFile(templateId, file.getOriginalFilename(), file.getBytes(), changeNote));
     }
 
     @PostMapping("/{templateId}/parse")
@@ -82,15 +82,13 @@ public class OutputTemplateController {
     @PostMapping("/{templateId}/test")
     @PreAuthorize("hasRole('platform.admin')")
     ResponseEntity<byte[]> test(
-            @PathVariable String templateId,
-            @RequestBody OutputTemplateDtos.RenderRequest request) {
+            @PathVariable String templateId, @RequestBody OutputTemplateDtos.RenderRequest request) {
         return docx(service.test(templateId, request), "template-test.docx");
     }
 
     @PostMapping("/{templateId}/render")
     ResponseEntity<byte[]> render(
-            @PathVariable String templateId,
-            @RequestBody OutputTemplateDtos.RenderRequest request) {
+            @PathVariable String templateId, @RequestBody OutputTemplateDtos.RenderRequest request) {
         return docx(service.render(templateId, request), "rendered-document.docx");
     }
 
@@ -102,8 +100,7 @@ public class OutputTemplateController {
 
     @PostMapping(value = "/{templateId}/format-review", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ApiResponse<DocxFormatReviewService.Result> formatReview(
-            @PathVariable String templateId,
-            @RequestPart("file") MultipartFile file) throws IOException {
+            @PathVariable String templateId, @RequestPart("file") MultipartFile file) throws IOException {
         return ApiResponse.success(formatReviewService.compare(templateId, file.getBytes()));
     }
 
@@ -121,7 +118,8 @@ public class OutputTemplateController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(DOCX);
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(fileName, StandardCharsets.UTF_8).build());
+                .filename(fileName, StandardCharsets.UTF_8)
+                .build());
         headers.setContentLength(body.length);
         return ResponseEntity.ok().headers(headers).body(body);
     }

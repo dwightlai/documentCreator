@@ -2,9 +2,8 @@ package cn.gov.document.platform.knowledge.application;
 
 import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.common.storage.ObjectStorage;
-import org.springframework.stereotype.Component;
-
 import java.util.Locale;
+import org.springframework.stereotype.Component;
 
 @Component
 public class KnowledgeFileStore {

@@ -1,5 +1,8 @@
 package cn.gov.document.platform.review.persistence;
+
 import cn.gov.document.platform.review.domain.ReviewTaskEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
-@Mapper public interface ReviewTaskMapper extends BaseMapper<ReviewTaskEntity> { }
+
+@Mapper
+public interface ReviewTaskMapper extends BaseMapper<ReviewTaskEntity> {}

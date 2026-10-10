@@ -1,11 +1,10 @@
 package cn.gov.document.platform.common.storage;
 
 import io.minio.MinioClient;
+import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.nio.file.Path;
 
 @Configuration
 public class ObjectStorageConfiguration {

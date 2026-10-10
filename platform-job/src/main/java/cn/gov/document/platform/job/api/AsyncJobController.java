@@ -3,6 +3,8 @@ package cn.gov.document.platform.job.api;
 import cn.gov.document.platform.common.api.ApiResponse;
 import cn.gov.document.platform.job.application.AsyncJobService;
 import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,9 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.net.URI;
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/jobs")
 public class AsyncJobController {
@@ -29,8 +28,7 @@ public class AsyncJobController {
     }
 
     @PostMapping
-    ResponseEntity<ApiResponse<AsyncJobDtos.Response>> submit(
-            @Valid @RequestBody AsyncJobDtos.SubmitRequest request) {
+    ResponseEntity<ApiResponse<AsyncJobDtos.Response>> submit(@Valid @RequestBody AsyncJobDtos.SubmitRequest request) {
         AsyncJobDtos.Response job = service.submit(request);
         return ResponseEntity.accepted()
                 .location(URI.create("/api/v1/jobs/" + job.id()))
@@ -39,8 +37,7 @@ public class AsyncJobController {
 
     @GetMapping
     ApiResponse<List<AsyncJobDtos.Response>> list(
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(required = false) String status, @RequestParam(defaultValue = "100") int limit) {
         return ApiResponse.success(service.list(status, limit));
     }
 
@@ -51,15 +48,13 @@ public class AsyncJobController {
 
     @GetMapping("/{jobId}/events/history")
     ApiResponse<List<AsyncJobDtos.EventResponse>> history(
-            @PathVariable String jobId,
-            @RequestParam(defaultValue = "0") int afterEventId) {
+            @PathVariable String jobId, @RequestParam(defaultValue = "0") int afterEventId) {
         return ApiResponse.success(service.history(jobId, afterEventId));
     }
 
     @GetMapping(value = "/{jobId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     SseEmitter events(
-            @PathVariable String jobId,
-            @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
+            @PathVariable String jobId, @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
         int after = 0;
         if (lastEventId != null && lastEventId.matches("\\d+")) {
             after = Integer.parseInt(lastEventId);

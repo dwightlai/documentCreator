@@ -1,6 +1,10 @@
 package cn.gov.document.platform.integration.application;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -11,11 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Aspect
 @Component
@@ -33,8 +32,7 @@ public class ApiAuditAspect {
 
     @Around("execution(* cn.gov.document.platform..api..*(..))")
     public Object audit(ProceedingJoinPoint point) throws Throwable {
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             return point.proceed();
         }
@@ -61,12 +59,7 @@ public class ApiAuditAspect {
         }
     }
 
-    private void appendSafely(
-            HttpServletRequest request,
-            String method,
-            long started,
-            boolean success,
-            String error) {
+    private void appendSafely(HttpServletRequest request, String method, long started, boolean success, String error) {
         try {
             long duration = (System.nanoTime() - started) / 1_000_000L;
             String uri = request.getRequestURI();
@@ -111,8 +104,11 @@ public class ApiAuditAspect {
         if (uri.contains("export") || uri.contains("reports")) {
             return "下载导出";
         }
-        if (uri.contains("rules") || uri.contains("dictionaries") || uri.contains("output-templates")
-                || uri.contains("document-type-configs") || uri.contains("prompt-templates")) {
+        if (uri.contains("rules")
+                || uri.contains("dictionaries")
+                || uri.contains("output-templates")
+                || uri.contains("document-type-configs")
+                || uri.contains("prompt-templates")) {
             return "规则变更";
         }
         if (uri.contains("review")) {

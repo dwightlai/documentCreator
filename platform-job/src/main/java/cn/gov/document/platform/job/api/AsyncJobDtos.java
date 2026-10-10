@@ -6,17 +6,16 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.time.OffsetDateTime;
 
 public final class AsyncJobDtos {
-    private AsyncJobDtos() { }
+    private AsyncJobDtos() {}
 
     public record SubmitRequest(
             @NotBlank @Size(max = 50) String jobType,
             @Size(max = 100) String businessId,
             @Size(max = 100_000) String payload,
-            @Min(0) @Max(10) Integer maxRetries) { }
+            @Min(0) @Max(10) Integer maxRetries) {}
 
     public record Response(
             String id,
@@ -34,10 +33,19 @@ public final class AsyncJobDtos {
             OffsetDateTime finishedAt) {
         public static Response from(AsyncJobEntity entity) {
             return new Response(
-                    entity.getId(), entity.getJobType(), entity.getBusinessId(), entity.getStatus(),
-                    entity.getProgress(), entity.getResultSummary(), entity.getErrorMessage(),
-                    entity.getRetryCount(), entity.getMaxRetries(), Boolean.TRUE.equals(entity.getCancelRequested()),
-                    entity.getCreatedAt(), entity.getStartedAt(), entity.getFinishedAt());
+                    entity.getId(),
+                    entity.getJobType(),
+                    entity.getBusinessId(),
+                    entity.getStatus(),
+                    entity.getProgress(),
+                    entity.getResultSummary(),
+                    entity.getErrorMessage(),
+                    entity.getRetryCount(),
+                    entity.getMaxRetries(),
+                    Boolean.TRUE.equals(entity.getCancelRequested()),
+                    entity.getCreatedAt(),
+                    entity.getStartedAt(),
+                    entity.getFinishedAt());
         }
     }
 

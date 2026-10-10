@@ -1,6 +1,12 @@
 package cn.gov.document.platform.document.template;
 
 import cn.gov.document.platform.common.error.BusinessException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -8,13 +14,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.springframework.stereotype.Service;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.regex.Pattern;
 
 @Service
 public class DocxFormatReviewService {
@@ -28,14 +27,13 @@ public class DocxFormatReviewService {
     public Result compare(String templateId, byte[] documentBytes) {
         byte[] templateBytes = templateService.fileContent(templateId);
         try (XWPFDocument standard = new XWPFDocument(new ByteArrayInputStream(templateBytes));
-             XWPFDocument actual = new XWPFDocument(new ByteArrayInputStream(documentBytes))) {
+                XWPFDocument actual = new XWPFDocument(new ByteArrayInputStream(documentBytes))) {
             List<Deviation> deviations = new ArrayList<>();
             CTSectPr standardSection = standard.getDocument().getBody().getSectPr();
             CTSectPr actualSection = actual.getDocument().getBody().getSectPr();
             CTPageSz standardSize = standardSection == null ? null : standardSection.getPgSz();
             CTPageSz actualSize = actualSection == null ? null : actualSection.getPgSz();
-            compare(deviations, "PAGE_SIZE", "重要", "页面纸幅",
-                    pageSize(standardSize), pageSize(actualSize), null);
+            compare(deviations, "PAGE_SIZE", "重要", "页面纸幅", pageSize(standardSize), pageSize(actualSize), null);
             CTPageMar standardMargin = standardSection == null ? null : standardSection.getPgMar();
             CTPageMar actualMargin = actualSection == null ? null : actualSection.getPgMar();
             compare(deviations, "MARGIN_TOP", "重要", "上边距", top(standardMargin), top(actualMargin), null);
@@ -49,25 +47,38 @@ public class DocxFormatReviewService {
             XWPFParagraph actualTitle = paragraph(actualParagraphs, 0);
             compare(deviations, "TITLE_FONT", "重要", "标题字体", font(standardTitle), font(actualTitle), 1);
             compare(deviations, "TITLE_SIZE", "重要", "标题字号", size(standardTitle), size(actualTitle), 1);
-            XWPFParagraph standardBody = paragraph(standardParagraphs, Math.min(2, Math.max(0, standardParagraphs.size() - 1)));
-            XWPFParagraph actualBody = paragraph(actualParagraphs, Math.min(2, Math.max(0, actualParagraphs.size() - 1)));
+            XWPFParagraph standardBody =
+                    paragraph(standardParagraphs, Math.min(2, Math.max(0, standardParagraphs.size() - 1)));
+            XWPFParagraph actualBody =
+                    paragraph(actualParagraphs, Math.min(2, Math.max(0, actualParagraphs.size() - 1)));
             compare(deviations, "BODY_FONT", "重要", "正文字体", font(standardBody), font(actualBody), 3);
             compare(deviations, "BODY_SIZE", "重要", "正文字号", size(standardBody), size(actualBody), 3);
             compare(deviations, "LINE_SPACING", "一般", "正文行距", spacing(standardBody), spacing(actualBody), 3);
             compare(deviations, "FIRST_LINE_INDENT", "一般", "正文首行缩进", indent(standardBody), indent(actualBody), 3);
-            compare(deviations, "HEADER_PRESENCE", "重要", "页眉/版头结构",
+            compare(
+                    deviations,
+                    "HEADER_PRESENCE",
+                    "重要",
+                    "页眉/版头结构",
                     Boolean.toString(!standard.getHeaderList().isEmpty()),
-                    Boolean.toString(!actual.getHeaderList().isEmpty()), null);
-            compare(deviations, "FOOTER_PRESENCE", "重要", "页脚/版记结构",
+                    Boolean.toString(!actual.getHeaderList().isEmpty()),
+                    null);
+            compare(
+                    deviations,
+                    "FOOTER_PRESENCE",
+                    "重要",
+                    "页脚/版记结构",
                     Boolean.toString(!standard.getFooterList().isEmpty()),
-                    Boolean.toString(!actual.getFooterList().isEmpty()), null);
+                    Boolean.toString(!actual.getFooterList().isEmpty()),
+                    null);
 
-            List<String> residual = actualParagraphs.stream().map(XWPFParagraph::getText)
-                    .filter(text -> PLACEHOLDER.matcher(text).find()).toList();
+            List<String> residual = actualParagraphs.stream()
+                    .map(XWPFParagraph::getText)
+                    .filter(text -> PLACEHOLDER.matcher(text).find())
+                    .toList();
             if (!residual.isEmpty()) {
-                deviations.add(new Deviation("PLACEHOLDER_RESIDUE", "严重", "占位符残留",
-                        "无占位符", String.join("；", residual), null,
-                        "存在未替换的模板占位符"));
+                deviations.add(new Deviation(
+                        "PLACEHOLDER_RESIDUE", "严重", "占位符残留", "无占位符", String.join("；", residual), null, "存在未替换的模板占位符"));
             }
             return new Result(templateId, deviations.size(), List.copyOf(deviations));
         } catch (IOException invalidDocument) {
@@ -76,16 +87,29 @@ public class DocxFormatReviewService {
     }
 
     private void compare(
-            List<Deviation> result, String code, String risk, String name,
-            String expected, String actual, Integer paragraphIndex) {
+            List<Deviation> result,
+            String code,
+            String risk,
+            String name,
+            String expected,
+            String actual,
+            Integer paragraphIndex) {
         if (!Objects.equals(expected, actual)) {
-            result.add(new Deviation(code, risk, name, expected, actual, paragraphIndex,
+            result.add(new Deviation(
+                    code,
+                    risk,
+                    name,
+                    expected,
+                    actual,
+                    paragraphIndex,
                     name + "应为“" + expected + "”，实际为“" + actual + "”"));
         }
     }
 
     private List<XWPFParagraph> meaningful(XWPFDocument document) {
-        return document.getParagraphs().stream().filter(value -> !value.getText().isBlank()).toList();
+        return document.getParagraphs().stream()
+                .filter(value -> !value.getText().isBlank())
+                .toList();
     }
 
     private XWPFParagraph paragraph(List<XWPFParagraph> paragraphs, int index) {
@@ -93,8 +117,12 @@ public class DocxFormatReviewService {
     }
 
     private XWPFRun firstRun(XWPFParagraph paragraph) {
-        return paragraph == null ? null : paragraph.getRuns().stream()
-                .filter(value -> value.text() != null && !value.text().isBlank()).findFirst().orElse(null);
+        return paragraph == null
+                ? null
+                : paragraph.getRuns().stream()
+                        .filter(value -> value.text() != null && !value.text().isBlank())
+                        .findFirst()
+                        .orElse(null);
     }
 
     private String font(XWPFParagraph paragraph) {
@@ -119,13 +147,31 @@ public class DocxFormatReviewService {
     private String pageSize(CTPageSz value) {
         return value == null ? "未设置" : value.getW() + "x" + value.getH() + "twip";
     }
-    private String top(CTPageMar value) { return value == null ? "未设置" : value.getTop() + "twip"; }
-    private String bottom(CTPageMar value) { return value == null ? "未设置" : value.getBottom() + "twip"; }
-    private String left(CTPageMar value) { return value == null ? "未设置" : value.getLeft() + "twip"; }
-    private String right(CTPageMar value) { return value == null ? "未设置" : value.getRight() + "twip"; }
 
-    public record Result(String templateId, int deviationCount, List<Deviation> deviations) { }
+    private String top(CTPageMar value) {
+        return value == null ? "未设置" : value.getTop() + "twip";
+    }
+
+    private String bottom(CTPageMar value) {
+        return value == null ? "未设置" : value.getBottom() + "twip";
+    }
+
+    private String left(CTPageMar value) {
+        return value == null ? "未设置" : value.getLeft() + "twip";
+    }
+
+    private String right(CTPageMar value) {
+        return value == null ? "未设置" : value.getRight() + "twip";
+    }
+
+    public record Result(String templateId, int deviationCount, List<Deviation> deviations) {}
+
     public record Deviation(
-            String dimensionCode, String riskLevel, String dimensionName, String expectedValue,
-            String actualValue, Integer paragraphIndex, String description) { }
+            String dimensionCode,
+            String riskLevel,
+            String dimensionName,
+            String expectedValue,
+            String actualValue,
+            Integer paragraphIndex,
+            String description) {}
 }

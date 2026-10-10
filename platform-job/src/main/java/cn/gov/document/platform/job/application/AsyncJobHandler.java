@@ -7,6 +7,7 @@ public interface AsyncJobHandler {
 
     interface ProgressReporter {
         void progress(int percent, String message);
+
         boolean cancellationRequested();
     }
 }

@@ -1,17 +1,16 @@
 package cn.gov.document.platform.common.file;
 
-import cn.gov.document.platform.common.error.BusinessException;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import cn.gov.document.platform.common.error.BusinessException;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class DocxSecurityValidatorTest {
     @Test
@@ -22,8 +21,9 @@ class DocxSecurityValidatorTest {
 
     @Test
     void rejectsExternalRelationshipsMacrosAndTraversal() throws Exception {
-        assertRejected(Map.of("word/_rels/document.xml.rels",
-                "<Relationship TargetMode=\"External\" Target=\"https://attacker.invalid/payload\"/>") );
+        assertRejected(Map.of(
+                "word/_rels/document.xml.rels",
+                "<Relationship TargetMode=\"External\" Target=\"https://attacker.invalid/payload\"/>"));
         assertRejected(Map.of("word/vbaProject.bin", "macro"));
         assertRejected(Map.of("../outside.bin", "payload"));
         assertRejected(Map.of("word/embeddings/oleObject1.bin", "payload"));
@@ -46,14 +46,16 @@ class DocxSecurityValidatorTest {
     private byte[] docx(Map<String, String> extra) throws Exception {
         Map<String, String> entries = new LinkedHashMap<>();
         entries.put("[Content_Types].xml", "<Types/>");
-        entries.put("word/document.xml", "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"/>");
+        entries.put(
+                "word/document.xml",
+                "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"/>");
         entries.putAll(extra);
         return zip(entries);
     }
 
     private byte[] zip(Map<String, String> entries) throws Exception {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream();
-             ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+                ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
             for (Map.Entry<String, String> entry : entries.entrySet()) {
                 zip.putNextEntry(new ZipEntry(entry.getKey()));
                 zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));

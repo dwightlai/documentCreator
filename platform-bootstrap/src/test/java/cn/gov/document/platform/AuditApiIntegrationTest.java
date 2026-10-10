@@ -1,5 +1,11 @@
 package cn.gov.document.platform;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -9,12 +15,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -36,7 +36,8 @@ class AuditApiIntegrationTest {
                         .header("X-User-Id", "audit-admin")
                         .header("X-Forwarded-For", "10.1.2.3, 10.2.3.4")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(
+                                """
                                 {
                                   "configCode":"AUDIT-CLOUD",
                                   "configName":"%s",
@@ -51,19 +52,21 @@ class AuditApiIntegrationTest {
                                   "outputValidation":true,
                                   "active":true
                                 }
-                                """.formatted(SENSITIVE_VALUE)))
+                                """
+                                        .formatted(SENSITIVE_VALUE)))
                 .andExpect(status().isOk());
 
-        String auditResponse = mockMvc.perform(get("/api/v1/audit-logs")
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "audit-admin"))
+        String auditResponse = mockMvc.perform(
+                        get("/api/v1/audit-logs").header("X-Tenant-Id", TENANT).header("X-User-Id", "audit-admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].action").value("POST"))
                 .andExpect(jsonPath("$.data[0].targetType").value("model-configs"))
                 .andExpect(jsonPath("$.data[0].ipAddress").value("10.1.2.3"))
                 .andExpect(jsonPath("$.data[0].detail.requestBodyLogged").doesNotExist())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         JsonNode audit = objectMapper.readTree(auditResponse).path("data").get(0);
         assertThat(audit.path("detail").asText())

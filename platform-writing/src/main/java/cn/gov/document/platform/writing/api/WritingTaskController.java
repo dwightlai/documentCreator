@@ -44,22 +44,22 @@ public class WritingTaskController {
 
     @GetMapping
     ApiResponse<PageResponse<WritingTaskDtos.Response>> list(
-        @RequestParam(defaultValue = "1") @Min(1) long page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(200) long size,
-        @RequestParam(required = false) String status,
-        @RequestParam(required = false) String documentType) {
+            @RequestParam(defaultValue = "1") @Min(1) long page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(200) long size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String documentType) {
         return ApiResponse.success(service.list(page, size, status, documentType));
     }
 
     @PutMapping("/{taskId}")
-    ApiResponse<WritingTaskDtos.Response> update(@PathVariable String taskId,
-                                                  @Valid @RequestBody WritingTaskDtos.UpdateRequest request) {
+    ApiResponse<WritingTaskDtos.Response> update(
+            @PathVariable String taskId, @Valid @RequestBody WritingTaskDtos.UpdateRequest request) {
         return ApiResponse.success(service.update(taskId, request));
     }
 
     @PatchMapping("/{taskId}/status")
-    ApiResponse<WritingTaskDtos.Response> status(@PathVariable String taskId,
-                                                  @Valid @RequestBody WritingTaskDtos.StatusRequest request) {
+    ApiResponse<WritingTaskDtos.Response> status(
+            @PathVariable String taskId, @Valid @RequestBody WritingTaskDtos.StatusRequest request) {
         return ApiResponse.success(service.changeStatus(taskId, request));
     }
 
@@ -71,6 +71,7 @@ public class WritingTaskController {
 
     @PostMapping("/{taskId}/recommend-type")
     ApiResponse<?> recommendType(@PathVariable String taskId) {
-        return ApiResponse.success(assistant.recommendDocumentTypes(service.require(taskId).getWritingPurpose()));
+        return ApiResponse.success(
+                assistant.recommendDocumentTypes(service.require(taskId).getWritingPurpose()));
     }
 }

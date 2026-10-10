@@ -13,8 +13,8 @@ import cn.gov.document.platform.writing.domain.WritingTaskStatus;
 import cn.gov.document.platform.writing.persistence.WritingTaskMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -32,36 +32,65 @@ public class WritingTaskService {
     public Response create(CreateRequest request) {
         WritingTaskEntity entity = new WritingTaskEntity();
         entity.setTenantId(RequestContext.tenantId());
-        apply(entity, request.taskName(), request.documentTypeCode(), request.documentCategory(), request.writingTopic(),
-            request.writingPurpose(), request.direction(), request.targetAudience(), request.primaryRecipient(),
-            request.writingTone(), request.expectedLengthMin(), request.expectedLengthMax(), request.targetDate(),
-            request.allowExternalKnowledge(), request.securityLevel(), resolveTemplate(request.outputTemplateId(), request.documentTypeCode()));
+        apply(
+                entity,
+                request.taskName(),
+                request.documentTypeCode(),
+                request.documentCategory(),
+                request.writingTopic(),
+                request.writingPurpose(),
+                request.direction(),
+                request.targetAudience(),
+                request.primaryRecipient(),
+                request.writingTone(),
+                request.expectedLengthMin(),
+                request.expectedLengthMax(),
+                request.targetDate(),
+                request.allowExternalKnowledge(),
+                request.securityLevel(),
+                resolveTemplate(request.outputTemplateId(), request.documentTypeCode()));
         entity.setStatus(WritingTaskStatus.DRAFT.code());
         mapper.insert(entity);
         return Response.from(entity);
     }
 
-    public Response get(String id) { return Response.from(require(id)); }
+    public Response get(String id) {
+        return Response.from(require(id));
+    }
 
     public PageResponse<Response> list(long page, long size, String status, String documentType) {
         long safePage = Math.max(1, page);
         long safeSize = Math.min(200, Math.max(1, size));
         LambdaQueryWrapper<WritingTaskEntity> query = new LambdaQueryWrapper<WritingTaskEntity>()
-            .eq(StringUtils.hasText(status), WritingTaskEntity::getStatus, status)
-            .eq(StringUtils.hasText(documentType), WritingTaskEntity::getDocumentTypeCode, documentType)
-            .orderByDesc(WritingTaskEntity::getUpdatedAt);
+                .eq(StringUtils.hasText(status), WritingTaskEntity::getStatus, status)
+                .eq(StringUtils.hasText(documentType), WritingTaskEntity::getDocumentTypeCode, documentType)
+                .orderByDesc(WritingTaskEntity::getUpdatedAt);
         Page<WritingTaskEntity> result = mapper.selectPage(Page.of(safePage, safeSize), query);
-        return new PageResponse<>(result.getRecords().stream().map(Response::from).toList(), safePage, safeSize, result.getTotal());
+        return new PageResponse<>(
+                result.getRecords().stream().map(Response::from).toList(), safePage, safeSize, result.getTotal());
     }
 
     @Transactional
     public Response update(String id, UpdateRequest request) {
         WritingTaskEntity entity = require(id);
         entity.setLockVersion(request.lockVersion());
-        apply(entity, request.taskName(), request.documentTypeCode(), request.documentCategory(), request.writingTopic(),
-            request.writingPurpose(), request.direction(), request.targetAudience(), request.primaryRecipient(),
-            request.writingTone(), request.expectedLengthMin(), request.expectedLengthMax(), request.targetDate(),
-            request.allowExternalKnowledge(), request.securityLevel(), resolveTemplate(request.outputTemplateId(), request.documentTypeCode()));
+        apply(
+                entity,
+                request.taskName(),
+                request.documentTypeCode(),
+                request.documentCategory(),
+                request.writingTopic(),
+                request.writingPurpose(),
+                request.direction(),
+                request.targetAudience(),
+                request.primaryRecipient(),
+                request.writingTone(),
+                request.expectedLengthMin(),
+                request.expectedLengthMax(),
+                request.targetDate(),
+                request.allowExternalKnowledge(),
+                request.securityLevel(),
+                resolveTemplate(request.outputTemplateId(), request.documentTypeCode()));
         if (mapper.updateById(entity) != 1) throw BusinessException.conflict("写作任务已被其他用户修改，请刷新后重试");
         return Response.from(require(id));
     }
@@ -105,10 +134,23 @@ public class WritingTaskService {
         mapper.updateById(task);
     }
 
-    private void apply(WritingTaskEntity entity, String name, String typeCode, String category, String topic,
-                       String purpose, String direction, String audience, String recipient, String tone,
-                       Integer min, Integer max, java.time.LocalDate date, Boolean external, String security,
-                       String templateId) {
+    private void apply(
+            WritingTaskEntity entity,
+            String name,
+            String typeCode,
+            String category,
+            String topic,
+            String purpose,
+            String direction,
+            String audience,
+            String recipient,
+            String tone,
+            Integer min,
+            Integer max,
+            java.time.LocalDate date,
+            Boolean external,
+            String security,
+            String templateId) {
         entity.setTaskName(name.trim());
         entity.setDocumentTypeCode(typeCode.trim());
         entity.setDocumentCategory(category);

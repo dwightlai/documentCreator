@@ -1,18 +1,17 @@
 package cn.gov.document.platform;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Set;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_TESTS", matches = "true")
@@ -34,31 +33,41 @@ class PostgreSqlClobCompatibilityTest {
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(databaseSpecificJsonColumnCount(connection)).isZero();
-            assertTextColumns(connection, "ai_document_type_config",
-                    Set.of("applicable_scenario", "required_fields", "recommended_structure",
-                            "forbidden_patterns", "closing_patterns"));
-            assertTextColumns(connection, "ai_prompt_template",
+            assertTextColumns(
+                    connection,
+                    "ai_document_type_config",
+                    Set.of(
+                            "applicable_scenario",
+                            "required_fields",
+                            "recommended_structure",
+                            "forbidden_patterns",
+                            "closing_patterns"));
+            assertTextColumns(
+                    connection,
+                    "ai_prompt_template",
                     Set.of("applicable_models", "system_role", "input_fields", "model_parameters"));
             verifyLongClobRoundTrip(connection);
         }
     }
 
     private long databaseSpecificJsonColumnCount(Connection connection) throws Exception {
-        String sql = """
+        String sql =
+                """
                 SELECT COUNT(*)
                   FROM information_schema.columns
                  WHERE table_schema = 'public'
                    AND (data_type IN ('json', 'jsonb') OR udt_name IN ('json', 'jsonb'))
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet result = statement.executeQuery()) {
+                ResultSet result = statement.executeQuery()) {
             result.next();
             return result.getLong(1);
         }
     }
 
     private void assertTextColumns(Connection connection, String table, Set<String> columns) throws Exception {
-        String sql = """
+        String sql =
+                """
                 SELECT column_name, data_type
                   FROM information_schema.columns
                  WHERE table_schema = 'public' AND table_name = ?
@@ -80,7 +89,8 @@ class PostgreSqlClobCompatibilityTest {
 
     private void verifyLongClobRoundTrip(Connection connection) throws Exception {
         String longJson = "{\"sections\":[\"" + "政务材料".repeat(30_000) + "\"]}";
-        String insert = """
+        String insert =
+                """
                 INSERT INTO ai_document_type_config
                     (id, tenant_id, type_code, type_name, document_category,
                      recommended_structure, current_version, lifecycle_status,
@@ -99,8 +109,8 @@ class PostgreSqlClobCompatibilityTest {
             statement.setString(9, "ci");
             statement.executeUpdate();
         }
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT recommended_structure FROM ai_document_type_config WHERE id = ?")) {
+        try (PreparedStatement statement =
+                connection.prepareStatement("SELECT recommended_structure FROM ai_document_type_config WHERE id = ?")) {
             statement.setString(1, "clob-compatibility-test");
             try (ResultSet result = statement.executeQuery()) {
                 assertThat(result.next()).isTrue();

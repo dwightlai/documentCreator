@@ -12,8 +12,13 @@ public class BusinessException extends RuntimeException {
         this.status = status;
     }
 
-    public String getCode() { return code; }
-    public HttpStatus getStatus() { return status; }
+    public String getCode() {
+        return code;
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
 
     public static BusinessException notFound(String message) {
         return new BusinessException("RESOURCE_NOT_FOUND", message, HttpStatus.NOT_FOUND);

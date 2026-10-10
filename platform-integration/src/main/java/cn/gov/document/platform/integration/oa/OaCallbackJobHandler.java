@@ -3,11 +3,10 @@ package cn.gov.document.platform.integration.oa;
 import cn.gov.document.platform.job.application.AsyncJobHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
 public class OaCallbackJobHandler implements AsyncJobHandler {
@@ -42,7 +41,8 @@ public class OaCallbackJobHandler implements AsyncJobHandler {
         String nonce = UUID.randomUUID().toString().replace("-", "");
         String signature = security.sign(timestamp, nonce, body);
         reporter.progress(20, "正在回调 OA");
-        webClient.post()
+        webClient
+                .post()
                 .uri(uri)
                 .header("X-Callback-Timestamp", timestamp)
                 .header("X-Callback-Nonce", nonce)

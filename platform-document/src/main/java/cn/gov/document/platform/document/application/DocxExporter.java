@@ -2,20 +2,20 @@ package cn.gov.document.platform.document.application;
 
 import cn.gov.document.platform.document.domain.DocumentEntity;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.List;
-
 @Component
 public class DocxExporter {
     public byte[] export(DocumentEntity document, List<DocumentParagraphEntity> paragraphs) {
-        try (XWPFDocument word = new XWPFDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+        try (XWPFDocument word = new XWPFDocument();
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             XWPFParagraph title = word.createParagraph();
             title.setAlignment(ParagraphAlignment.CENTER);
             XWPFRun titleRun = title.createRun();

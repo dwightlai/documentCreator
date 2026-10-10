@@ -1,7 +1,6 @@
 package cn.gov.document.platform.common.api;
 
 import cn.gov.document.platform.common.context.RequestContext;
-
 import java.time.OffsetDateTime;
 
 public record ApiResponse<T>(int code, String message, T data, String requestId, OffsetDateTime timestamp) {

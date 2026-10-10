@@ -1,7 +1,106 @@
 package cn.gov.document.platform.review.domain;
+
 import cn.gov.document.platform.common.domain.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
-@TableName("ai_review_plan") public class ReviewPlanEntity extends BaseEntity{
-    private String planCode,planName,applicableScenarios,reviewLevels,ruleSetVersion,knowledgeScope,riskThreshold;private Boolean allowExternalModel,checkAttachments,allowAutoFix,generateReport,isCustom;
-    public String getPlanCode(){return planCode;}public void setPlanCode(String v){planCode=v;}public String getPlanName(){return planName;}public void setPlanName(String v){planName=v;}public String getApplicableScenarios(){return applicableScenarios;}public void setApplicableScenarios(String v){applicableScenarios=v;}public String getReviewLevels(){return reviewLevels;}public void setReviewLevels(String v){reviewLevels=v;}public String getRuleSetVersion(){return ruleSetVersion;}public void setRuleSetVersion(String v){ruleSetVersion=v;}public String getKnowledgeScope(){return knowledgeScope;}public void setKnowledgeScope(String v){knowledgeScope=v;}public Boolean getAllowExternalModel(){return allowExternalModel;}public void setAllowExternalModel(Boolean v){allowExternalModel=v;}public String getRiskThreshold(){return riskThreshold;}public void setRiskThreshold(String v){riskThreshold=v;}public Boolean getCheckAttachments(){return checkAttachments;}public void setCheckAttachments(Boolean v){checkAttachments=v;}public Boolean getAllowAutoFix(){return allowAutoFix;}public void setAllowAutoFix(Boolean v){allowAutoFix=v;}public Boolean getGenerateReport(){return generateReport;}public void setGenerateReport(Boolean v){generateReport=v;}public Boolean getIsCustom(){return isCustom;}public void setIsCustom(Boolean v){isCustom=v;}
+
+@TableName("ai_review_plan")
+public class ReviewPlanEntity extends BaseEntity {
+    private String planCode, planName, applicableScenarios, reviewLevels, ruleSetVersion, knowledgeScope, riskThreshold;
+    private Boolean allowExternalModel, checkAttachments, allowAutoFix, generateReport, isCustom;
+
+    public String getPlanCode() {
+        return planCode;
+    }
+
+    public void setPlanCode(String v) {
+        planCode = v;
+    }
+
+    public String getPlanName() {
+        return planName;
+    }
+
+    public void setPlanName(String v) {
+        planName = v;
+    }
+
+    public String getApplicableScenarios() {
+        return applicableScenarios;
+    }
+
+    public void setApplicableScenarios(String v) {
+        applicableScenarios = v;
+    }
+
+    public String getReviewLevels() {
+        return reviewLevels;
+    }
+
+    public void setReviewLevels(String v) {
+        reviewLevels = v;
+    }
+
+    public String getRuleSetVersion() {
+        return ruleSetVersion;
+    }
+
+    public void setRuleSetVersion(String v) {
+        ruleSetVersion = v;
+    }
+
+    public String getKnowledgeScope() {
+        return knowledgeScope;
+    }
+
+    public void setKnowledgeScope(String v) {
+        knowledgeScope = v;
+    }
+
+    public Boolean getAllowExternalModel() {
+        return allowExternalModel;
+    }
+
+    public void setAllowExternalModel(Boolean v) {
+        allowExternalModel = v;
+    }
+
+    public String getRiskThreshold() {
+        return riskThreshold;
+    }
+
+    public void setRiskThreshold(String v) {
+        riskThreshold = v;
+    }
+
+    public Boolean getCheckAttachments() {
+        return checkAttachments;
+    }
+
+    public void setCheckAttachments(Boolean v) {
+        checkAttachments = v;
+    }
+
+    public Boolean getAllowAutoFix() {
+        return allowAutoFix;
+    }
+
+    public void setAllowAutoFix(Boolean v) {
+        allowAutoFix = v;
+    }
+
+    public Boolean getGenerateReport() {
+        return generateReport;
+    }
+
+    public void setGenerateReport(Boolean v) {
+        generateReport = v;
+    }
+
+    public Boolean getIsCustom() {
+        return isCustom;
+    }
+
+    public void setIsCustom(Boolean v) {
+        isCustom = v;
+    }
 }

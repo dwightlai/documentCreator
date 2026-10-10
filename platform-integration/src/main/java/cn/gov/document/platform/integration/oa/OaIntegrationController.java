@@ -9,6 +9,9 @@ import cn.gov.document.platform.review.application.ReviewService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,10 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.net.URI;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/integrations/oa")
@@ -43,7 +42,8 @@ public class OaIntegrationController {
     @PostMapping("/review-tasks")
     ResponseEntity<ApiResponse<OaIntegrationDtos.CreateReviewResponse>> createReview(
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            @Valid @RequestBody OaIntegrationDtos.CreateReviewRequest request) throws JsonProcessingException {
+            @Valid @RequestBody OaIntegrationDtos.CreateReviewRequest request)
+            throws JsonProcessingException {
         if (!StringUtils.hasText(idempotencyKey)) {
             throw BusinessException.unprocessable("OA 发起审校必须提供 Idempotency-Key");
         }
@@ -64,15 +64,13 @@ public class OaIntegrationController {
             callbackBody.put("reviewTaskId", external.id());
             callbackBody.put("status", external.status());
             callbackBody.put("statusUrl", statusUrl);
-            String payload = objectMapper.writeValueAsString(
-                    Map.of("callbackUrl", request.callbackUrl(), "body", callbackBody));
-            AsyncJobDtos.Response callbackJob = jobService.submit(
-                    new AsyncJobDtos.SubmitRequest("OA_CALLBACK", external.id(), payload, 5));
+            String payload =
+                    objectMapper.writeValueAsString(Map.of("callbackUrl", request.callbackUrl(), "body", callbackBody));
+            AsyncJobDtos.Response callbackJob =
+                    jobService.submit(new AsyncJobDtos.SubmitRequest("OA_CALLBACK", external.id(), payload, 5));
             callbackJobId = callbackJob.id();
         }
         var response = new OaIntegrationDtos.CreateReviewResponse(external, callbackJobId, statusUrl);
-        return ResponseEntity.accepted()
-                .location(URI.create(statusUrl))
-                .body(ApiResponse.accepted(response));
+        return ResponseEntity.accepted().location(URI.create(statusUrl)).body(ApiResponse.accepted(response));
     }
 }

@@ -1,15 +1,14 @@
 package cn.gov.document.platform.review.application;
 
-import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
-import cn.gov.document.platform.rule.application.EffectiveReviewRuleProvider;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
+import cn.gov.document.platform.rule.application.EffectiveReviewRuleProvider;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 class BuiltInReviewEngineTest {
     private final EffectiveReviewRuleProvider provider = mock(EffectiveReviewRuleProvider.class);
@@ -21,12 +20,12 @@ class BuiltInReviewEngineTest {
         when(provider.inspect("通知", paragraph.getPlainText())).thenReturn(List.of());
 
         var l1General = engine.inspect("通知", List.of(paragraph), Set.of("L1"), "一般");
-        assertThat(l1General).extracting(BuiltInReviewEngine.Candidate::original)
+        assertThat(l1General)
+                .extracting(BuiltInReviewEngine.Candidate::original)
                 .containsExactly("截止目前为止");
 
         var l2 = engine.inspect("通知", List.of(paragraph), Set.of("L2"), "提示");
-        assertThat(l2).extracting(BuiltInReviewEngine.Candidate::original)
-                .containsExactly("做出贡献");
+        assertThat(l2).extracting(BuiltInReviewEngine.Candidate::original).containsExactly("做出贡献");
     }
 
     @Test
@@ -36,7 +35,8 @@ class BuiltInReviewEngineTest {
 
         var issues = engine.inspect("报告", List.of(paragraph), Set.of("L3"), "一般");
 
-        assertThat(issues).extracting(BuiltInReviewEngine.Candidate::original)
+        assertThat(issues)
+                .extracting(BuiltInReviewEngine.Candidate::original)
                 .containsExactly("请批准", "{attachment_list}");
         assertThat(issues).allSatisfy(issue -> {
             assertThat(issue.level()).isEqualTo("L3");
@@ -54,8 +54,7 @@ class BuiltInReviewEngineTest {
 
         var issues = engine.inspect("请示", List.of(paragraph), Set.of("L3"), "一般");
 
-        assertThat(issues).extracting(BuiltInReviewEngine.Candidate::basis)
-                .contains("请示应当一文一事", "党政机关公文请示结束语规则");
+        assertThat(issues).extracting(BuiltInReviewEngine.Candidate::basis).contains("请示应当一文一事", "党政机关公文请示结束语规则");
     }
 
     @Test

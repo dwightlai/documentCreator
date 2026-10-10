@@ -4,12 +4,11 @@ import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.job.domain.IdempotencyRecordEntity;
 import cn.gov.document.platform.job.persistence.IdempotencyRecordMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.OffsetDateTime;
+import java.util.Base64;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.time.OffsetDateTime;
-import java.util.Base64;
 
 @Service
 public class IdempotencyService {
@@ -88,13 +87,13 @@ public class IdempotencyService {
         return new Reservation(Decision.REPLAY, entity.getId(), entity.getHttpStatus(), entity.getContentType(), body);
     }
 
-    public enum Decision { PROCEED, REPLAY, IN_PROGRESS, HASH_CONFLICT }
+    public enum Decision {
+        PROCEED,
+        REPLAY,
+        IN_PROGRESS,
+        HASH_CONFLICT
+    }
 
     public record Reservation(
-            Decision decision,
-            String recordId,
-            Integer httpStatus,
-            String contentType,
-            byte[] responseBody) {
-    }
+            Decision decision, String recordId, Integer httpStatus, String contentType, byte[] responseBody) {}
 }

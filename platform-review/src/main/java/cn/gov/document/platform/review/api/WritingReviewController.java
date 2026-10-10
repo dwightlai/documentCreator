@@ -8,9 +8,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/writing-tasks/{writingTaskId}")
 public class WritingReviewController {
     private final ReviewService service;
-    public WritingReviewController(ReviewService service){this.service=service;}
+
+    public WritingReviewController(ReviewService service) {
+        this.service = service;
+    }
+
     @PostMapping("/initiate-review")
-    ApiResponse<ReviewDtos.TaskResponse> initiate(@PathVariable String writingTaskId){
-        return ApiResponse.success(service.create(new ReviewDtos.CreateRequest(writingTaskId,null,null)));
+    ApiResponse<ReviewDtos.TaskResponse> initiate(@PathVariable String writingTaskId) {
+        return ApiResponse.success(service.create(new ReviewDtos.CreateRequest(writingTaskId, null, null)));
     }
 }

@@ -4,18 +4,17 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.util.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final boolean localHeadersEnabled;
@@ -26,17 +25,23 @@ public class RequestContextFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-        throws ServletException, IOException {
+            throws ServletException, IOException {
         String requestId = Optional.ofNullable(request.getHeader("X-Request-Id"))
-            .filter(StringUtils::hasText).orElseGet(() -> UUID.randomUUID().toString().replace("-", ""));
+                .filter(StringUtils::hasText)
+                .orElseGet(() -> UUID.randomUUID().toString().replace("-", ""));
         Identity identity = resolveIdentity(request);
-        Authentication previousAuthentication = SecurityContextHolder.getContext().getAuthentication();
-        if (localHeadersEnabled && !(previousAuthentication != null && previousAuthentication.getPrincipal() instanceof Jwt)) {
-            SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                identity.userId(), null, java.util.List.of(
-                    new SimpleGrantedAuthority("ROLE_platform.user"),
-                    new SimpleGrantedAuthority("ROLE_platform.reviewer"),
-                    new SimpleGrantedAuthority("ROLE_platform.admin"))));
+        Authentication previousAuthentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        if (localHeadersEnabled
+                && !(previousAuthentication != null && previousAuthentication.getPrincipal() instanceof Jwt)) {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                            identity.userId(),
+                            null,
+                            java.util.List.of(
+                                    new SimpleGrantedAuthority("ROLE_platform.user"),
+                                    new SimpleGrantedAuthority("ROLE_platform.reviewer"),
+                                    new SimpleGrantedAuthority("ROLE_platform.admin"))));
         }
         response.setHeader("X-Request-Id", requestId);
         try {
@@ -59,9 +64,8 @@ public class RequestContextFilter extends OncePerRequestFilter {
         }
         if (localHeadersEnabled) {
             return new Identity(
-                headerOrDefault(request, "X-Tenant-Id", "demo-tenant"),
-                headerOrDefault(request, "X-User-Id", "demo-user")
-            );
+                    headerOrDefault(request, "X-Tenant-Id", "demo-tenant"),
+                    headerOrDefault(request, "X-User-Id", "demo-user"));
         }
         return new Identity("unauthenticated", "anonymous");
     }
@@ -71,6 +75,5 @@ public class RequestContextFilter extends OncePerRequestFilter {
         return StringUtils.hasText(value) ? value.trim() : fallback;
     }
 
-    private record Identity(String tenantId, String userId) {
-    }
+    private record Identity(String tenantId, String userId) {}
 }

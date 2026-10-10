@@ -4,7 +4,6 @@ import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -25,10 +24,14 @@ final class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
         ByteArrayInputStream input = new ByteArrayInputStream(body);
         return new ServletInputStream() {
             @Override
-            public boolean isFinished() { return input.available() == 0; }
+            public boolean isFinished() {
+                return input.available() == 0;
+            }
 
             @Override
-            public boolean isReady() { return true; }
+            public boolean isReady() {
+                return true;
+            }
 
             @Override
             public void setReadListener(ReadListener readListener) {
@@ -47,15 +50,16 @@ final class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
             }
 
             @Override
-            public int read() { return input.read(); }
+            public int read() {
+                return input.read();
+            }
         };
     }
 
     @Override
     public BufferedReader getReader() {
-        Charset charset = getCharacterEncoding() == null
-                ? StandardCharsets.UTF_8
-                : Charset.forName(getCharacterEncoding());
+        Charset charset =
+                getCharacterEncoding() == null ? StandardCharsets.UTF_8 : Charset.forName(getCharacterEncoding());
         return new BufferedReader(new InputStreamReader(getInputStream(), charset));
     }
 }

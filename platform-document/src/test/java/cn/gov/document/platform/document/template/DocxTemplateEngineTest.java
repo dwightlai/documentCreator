@@ -1,20 +1,19 @@
 package cn.gov.document.platform.document.template;
 
-import cn.gov.document.platform.common.error.BusinessException;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import cn.gov.document.platform.common.error.BusinessException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.junit.jupiter.api.Test;
 
 class DocxTemplateEngineTest {
     private final DocxTemplateEngine engine = new DocxTemplateEngine();
@@ -27,15 +26,19 @@ class DocxTemplateEngineTest {
         assertThat(inspection.placeholders()).contains("{title}", "{recipient}", "{content}", "{date}");
         assertThat(inspection.fileHash()).hasSize(64);
 
-        byte[] rendered = engine.render(template, Map.of(
-                "title", "关于推进数字政务平台建设的请示",
-                "recipient", "省人民政府：",
-                "content", "为提升政务服务质效，现申请建设统一的数字政务平台。项目将坚持安全可控、分步实施。",
-                "date", "2026年7月15日",
-                "attachment_desc", "1. 项目建设方案"), List.of());
+        byte[] rendered = engine.render(
+                template,
+                Map.of(
+                        "title", "关于推进数字政务平台建设的请示",
+                        "recipient", "省人民政府：",
+                        "content", "为提升政务服务质效，现申请建设统一的数字政务平台。项目将坚持安全可控、分步实施。",
+                        "date", "2026年7月15日",
+                        "attachment_desc", "1. 项目建设方案"),
+                List.of());
 
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(rendered))) {
-            String text = document.getParagraphs().stream().map(XWPFParagraph::getText)
+            String text = document.getParagraphs().stream()
+                    .map(XWPFParagraph::getText)
                     .reduce("", (left, right) -> left + "\n" + right);
             assertThat(text)
                     .contains("关于推进数字政务平台建设的请示", "省人民政府：", "项目建设方案")
@@ -59,7 +62,7 @@ class DocxTemplateEngineTest {
 
     private byte[] template(boolean includeContent) throws Exception {
         try (XWPFDocument document = new XWPFDocument();
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             var section = document.getDocument().getBody().addNewSectPr();
             var pageSize = section.addNewPgSz();
             pageSize.setW(11906);

@@ -6,7 +6,6 @@ import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
@@ -23,10 +22,8 @@ public class MinioObjectStorage implements ObjectStorage {
     @Override
     public void put(String key, byte[] content, String contentType) {
         try {
-            client.putObject(PutObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key)
-                    .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
+            client.putObject(PutObjectArgs.builder().bucket(bucket).object(key).stream(
+                            new ByteArrayInputStream(content), (long) content.length, -1L)
                     .contentType(contentType == null ? "application/octet-stream" : contentType)
                     .build());
         } catch (Exception exception) {
@@ -36,7 +33,8 @@ public class MinioObjectStorage implements ObjectStorage {
 
     @Override
     public byte[] read(String key) {
-        try (InputStream stream = client.getObject(GetObjectArgs.builder().bucket(bucket).object(key).build())) {
+        try (InputStream stream = client.getObject(
+                GetObjectArgs.builder().bucket(bucket).object(key).build())) {
             return stream.readAllBytes();
         } catch (Exception exception) {
             throw BusinessException.unprocessable("对象存储读取失败");

@@ -5,13 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
-import org.springframework.util.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingResponseWrapper;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,6 +12,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 public class IdempotencyFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(IdempotencyFilter.class);
@@ -33,10 +32,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain chain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
         String key = request.getHeader("Idempotency-Key");
         if (!MUTATING_METHODS.contains(request.getMethod()) || !StringUtils.hasText(key)) {
             chain.doFilter(request, response);
@@ -53,8 +50,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         }
 
         String contentType = request.getContentType();
-        boolean multipart = contentType != null
-                && contentType.toLowerCase().startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
+        boolean multipart =
+                contentType != null && contentType.toLowerCase().startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
 
         byte[] requestBody = multipart ? new byte[0] : request.getInputStream().readAllBytes();
         if (!multipart && requestBody.length > MAX_REQUEST_BYTES) {
@@ -62,9 +59,11 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
         String endpoint = request.getMethod() + " " + request.getRequestURI();
-        String requestHash = sha256(request.getMethod() + "\n" + request.getRequestURI() + "\n"
-                + String.valueOf(request.getQueryString()) + "\n"
-                + (multipart ? ("multipart:" + request.getContentLengthLong() + "\n") : ""), requestBody);
+        String requestHash = sha256(
+                request.getMethod() + "\n" + request.getRequestURI() + "\n"
+                        + String.valueOf(request.getQueryString()) + "\n"
+                        + (multipart ? ("multipart:" + request.getContentLengthLong() + "\n") : ""),
+                requestBody);
         IdempotencyService.Reservation reservation = service.reserve(endpoint, key, requestHash);
 
         switch (reservation.decision()) {
@@ -73,15 +72,15 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             case IN_PROGRESS -> writeError(response, 409, "同一幂等请求正在处理中，请稍后重试");
             case PROCEED -> executeAndCache(
                     multipart ? request : new CachedBodyHttpServletRequest(request, requestBody),
-                    response, chain, reservation.recordId());
+                    response,
+                    chain,
+                    reservation.recordId());
         }
     }
 
     private void executeAndCache(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain chain,
-            String recordId) throws ServletException, IOException {
+            HttpServletRequest request, HttpServletResponse response, FilterChain chain, String recordId)
+            throws ServletException, IOException {
         ContentCachingResponseWrapper wrapper = new ContentCachingResponseWrapper(response);
         boolean chainReturned = false;
         try {

@@ -5,6 +5,12 @@ import cn.gov.document.platform.common.error.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,13 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/template-engine")
@@ -42,16 +41,16 @@ public class DocxTemplateController {
 
     @PostMapping(value = "/render-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('platform.admin')")
-    ResponseEntity<byte[]> renderPreview(
-            @RequestPart("file") MultipartFile file,
-            @RequestPart("data") String data) throws IOException {
+    ResponseEntity<byte[]> renderPreview(@RequestPart("file") MultipartFile file, @RequestPart("data") String data)
+            throws IOException {
         RenderData renderData = readRenderData(data);
         byte[] body = engine.render(file.getBytes(), renderData.values(), renderData.sections());
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        headers.setContentType(
+                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("template-preview.docx", StandardCharsets.UTF_8).build());
+                .filename("template-preview.docx", StandardCharsets.UTF_8)
+                .build());
         headers.setContentLength(body.length);
         return ResponseEntity.ok().headers(headers).body(body);
     }
@@ -65,7 +64,10 @@ public class DocxTemplateController {
             Map<String, String> values = new LinkedHashMap<>();
             JsonNode valueNode = root.path("values");
             if (valueNode.isObject()) {
-                valueNode.fields().forEachRemaining(entry -> values.put(entry.getKey(), entry.getValue().asText("")));
+                valueNode
+                        .fields()
+                        .forEachRemaining(entry ->
+                                values.put(entry.getKey(), entry.getValue().asText("")));
             }
             List<String> sections = new ArrayList<>();
             JsonNode sectionNode = root.path("sections");
@@ -78,5 +80,5 @@ public class DocxTemplateController {
         }
     }
 
-    private record RenderData(Map<String, String> values, List<String> sections) { }
+    private record RenderData(Map<String, String> values, List<String> sections) {}
 }

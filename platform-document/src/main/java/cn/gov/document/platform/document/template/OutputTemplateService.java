@@ -7,27 +7,34 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class OutputTemplateService implements OutputTemplatePort {
     private static final Map<String, String> PLACEHOLDER_DESCRIPTIONS = Map.ofEntries(
-            Map.entry("{title}", "公文标题"), Map.entry("{recipient}", "主送机关"),
-            Map.entry("{sender}", "发文机关标志"), Map.entry("{doc_number}", "发文字号"),
-            Map.entry("{signer}", "签发人"), Map.entry("{content}", "正文内容"),
-            Map.entry("{closing}", "结束语"), Map.entry("{attachment_desc}", "附件说明"),
-            Map.entry("{copy_to}", "抄送机关"), Map.entry("{issue_unit}", "印发机关"),
-            Map.entry("{issue_date}", "印发日期"), Map.entry("{date}", "成文日期"),
-            Map.entry("{#sections}", "正文循环开始"), Map.entry("{paragraph}", "循环段落"),
-            Map.entry("{/sections}", "正文循环结束"), Map.entry("{#has_attachment}", "附件条件开始"),
+            Map.entry("{title}", "公文标题"),
+            Map.entry("{recipient}", "主送机关"),
+            Map.entry("{sender}", "发文机关标志"),
+            Map.entry("{doc_number}", "发文字号"),
+            Map.entry("{signer}", "签发人"),
+            Map.entry("{content}", "正文内容"),
+            Map.entry("{closing}", "结束语"),
+            Map.entry("{attachment_desc}", "附件说明"),
+            Map.entry("{copy_to}", "抄送机关"),
+            Map.entry("{issue_unit}", "印发机关"),
+            Map.entry("{issue_date}", "印发日期"),
+            Map.entry("{date}", "成文日期"),
+            Map.entry("{#sections}", "正文循环开始"),
+            Map.entry("{paragraph}", "循环段落"),
+            Map.entry("{/sections}", "正文循环结束"),
+            Map.entry("{#has_attachment}", "附件条件开始"),
             Map.entry("{/has_attachment}", "附件条件结束"));
 
     private final OutputTemplateMapper mapper;
@@ -50,12 +57,18 @@ public class OutputTemplateService implements OutputTemplatePort {
     }
 
     public List<OutputTemplateDtos.Response> list(String documentTypeCode, String status) {
-        return mapper.selectList(new LambdaQueryWrapper<OutputTemplateEntity>()
-                        .eq(StringUtils.hasText(documentTypeCode), OutputTemplateEntity::getDocumentTypeCode, documentTypeCode)
+        return mapper
+                .selectList(new LambdaQueryWrapper<OutputTemplateEntity>()
+                        .eq(
+                                StringUtils.hasText(documentTypeCode),
+                                OutputTemplateEntity::getDocumentTypeCode,
+                                documentTypeCode)
                         .eq(StringUtils.hasText(status), OutputTemplateEntity::getLifecycleStatus, status)
                         .orderByAsc(OutputTemplateEntity::getDocumentTypeCode)
                         .orderByAsc(OutputTemplateEntity::getTemplateCode))
-                .stream().map(this::response).toList();
+                .stream()
+                .map(this::response)
+                .toList();
     }
 
     public OutputTemplateDtos.Response get(String id) {
@@ -78,21 +91,26 @@ public class OutputTemplateService implements OutputTemplatePort {
             }
             return selected.getId();
         }
-        return mapper.selectList(new LambdaQueryWrapper<OutputTemplateEntity>()
+        return mapper
+                .selectList(new LambdaQueryWrapper<OutputTemplateEntity>()
                         .eq(OutputTemplateEntity::getDocumentTypeCode, documentTypeCode)
                         .eq(OutputTemplateEntity::getLifecycleStatus, "生效")
                         .orderByAsc(OutputTemplateEntity::getTemplateCode)
                         .last("LIMIT 1"))
-                .stream().findFirst().map(OutputTemplateEntity::getId).orElse(null);
+                .stream()
+                .findFirst()
+                .map(OutputTemplateEntity::getId)
+                .orElse(null);
     }
 
     @Transactional
     public OutputTemplateDtos.Response create(
-            OutputTemplateDtos.CreateMetadata metadata,
-            String originalFileName,
-            byte[] bytes) {
+            OutputTemplateDtos.CreateMetadata metadata, String originalFileName, byte[] bytes) {
         if (mapper.selectCount(new LambdaQueryWrapper<OutputTemplateEntity>()
-                .eq(OutputTemplateEntity::getTemplateCode, metadata.templateCode().trim())) > 0) {
+                        .eq(
+                                OutputTemplateEntity::getTemplateCode,
+                                metadata.templateCode().trim()))
+                > 0) {
             throw BusinessException.conflict("输出模板代码已存在");
         }
         DocxTemplateEngine.Inspection inspection = inspectValid(originalFileName, bytes);
@@ -100,8 +118,14 @@ public class OutputTemplateService implements OutputTemplatePort {
         entity.setId(UUID.randomUUID().toString().replace("-", ""));
         entity.setTenantId(RequestContext.tenantId());
         entity.setTemplateCode(metadata.templateCode().trim());
-        applyMetadata(entity, metadata.templateName(), metadata.documentTypeCode(), metadata.hasRedHeader(),
-                metadata.hasFooterMark(), metadata.direction(), metadata.description());
+        applyMetadata(
+                entity,
+                metadata.templateName(),
+                metadata.documentTypeCode(),
+                metadata.hasRedHeader(),
+                metadata.hasFooterMark(),
+                metadata.direction(),
+                metadata.description());
         entity.setCurrentVersion(1);
         entity.setLifecycleStatus("草稿");
         entity.setTemplateFileHash(inspection.fileHash());
@@ -116,8 +140,14 @@ public class OutputTemplateService implements OutputTemplatePort {
     public OutputTemplateDtos.Response update(String id, OutputTemplateDtos.UpdateMetadata request) {
         OutputTemplateEntity entity = require(id);
         entity.setLockVersion(request.lockVersion());
-        applyMetadata(entity, request.templateName(), request.documentTypeCode(), request.hasRedHeader(),
-                request.hasFooterMark(), request.direction(), request.description());
+        applyMetadata(
+                entity,
+                request.templateName(),
+                request.documentTypeCode(),
+                request.hasRedHeader(),
+                request.hasFooterMark(),
+                request.direction(),
+                request.description());
         if (mapper.updateById(entity) != 1) {
             throw BusinessException.conflict("输出模板已被其他用户修改");
         }
@@ -126,10 +156,7 @@ public class OutputTemplateService implements OutputTemplatePort {
 
     @Transactional
     public OutputTemplateDtos.Response replaceFile(
-            String id,
-            String originalFileName,
-            byte[] bytes,
-            String changeNote) {
+            String id, String originalFileName, byte[] bytes, String changeNote) {
         OutputTemplateEntity entity = require(id);
         DocxTemplateEngine.Inspection inspection = inspectValid(originalFileName, bytes);
         int version = entity.getCurrentVersion() + 1;
@@ -146,7 +173,8 @@ public class OutputTemplateService implements OutputTemplatePort {
     @Transactional
     public DocxTemplateEngine.Inspection parse(String id) {
         OutputTemplateEntity entity = require(id);
-        DocxTemplateEngine.Inspection inspection = engine.inspect("template.docx", fileStore.read(entity.getTemplateFilePath()));
+        DocxTemplateEngine.Inspection inspection =
+                engine.inspect("template.docx", fileStore.read(entity.getTemplateFilePath()));
         entity.setPlaceholderMap(writePlaceholderMap(inspection.placeholders()));
         mapper.updateById(entity);
         return inspection;
@@ -155,7 +183,8 @@ public class OutputTemplateService implements OutputTemplatePort {
     @Transactional
     public byte[] test(String id, OutputTemplateDtos.RenderRequest request) {
         OutputTemplateEntity entity = require(id);
-        byte[] rendered = engine.render(fileStore.read(entity.getTemplateFilePath()),
+        byte[] rendered = engine.render(
+                fileStore.read(entity.getTemplateFilePath()),
                 request.values() == null ? Map.of() : request.values(),
                 request.sections() == null ? List.of() : request.sections());
         entity.setLifecycleStatus("测试");
@@ -172,8 +201,8 @@ public class OutputTemplateService implements OutputTemplatePort {
         if (!"测试".equals(entity.getLifecycleStatus())) {
             throw BusinessException.unprocessable("输出模板必须先通过模拟填充测试才能发布");
         }
-        DocxTemplateEngine.Inspection inspection = inspectValid(
-                "template.docx", fileStore.read(entity.getTemplateFilePath()));
+        DocxTemplateEngine.Inspection inspection =
+                inspectValid("template.docx", fileStore.read(entity.getTemplateFilePath()));
         entity.setTemplateFileHash(inspection.fileHash());
         entity.setLifecycleStatus("生效");
         mapper.updateById(entity);
@@ -187,15 +216,19 @@ public class OutputTemplateService implements OutputTemplatePort {
 
     public List<OutputTemplateDtos.VersionResponse> versions(String id) {
         require(id);
-        return versionMapper.selectList(new LambdaQueryWrapper<OutputTemplateVersionEntity>()
+        return versionMapper
+                .selectList(new LambdaQueryWrapper<OutputTemplateVersionEntity>()
                         .eq(OutputTemplateVersionEntity::getTemplateId, id)
                         .orderByDesc(OutputTemplateVersionEntity::getVersionNumber))
-                .stream().map(this::versionResponse).toList();
+                .stream()
+                .map(this::versionResponse)
+                .toList();
     }
 
     public byte[] render(String id, OutputTemplateDtos.RenderRequest request) {
         OutputTemplateEntity entity = require(id);
-        return engine.render(fileStore.read(entity.getTemplateFilePath()),
+        return engine.render(
+                fileStore.read(entity.getTemplateFilePath()),
                 request.values() == null ? Map.of() : request.values(),
                 request.sections() == null ? List.of() : request.sections());
     }
@@ -222,8 +255,13 @@ public class OutputTemplateService implements OutputTemplatePort {
     }
 
     private void applyMetadata(
-            OutputTemplateEntity entity, String name, String type, boolean redHeader,
-            boolean footerMark, String direction, String description) {
+            OutputTemplateEntity entity,
+            String name,
+            String type,
+            boolean redHeader,
+            boolean footerMark,
+            String direction,
+            String description) {
         entity.setTemplateName(name.trim());
         entity.setDocumentTypeCode(type.trim());
         entity.setHasRedHeader(redHeader);
@@ -248,8 +286,8 @@ public class OutputTemplateService implements OutputTemplatePort {
     }
 
     private OutputTemplateVersionEntity currentVersion(String id, int number) {
-        OutputTemplateVersionEntity version = versionMapper.selectOne(
-                new LambdaQueryWrapper<OutputTemplateVersionEntity>()
+        OutputTemplateVersionEntity version =
+                versionMapper.selectOne(new LambdaQueryWrapper<OutputTemplateVersionEntity>()
                         .eq(OutputTemplateVersionEntity::getTemplateId, id)
                         .eq(OutputTemplateVersionEntity::getVersionNumber, number));
         if (version == null) {
@@ -270,7 +308,7 @@ public class OutputTemplateService implements OutputTemplatePort {
 
     private Map<String, String> readPlaceholderMap(String value) {
         try {
-            return objectMapper.readValue(value, new TypeReference<LinkedHashMap<String, String>>() { });
+            return objectMapper.readValue(value, new TypeReference<LinkedHashMap<String, String>>() {});
         } catch (JsonProcessingException invalidStoredValue) {
             throw new IllegalStateException("占位符映射数据损坏", invalidStoredValue);
         }
@@ -278,16 +316,31 @@ public class OutputTemplateService implements OutputTemplatePort {
 
     private OutputTemplateDtos.Response response(OutputTemplateEntity entity) {
         return new OutputTemplateDtos.Response(
-                entity.getId(), entity.getTemplateCode(), entity.getTemplateName(), entity.getDocumentTypeCode(),
-                entity.getTemplateFileHash(), Boolean.TRUE.equals(entity.getHasRedHeader()),
-                Boolean.TRUE.equals(entity.getHasFooterMark()), readPlaceholderMap(entity.getPlaceholderMap()),
-                entity.getDirection(), entity.getDescription(), entity.getCurrentVersion(),
-                entity.getLifecycleStatus(), entity.getLockVersion(), entity.getUpdatedAt());
+                entity.getId(),
+                entity.getTemplateCode(),
+                entity.getTemplateName(),
+                entity.getDocumentTypeCode(),
+                entity.getTemplateFileHash(),
+                Boolean.TRUE.equals(entity.getHasRedHeader()),
+                Boolean.TRUE.equals(entity.getHasFooterMark()),
+                readPlaceholderMap(entity.getPlaceholderMap()),
+                entity.getDirection(),
+                entity.getDescription(),
+                entity.getCurrentVersion(),
+                entity.getLifecycleStatus(),
+                entity.getLockVersion(),
+                entity.getUpdatedAt());
     }
 
     private OutputTemplateDtos.VersionResponse versionResponse(OutputTemplateVersionEntity entity) {
         return new OutputTemplateDtos.VersionResponse(
-                entity.getId(), entity.getVersionNumber(), entity.getTemplateFileHash(), entity.getChangeNote(),
-                entity.getLifecycleStatus(), entity.getApprovedBy(), entity.getApprovedAt(), entity.getCreatedAt());
+                entity.getId(),
+                entity.getVersionNumber(),
+                entity.getTemplateFileHash(),
+                entity.getChangeNote(),
+                entity.getLifecycleStatus(),
+                entity.getApprovedBy(),
+                entity.getApprovedAt(),
+                entity.getCreatedAt());
     }
 }

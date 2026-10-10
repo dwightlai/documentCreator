@@ -2,14 +2,6 @@ package cn.gov.document.platform.document.template;
 
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.file.DocxSecurityValidator;
-import org.apache.poi.xwpf.usermodel.IBodyElement;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFHeaderFooter;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.springframework.stereotype.Component;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,15 +15,35 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.springframework.stereotype.Component;
 
 @Component
 public class DocxTemplateEngine {
     private static final int MAX_TEMPLATE_BYTES = 20 * 1024 * 1024;
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{(?:#|/)?[a-z][a-z0-9_]*}");
     private static final Set<String> SUPPORTED = Set.of(
-            "{title}", "{recipient}", "{sender}", "{doc_number}", "{signer}", "{content}",
-            "{closing}", "{attachment_desc}", "{copy_to}", "{issue_unit}", "{issue_date}", "{date}",
-            "{#sections}", "{paragraph}", "{/sections}", "{#has_attachment}", "{/has_attachment}");
+            "{title}",
+            "{recipient}",
+            "{sender}",
+            "{doc_number}",
+            "{signer}",
+            "{content}",
+            "{closing}",
+            "{attachment_desc}",
+            "{copy_to}",
+            "{issue_unit}",
+            "{issue_date}",
+            "{date}",
+            "{#sections}",
+            "{paragraph}",
+            "{/sections}",
+            "{#has_attachment}",
+            "{/has_attachment}");
 
     public Inspection inspect(String fileName, byte[] bytes) {
         DocxSecurityValidator.validate(fileName, bytes, MAX_TEMPLATE_BYTES, "DOCX 模板");
@@ -52,7 +64,8 @@ public class DocxTemplateEngine {
             if (!singleContent && !sectionContent) {
                 errors.add("正文必须使用 {content} 或完整的 {#sections}{paragraph}{/sections} 循环区域");
             }
-            placeholders.stream().filter(value -> !SUPPORTED.contains(value))
+            placeholders.stream()
+                    .filter(value -> !SUPPORTED.contains(value))
                     .forEach(value -> errors.add("不支持的占位符 " + value));
             return new Inspection(List.copyOf(placeholders), List.copyOf(errors), sha256(bytes));
         } catch (IOException | RuntimeException invalidDocx) {
@@ -69,7 +82,7 @@ public class DocxTemplateEngine {
             throw BusinessException.unprocessable(String.join("；", inspection.errors()));
         }
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(template));
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             for (XWPFParagraph paragraph : allParagraphs(document)) {
                 String text = paragraph.getText();
                 if (text == null || text.isEmpty()) {
@@ -97,7 +110,8 @@ public class DocxTemplateEngine {
         String rendered = text;
         String loop = "{#sections}{paragraph}{/sections}";
         if (rendered.contains(loop)) {
-            rendered = rendered.replace(loop, String.join(System.lineSeparator(), sections == null ? List.of() : sections));
+            rendered = rendered.replace(
+                    loop, String.join(System.lineSeparator(), sections == null ? List.of() : sections));
         }
         for (String placeholder : SUPPORTED) {
             if (placeholder.startsWith("{#") || placeholder.startsWith("{/")) {
@@ -107,7 +121,8 @@ public class DocxTemplateEngine {
             rendered = rendered.replace(placeholder, values.getOrDefault(key, ""));
         }
         boolean hasAttachment = values.containsKey("attachment_desc")
-                && values.get("attachment_desc") != null && !values.get("attachment_desc").isBlank();
+                && values.get("attachment_desc") != null
+                && !values.get("attachment_desc").isBlank();
         rendered = renderConditional(rendered, "has_attachment", hasAttachment);
         return rendered;
     }
@@ -152,14 +167,17 @@ public class DocxTemplateEngine {
             if (element instanceof XWPFParagraph paragraph) {
                 target.add(paragraph);
             } else if (element instanceof XWPFTable table) {
-                table.getRows().forEach(row -> row.getTableCells().forEach(cell -> collect(cell.getBodyElements(), target)));
+                table.getRows()
+                        .forEach(row -> row.getTableCells().forEach(cell -> collect(cell.getBodyElements(), target)));
             }
         }
     }
 
     private boolean containsPlaceholder(byte[] bytes) {
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(bytes))) {
-            return allParagraphs(document).stream().map(XWPFParagraph::getText).anyMatch(text -> PLACEHOLDER.matcher(text).find());
+            return allParagraphs(document).stream()
+                    .map(XWPFParagraph::getText)
+                    .anyMatch(text -> PLACEHOLDER.matcher(text).find());
         } catch (IOException exception) {
             return true;
         }
@@ -173,5 +191,5 @@ public class DocxTemplateEngine {
         }
     }
 
-    public record Inspection(List<String> placeholders, List<String> errors, String fileHash) { }
+    public record Inspection(List<String> placeholders, List<String> errors, String fileHash) {}
 }

@@ -9,22 +9,20 @@ import cn.gov.document.platform.job.persistence.AsyncJobEventMapper;
 import cn.gov.document.platform.job.persistence.AsyncJobMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 public class AsyncJobService {
@@ -46,8 +44,8 @@ public class AsyncJobService {
         this.jobMapper = jobMapper;
         this.eventMapper = eventMapper;
         this.jobExecutor = jobExecutor;
-        this.handlers = handlers.stream().collect(Collectors.toUnmodifiableMap(
-                AsyncJobHandler::jobType, Function.identity()));
+        this.handlers =
+                handlers.stream().collect(Collectors.toUnmodifiableMap(AsyncJobHandler::jobType, Function.identity()));
     }
 
     public AsyncJobDtos.Response submit(AsyncJobDtos.SubmitRequest request) {
@@ -79,27 +77,34 @@ public class AsyncJobService {
 
     public List<AsyncJobDtos.Response> list(String status, int limit) {
         int safeLimit = Math.min(200, Math.max(1, limit));
-        return jobMapper.selectList(new LambdaQueryWrapper<AsyncJobEntity>()
+        return jobMapper
+                .selectList(new LambdaQueryWrapper<AsyncJobEntity>()
                         .eq(status != null && !status.isBlank(), AsyncJobEntity::getStatus, status)
                         .orderByDesc(AsyncJobEntity::getCreatedAt)
                         .last("LIMIT " + safeLimit))
-                .stream().map(AsyncJobDtos.Response::from).toList();
+                .stream()
+                .map(AsyncJobDtos.Response::from)
+                .toList();
     }
 
     public List<AsyncJobDtos.EventResponse> history(String jobId, int afterEventId) {
         require(jobId);
-        return eventMapper.selectList(new LambdaQueryWrapper<AsyncJobEventEntity>()
+        return eventMapper
+                .selectList(new LambdaQueryWrapper<AsyncJobEventEntity>()
                         .eq(AsyncJobEventEntity::getJobId, jobId)
                         .gt(AsyncJobEventEntity::getEventSequence, Math.max(0, afterEventId))
                         .orderByAsc(AsyncJobEventEntity::getEventSequence))
-                .stream().map(AsyncJobDtos.EventResponse::from).toList();
+                .stream()
+                .map(AsyncJobDtos.EventResponse::from)
+                .toList();
     }
 
     public SseEmitter stream(String jobId, int afterEventId) {
         AsyncJobEntity job = require(jobId);
         String emitterKey = emitterKey(job.getTenantId(), jobId);
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
-        emitters.computeIfAbsent(emitterKey, ignored -> new CopyOnWriteArrayList<>()).add(emitter);
+        emitters.computeIfAbsent(emitterKey, ignored -> new CopyOnWriteArrayList<>())
+                .add(emitter);
         Runnable cleanup = () -> removeEmitter(emitterKey, emitter);
         emitter.onCompletion(cleanup);
         emitter.onTimeout(() -> {
@@ -173,13 +178,15 @@ public class AsyncJobService {
     }
 
     private void execute(String jobId) {
-        int claimed = jobMapper.update(null, new LambdaUpdateWrapper<AsyncJobEntity>()
-                .eq(AsyncJobEntity::getId, jobId)
-                .in(AsyncJobEntity::getStatus, "QUEUED", "RETRY_WAIT")
-                .set(AsyncJobEntity::getStatus, "RUNNING")
-                .set(AsyncJobEntity::getStartedAt, OffsetDateTime.now())
-                .set(AsyncJobEntity::getNextRetryAt, null)
-                .setSql("lock_version = lock_version + 1"));
+        int claimed = jobMapper.update(
+                null,
+                new LambdaUpdateWrapper<AsyncJobEntity>()
+                        .eq(AsyncJobEntity::getId, jobId)
+                        .in(AsyncJobEntity::getStatus, "QUEUED", "RETRY_WAIT")
+                        .set(AsyncJobEntity::getStatus, "RUNNING")
+                        .set(AsyncJobEntity::getStartedAt, OffsetDateTime.now())
+                        .set(AsyncJobEntity::getNextRetryAt, null)
+                        .setSql("lock_version = lock_version + 1"));
         if (claimed == 0) {
             return;
         }
@@ -326,8 +333,7 @@ public class AsyncJobService {
             AsyncJobEntity job = require(jobId);
             job.setProgress(safe);
             update(job);
-            appendEvent(jobId, "progress", "{\"progress\":" + safe + ",\"message\":\""
-                    + escape(message) + "\"}");
+            appendEvent(jobId, "progress", "{\"progress\":" + safe + ",\"message\":\"" + escape(message) + "\"}");
         }
 
         @Override
@@ -336,8 +342,12 @@ public class AsyncJobService {
         }
 
         private String escape(String value) {
-            return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"")
-                    .replace("\r", "\\r").replace("\n", "\\n");
+            return value == null
+                    ? ""
+                    : value.replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
+                            .replace("\r", "\\r")
+                            .replace("\n", "\\n");
         }
     }
 }

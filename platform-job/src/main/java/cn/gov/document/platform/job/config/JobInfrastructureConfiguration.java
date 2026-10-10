@@ -2,12 +2,11 @@ package cn.gov.document.platform.job.config;
 
 import cn.gov.document.platform.job.application.IdempotencyService;
 import cn.gov.document.platform.job.web.IdempotencyFilter;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class JobInfrastructureConfiguration {
@@ -31,8 +30,7 @@ public class JobInfrastructureConfiguration {
     }
 
     @Bean
-    FilterRegistrationBean<IdempotencyFilter> disableAutomaticIdempotencyFilterRegistration(
-            IdempotencyFilter filter) {
+    FilterRegistrationBean<IdempotencyFilter> disableAutomaticIdempotencyFilterRegistration(IdempotencyFilter filter) {
         FilterRegistrationBean<IdempotencyFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;

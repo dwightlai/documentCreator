@@ -14,20 +14,67 @@ public class DocumentVersionEntity extends BaseEntity {
     private Integer wordCount;
     private Boolean isRetained;
 
-    public String getDocumentId() { return documentId; }
-    public void setDocumentId(String value) { documentId = value; }
-    public Integer getVersionNumber() { return versionNumber; }
-    public void setVersionNumber(Integer value) { versionNumber = value; }
-    public String getVersionType() { return versionType; }
-    public void setVersionType(String value) { versionType = value; }
-    public String getChangeSource() { return changeSource; }
-    public void setChangeSource(String value) { changeSource = value; }
-    public String getChangeDescription() { return changeDescription; }
-    public void setChangeDescription(String value) { changeDescription = value; }
-    public String getContentStoragePath() { return contentStoragePath; }
-    public void setContentStoragePath(String value) { contentStoragePath = value; }
-    public Integer getWordCount() { return wordCount; }
-    public void setWordCount(Integer value) { wordCount = value; }
-    public Boolean getIsRetained() { return isRetained; }
-    public void setIsRetained(Boolean value) { isRetained = value; }
+    public String getDocumentId() {
+        return documentId;
+    }
+
+    public void setDocumentId(String value) {
+        documentId = value;
+    }
+
+    public Integer getVersionNumber() {
+        return versionNumber;
+    }
+
+    public void setVersionNumber(Integer value) {
+        versionNumber = value;
+    }
+
+    public String getVersionType() {
+        return versionType;
+    }
+
+    public void setVersionType(String value) {
+        versionType = value;
+    }
+
+    public String getChangeSource() {
+        return changeSource;
+    }
+
+    public void setChangeSource(String value) {
+        changeSource = value;
+    }
+
+    public String getChangeDescription() {
+        return changeDescription;
+    }
+
+    public void setChangeDescription(String value) {
+        changeDescription = value;
+    }
+
+    public String getContentStoragePath() {
+        return contentStoragePath;
+    }
+
+    public void setContentStoragePath(String value) {
+        contentStoragePath = value;
+    }
+
+    public Integer getWordCount() {
+        return wordCount;
+    }
+
+    public void setWordCount(Integer value) {
+        wordCount = value;
+    }
+
+    public Boolean getIsRetained() {
+        return isRetained;
+    }
+
+    public void setIsRetained(Boolean value) {
+        isRetained = value;
+    }
 }

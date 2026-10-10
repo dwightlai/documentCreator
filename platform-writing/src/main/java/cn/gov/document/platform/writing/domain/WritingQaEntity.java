@@ -1,2 +1,80 @@
-package cn.gov.document.platform.writing.domain;import cn.gov.document.platform.common.domain.BaseEntity;import com.baomidou.mybatisplus.annotation.TableName;
-@TableName("ai_writing_qa")public class WritingQaEntity extends BaseEntity{private String taskId,questionText,answerText,sourceReferences,answerType,insertedDocumentId,insertedParagraphId;private Boolean inserted;public String getTaskId(){return taskId;}public void setTaskId(String v){taskId=v;}public String getQuestionText(){return questionText;}public void setQuestionText(String v){questionText=v;}public String getAnswerText(){return answerText;}public void setAnswerText(String v){answerText=v;}public String getSourceReferences(){return sourceReferences;}public void setSourceReferences(String v){sourceReferences=v;}public String getAnswerType(){return answerType;}public void setAnswerType(String v){answerType=v;}public Boolean getInserted(){return inserted;}public void setInserted(Boolean v){inserted=v;}public String getInsertedDocumentId(){return insertedDocumentId;}public void setInsertedDocumentId(String v){insertedDocumentId=v;}public String getInsertedParagraphId(){return insertedParagraphId;}public void setInsertedParagraphId(String v){insertedParagraphId=v;}}
+package cn.gov.document.platform.writing.domain;
+
+import cn.gov.document.platform.common.domain.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableName;
+
+@TableName("ai_writing_qa")
+public class WritingQaEntity extends BaseEntity {
+    private String taskId,
+            questionText,
+            answerText,
+            sourceReferences,
+            answerType,
+            insertedDocumentId,
+            insertedParagraphId;
+    private Boolean inserted;
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(String v) {
+        taskId = v;
+    }
+
+    public String getQuestionText() {
+        return questionText;
+    }
+
+    public void setQuestionText(String v) {
+        questionText = v;
+    }
+
+    public String getAnswerText() {
+        return answerText;
+    }
+
+    public void setAnswerText(String v) {
+        answerText = v;
+    }
+
+    public String getSourceReferences() {
+        return sourceReferences;
+    }
+
+    public void setSourceReferences(String v) {
+        sourceReferences = v;
+    }
+
+    public String getAnswerType() {
+        return answerType;
+    }
+
+    public void setAnswerType(String v) {
+        answerType = v;
+    }
+
+    public Boolean getInserted() {
+        return inserted;
+    }
+
+    public void setInserted(Boolean v) {
+        inserted = v;
+    }
+
+    public String getInsertedDocumentId() {
+        return insertedDocumentId;
+    }
+
+    public void setInsertedDocumentId(String v) {
+        insertedDocumentId = v;
+    }
+
+    public String getInsertedParagraphId() {
+        return insertedParagraphId;
+    }
+
+    public void setInsertedParagraphId(String v) {
+        insertedParagraphId = v;
+    }
+}
