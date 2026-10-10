@@ -28,6 +28,8 @@ jobs:
         run: |
           bash -n deploy/ops/*.sh
           python -m json.tool deploy/keycloak/platform-realm.json >/dev/null
+      - name: Check Java formatting
+        run: bash mvnw -B -ntp spotless:check
       - name: Unit and H2 integration tests
         run: bash mvnw -B -ntp -pl platform-bootstrap -am test
       - name: Package backend
