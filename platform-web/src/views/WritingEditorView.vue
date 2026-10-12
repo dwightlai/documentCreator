@@ -333,13 +333,13 @@ onBeforeUnmount(endEditing)
 .version-list b{color:#c4302b}
 .version-list div{display:grid;gap:2px;min-width:0}
 .version-list strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.version-list small{color:#9aa0a8;font-size:12px}
+.version-list small{color:#6b7280;font-size:12px}
 .version-list footer{display:flex;gap:6px}
 .version-list footer button{padding:4px 10px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
 .version-state{padding:1px 8px;border-radius:999px;font-size:12px;background:#f0f2f5;color:#646a73}
 .version-state.protected{background:#e8f5ee;color:#18794e}
 .version-state.pending{background:#fff4e5;color:#9a5b13}
-.version-state.purged{background:#f0f2f5;color:#9aa0a8}
+.version-state.purged{background:#f0f2f5;color:#6b7280}
 .version-state.current{background:#fdf0ef;color:#c4302b}
 .origin-tag{margin-right:8px;padding:1px 8px;border-radius:999px;font-style:normal;font-size:12px;cursor:help}
 .origin-tag.ai{background:#e8f0fe;color:#1a56db}

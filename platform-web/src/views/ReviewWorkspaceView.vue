@@ -215,12 +215,12 @@ onMounted(load)
 </template>
 
 <style scoped>
-.plan-levels{margin-top:-4px;color:#9aa0a8;font-size:12px}
+.plan-levels{margin-top:-4px;color:#6b7280;font-size:12px}
 .level-tabs button{padding:11px 16px;color:#646a73;background:transparent;border:0;border-bottom:2px solid transparent;font-size:14px;cursor:pointer}
 .level-tabs button.active{color:var(--red);border-bottom-color:var(--red);font-weight:600}
 .level-chip{margin-left:8px;padding:1px 8px;border-radius:999px;background:#eef0f4;color:#4b5563;font-size:12px;font-weight:500}
 .level-chip.model{background:#efe9ff;color:#5b3fc4}
 .level-chip.group{background:#e8f5ee;color:#18794e}
 .text-change.manual mark{padding:3px 6px;border-radius:4px;background:#fff4e5;color:#9a5b13}
-.text-change.manual small{color:#9aa0a8;font-size:13px;font-weight:400}
+.text-change.manual small{color:#6b7280;font-size:13px;font-weight:400}
 </style>
