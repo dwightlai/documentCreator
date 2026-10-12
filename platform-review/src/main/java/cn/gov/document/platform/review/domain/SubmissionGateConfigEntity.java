@@ -11,6 +11,18 @@ public class SubmissionGateConfigEntity extends BaseEntity {
     private Boolean blockOnSevere;
     private Boolean requireImportantProcessed;
     private Boolean requireReport;
+    /** 允许清空：null 也要写回数据库。 */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String requiredSubmitRole;
+
+    public String getRequiredSubmitRole() {
+        return requiredSubmitRole;
+    }
+
+    public void setRequiredSubmitRole(String value) {
+        requiredSubmitRole = value;
+    }
 
     public Boolean getRequireReview() {
         return requireReview;

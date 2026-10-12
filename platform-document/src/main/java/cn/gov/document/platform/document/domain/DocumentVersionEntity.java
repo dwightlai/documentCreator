@@ -14,7 +14,11 @@ public class DocumentVersionEntity extends BaseEntity {
     private Integer wordCount;
     private Boolean isRetained;
     private Boolean isProtected;
+    /** 保护或撤销标记时需要清空：null 也要写回数据库。 */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private java.time.OffsetDateTime retentionMarkedAt;
+
     private java.time.OffsetDateTime contentPurgedAt;
 
     public String getDocumentId() {

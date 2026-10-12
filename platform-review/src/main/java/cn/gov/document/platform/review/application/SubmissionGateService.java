@@ -68,6 +68,12 @@ public class SubmissionGateService {
         entity.setBlockOnSevere(request.blockOnSevere());
         entity.setRequireImportantProcessed(request.requireImportantProcessed());
         entity.setRequireReport(request.requireReport());
+        String role = request.requiredSubmitRole() == null
+                ? null
+                : request.requiredSubmitRole().trim();
+        if (role != null && !role.isEmpty() && !role.matches("[A-Za-z][A-Za-z0-9._-]{1,48}"))
+            throw BusinessException.unprocessable("提交角色名称不合法");
+        entity.setRequiredSubmitRole(role == null || role.isEmpty() ? null : role);
         if (created) configMapper.insert(entity);
         else if (configMapper.updateById(entity) != 1) throw BusinessException.conflict("门禁配置已被其他用户修改，请刷新后重试");
         return SubmissionGateDtos.Config.from(entity);
@@ -77,6 +83,16 @@ public class SubmissionGateService {
         writingTaskService.require(writingTaskId);
         SubmissionGateDtos.Config config = config();
         List<SubmissionGateDtos.Rule> rules = new ArrayList<>();
+        if (config.requiredSubmitRole() != null) {
+            boolean hasRole = currentUserHasRole(config.requiredSubmitRole());
+            rules.add(new SubmissionGateDtos.Rule(
+                    "SUBMIT_ROLE",
+                    "由指定角色确认提交",
+                    hasRole,
+                    hasRole
+                            ? "当前用户具备 " + config.requiredSubmitRole() + " 角色"
+                            : "须由具备 " + config.requiredSubmitRole() + " 角色的人员提交"));
+        }
         DocumentDtos.DocumentResponse document;
         try {
             document = documentService.get(writingTaskId);
@@ -153,6 +169,14 @@ public class SubmissionGateService {
                 passed
                         ? "审校基于 V" + reviewed + "，此后仅有采纳审校建议产生的修改"
                         : "审校基于 V" + reviewed + "，之后的 V" + unreviewed.get(0) + " 等版本有其他修改，请重新审校");
+    }
+
+    private static boolean currentUserHasRole(String role) {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication();
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> ("ROLE_" + role).equals(authority.getAuthority()));
     }
 
     private long countIssues(String reviewTaskId, String risk, List<String> statuses) {

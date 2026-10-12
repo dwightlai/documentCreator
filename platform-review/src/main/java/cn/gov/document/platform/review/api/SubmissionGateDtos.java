@@ -11,8 +11,9 @@ public final class SubmissionGateDtos {
             boolean requireLatestReview,
             boolean blockOnSevere,
             boolean requireImportantProcessed,
-            boolean requireReport) {
-        public static final Config DEFAULT = new Config(true, true, true, true, true);
+            boolean requireReport,
+            String requiredSubmitRole) {
+        public static final Config DEFAULT = new Config(true, true, true, true, true, null);
 
         public static Config from(SubmissionGateConfigEntity entity) {
             if (entity == null) return DEFAULT;
@@ -21,7 +22,8 @@ public final class SubmissionGateDtos {
                     !Boolean.FALSE.equals(entity.getRequireLatestReview()),
                     !Boolean.FALSE.equals(entity.getBlockOnSevere()),
                     !Boolean.FALSE.equals(entity.getRequireImportantProcessed()),
-                    !Boolean.FALSE.equals(entity.getRequireReport()));
+                    !Boolean.FALSE.equals(entity.getRequireReport()),
+                    entity.getRequiredSubmitRole());
         }
     }
 

@@ -58,6 +58,7 @@ public class DocumentController {
         return ApiResponse.success(service.restore(taskId, versionNumber));
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('platform.admin')")
     @PutMapping("/versions/{versionNumber}/protection")
     ApiResponse<DocumentDtos.VersionResponse> protectVersion(
             @PathVariable String taskId,

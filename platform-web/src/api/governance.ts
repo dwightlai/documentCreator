@@ -168,6 +168,6 @@ export const deactivateDocumentType = (code: string) => data(http.patch<ApiEnvel
 export const listAuditLogs = (auditType?: string, targetId?: string) => data(http.get<ApiEnvelope<AuditLog[]>>('/audit-logs', { params: { auditType: auditType || undefined, targetId: targetId || undefined, limit: 200 } }))
 
 /** §31.3 提交门禁（单位级配置） */
-export interface SubmissionGateConfig { requireReview: boolean; requireLatestReview: boolean; blockOnSevere: boolean; requireImportantProcessed: boolean; requireReport: boolean }
+export interface SubmissionGateConfig { requireReview: boolean; requireLatestReview: boolean; blockOnSevere: boolean; requireImportantProcessed: boolean; requireReport: boolean; requiredSubmitRole?: string | null }
 export const getSubmissionGate = () => data(http.get<ApiEnvelope<SubmissionGateConfig>>('/submission-gate'))
 export const updateSubmissionGate = (config: SubmissionGateConfig) => data(http.put<ApiEnvelope<SubmissionGateConfig>>('/submission-gate', config))

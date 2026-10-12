@@ -21,6 +21,7 @@ public class SubmissionGateController {
         return ApiResponse.success(service.config());
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('platform.admin')")
     @PutMapping("/api/v1/submission-gate")
     ApiResponse<SubmissionGateDtos.Config> update(@RequestBody SubmissionGateDtos.Config request) {
         return ApiResponse.success(service.updateConfig(request));

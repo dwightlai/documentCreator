@@ -16,6 +16,7 @@ public class VersionRetentionController {
         this.service = service;
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('platform.admin')")
     @PostMapping("/run")
     ApiResponse<VersionRetentionService.Result> run() {
         return ApiResponse.success(service.runForCurrentTenant());

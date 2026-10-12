@@ -34,6 +34,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(400, exception.getMessage()));
     }
 
+    /** 方法级权限校验（@PreAuthorize）失败：返回 403，而不是落入兜底的 500。 */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    ResponseEntity<ApiResponse<Void>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException exception) {
+        return ResponseEntity.status(403).body(ApiResponse.error(403, "无权执行该操作"));
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    ResponseEntity<ApiResponse<Void>> handleUnauthenticated(
+            org.springframework.security.core.AuthenticationException exception) {
+        return ResponseEntity.status(401).body(ApiResponse.error(401, "请先登录"));
+    }
+
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     ResponseEntity<ApiResponse<Void>> handleUnreadableBody(
             org.springframework.http.converter.HttpMessageNotReadableException exception) {
