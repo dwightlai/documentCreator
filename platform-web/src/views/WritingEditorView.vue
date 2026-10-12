@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
@@ -16,6 +16,7 @@ import {
   downloadWritingDocument,
   generateOutline,
   getCurrentOutline,
+  getAiDisclosure,
   getWritingDocument,
   getWritingTask,
   listWritingMaterials,
@@ -53,6 +54,12 @@ const streamText = ref('')
 const LEASE_RENEW_MS = 4 * 60 * 1000
 const lease = ref<{ paragraphId: string; timer: ReturnType<typeof setInterval> }>()
 const leaseBlocked = reactive<Record<string, string>>({})
+const disclosure = ref<{ aiGeneratedRatio: number; modelVersions: string[] }>()
+const includeDisclosure = ref(false)
+/** §33 编辑界面标注：蓝色=AI生成/改写/推荐，绿色=引用原文，灰色=人工录入。 */
+const ORIGIN_CLASS: Record<string, string> = { AI生成: 'ai', AI改写: 'ai', AI推荐: 'ai', 引用原文: 'quote', 人工录入: 'manual' }
+const aiPercent = computed(() => disclosure.value ? Math.round(disclosure.value.aiGeneratedRatio * 100) : 0)
+async function refreshDisclosure() { try { disclosure.value = await getAiDisclosure(taskId.value) } catch { disclosure.value = undefined } }
 const conflict = ref<{ mine: string; latest: DocumentParagraph; latestDocument: WritingDocument }>()
 const materialForm = reactive({ materialName:'', sourceType:'上传', authorityLevel:'正式公文', usageMode:'全文参考', citationPurpose:'事实依据', permissionStatus:'允许', selectedFragment:'', locked:true })
 
@@ -165,11 +172,12 @@ async function discardMine() {
   ElMessage.info('已放弃本次修改并载入最新内容')
 }
 async function toggleLock(paragraph:DocumentParagraph) { try { document.value=await setParagraphLock(taskId.value,paragraph.id,!paragraph.locked); ElMessage.success(paragraph.locked?'段落已解锁':'段落已锁定') } catch(error){ElMessage.error(message(error))} }
-async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
+async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format,includeDisclosure.value); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
 async function startReview(){try{const review=await initiateReview(taskId.value);ElMessage.success('审校任务已创建，正在进入问题工作台');await router.push({path:'/review',query:{taskId:review.id}})}catch(error){ElMessage.error(message(error))}}
 function chooseMaterialFile(event:Event){materialFile.value=(event.target as HTMLInputElement).files?.[0]}
 
 onMounted(load)
+watch(() => document.value?.currentVersion, (version) => { if (version) refreshDisclosure() })
 onBeforeUnmount(endEditing)
 </script>
 
@@ -179,7 +187,7 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
@@ -214,7 +222,7 @@ onBeforeUnmount(endEditing)
           <section v-if="document?.paragraphs.length" class="paper-sheet">
             <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
             <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><textarea v-model="paragraph.plainText" :disabled="paragraph.locked" :readonly="!!leaseBlocked[paragraph.id]" @focus="beginEditing(paragraph)" rows="8" @click.stop /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><textarea v-model="paragraph.plainText" :disabled="paragraph.locked" :readonly="!!leaseBlocked[paragraph.id]" @focus="beginEditing(paragraph)" rows="8" @click.stop /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
             </article>
           </section>
           <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
@@ -239,6 +247,11 @@ onBeforeUnmount(endEditing)
 </template>
 
 <style scoped>
+.origin-tag{margin-right:8px;padding:1px 8px;border-radius:999px;font-style:normal;font-size:12px;cursor:help}
+.origin-tag.ai{background:#e8f0fe;color:#1a56db}
+.origin-tag.quote{background:#e8f5ee;color:#18794e}
+.origin-tag.manual{background:#f0f2f5;color:#646a73}
+.disclosure-toggle{display:flex;align-items:center;gap:6px;padding:0 10px;color:#c3cadb;font-size:13px;cursor:pointer}
 .lease-blocked{margin:6px 0 0;padding:6px 10px;border-radius:6px;background:#fff4e5;color:#9a5b13;font-size:13px}
 .conflict-intro{margin:0 0 14px;color:#646a73;font-size:14px;line-height:1.7}
 .conflict-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}

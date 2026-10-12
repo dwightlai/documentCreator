@@ -12,6 +12,7 @@ public class DocumentParagraphEntity extends BaseEntity {
     private String contentSourceLevel;
     private String sourceMaterialIds;
     private Boolean isLocked;
+    private String contentOrigin;
     private String plainText;
 
     public String getDocumentId() {
@@ -44,6 +45,15 @@ public class DocumentParagraphEntity extends BaseEntity {
 
     public void setParagraphOrder(Integer value) {
         paragraphOrder = value;
+    }
+
+    /** §33 内容来源类型：AI生成、AI改写、AI推荐、人工录入、引用原文。 */
+    public String getContentOrigin() {
+        return contentOrigin;
+    }
+
+    public void setContentOrigin(String value) {
+        contentOrigin = value;
     }
 
     public String getContentSourceLevel() {

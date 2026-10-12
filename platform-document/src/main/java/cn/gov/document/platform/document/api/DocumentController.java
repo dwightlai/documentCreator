@@ -89,6 +89,12 @@ public class DocumentController {
         return ApiResponse.success(null);
     }
 
+    /** §33 AI 生成内容标识摘要：AI 参与内容占比、模型版本、生成记录数。 */
+    @GetMapping("/ai-disclosure")
+    ApiResponse<DocumentService.AiDisclosure> aiDisclosure(@PathVariable String taskId) {
+        return ApiResponse.success(service.aiDisclosure(taskId));
+    }
+
     @PostMapping("/export")
     ResponseEntity<byte[]> export(
             @PathVariable String taskId, @RequestBody(required = false) DocumentDtos.ExportRequest request) {
@@ -96,13 +102,20 @@ public class DocumentController {
                 ? "DOCX"
                 : request.format().toUpperCase();
         boolean retainCitations = request == null || request.retainCitations() == null || request.retainCitations();
-        DocumentService.ExportData data = service.exportData(taskId, retainCitations);
+        boolean sourceComments = request == null || request.sourceComments() == null || request.sourceComments();
+        boolean appendDisclosure = request != null && Boolean.TRUE.equals(request.aiDisclosure());
+        DocumentService.ExportData exported = service.exportData(taskId, retainCitations);
+        DocumentService.AiDisclosure disclosure = service.aiDisclosure(taskId);
+        DocumentService.ExportData data = appendDisclosure
+                ? new DocumentService.ExportData(
+                        exported.document(), DisclosureParagraph.append(exported.paragraphs(), disclosure))
+                : exported;
         byte[] body;
         MediaType contentType;
         String extension;
         switch (format) {
             case "DOCX" -> {
-                body = exporter.export(data.document(), data.paragraphs());
+                body = exporter.export(data.document(), data.paragraphs(), disclosure, sourceComments);
                 contentType = MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
                 extension = "docx";

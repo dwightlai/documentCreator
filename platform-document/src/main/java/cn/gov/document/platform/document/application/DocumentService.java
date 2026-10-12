@@ -166,6 +166,7 @@ public class DocumentService {
         paragraph.setOutlineNodeId(node.getId());
         paragraph.setParagraphOrder(order);
         paragraph.setContentSourceLevel("基于归纳");
+        paragraph.setContentOrigin("AI生成");
         paragraph.setSourceMaterialIds(
                 node.getReferencedMaterialIds() == null ? "[]" : node.getReferencedMaterialIds());
         paragraph.setIsLocked(false);
@@ -220,6 +221,7 @@ public class DocumentService {
             if (!"续写".equals(generationType) && old.getId().equals(source.getId())) {
                 copy.setPlainText(output);
                 copy.setContentSourceLevel("无来源");
+                copy.setContentOrigin("AI改写");
             }
             paragraphMapper.insert(copy);
             if ("续写".equals(generationType) || !old.getId().equals(source.getId()))
@@ -234,6 +236,7 @@ public class DocumentService {
             continuation.setOutlineNodeId(source.getOutlineNodeId());
             continuation.setParagraphOrder(source.getParagraphOrder() + 1);
             continuation.setContentSourceLevel("无来源");
+            continuation.setContentOrigin("AI生成");
             continuation.setSourceMaterialIds("[]");
             continuation.setIsLocked(false);
             continuation.setPlainText(output);
@@ -284,6 +287,7 @@ public class DocumentService {
         inserted.setOutlineNodeId(anchor.getOutlineNodeId());
         inserted.setParagraphOrder(anchor.getParagraphOrder() + 1);
         inserted.setContentSourceLevel("原文摘录汇总".equals(qa.getAnswerType()) ? "有直接来源" : "无来源");
+        inserted.setContentOrigin("原文摘录汇总".equals(qa.getAnswerType()) ? "引用原文" : "AI推荐");
         inserted.setSourceMaterialIds("[]");
         inserted.setIsLocked(false);
         inserted.setPlainText(qa.getAnswerText());
@@ -324,6 +328,7 @@ public class DocumentService {
             if (old.getId().equals(paragraphId)) {
                 copy.setPlainText(request.plainText().trim());
                 copy.setContentSourceLevel("手工");
+                copy.setContentOrigin("人工录入");
             }
             paragraphMapper.insert(copy);
             if (!old.getId().equals(paragraphId)) cloneCitations(old.getId(), copy.getId(), document.getId());
@@ -364,6 +369,35 @@ public class DocumentService {
         DocumentEntity document = requireDocument(taskId);
         List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
         return new ExportData(document, retainCitations ? withCitationMarkers(document.getId(), current) : current);
+    }
+
+    public AiDisclosure aiDisclosure(String taskId) {
+        DocumentEntity document = requireDocument(taskId);
+        List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
+        long total = current.stream().mapToLong(p -> length(p.getPlainText())).sum();
+        long ai = current.stream()
+                .filter(p ->
+                        p.getContentOrigin() != null && p.getContentOrigin().startsWith("AI"))
+                .mapToLong(p -> length(p.getPlainText()))
+                .sum();
+        java.math.BigDecimal ratio = total == 0
+                ? java.math.BigDecimal.ZERO
+                : java.math.BigDecimal.valueOf(ai)
+                        .divide(java.math.BigDecimal.valueOf(total), 4, java.math.RoundingMode.HALF_UP);
+        List<GenerationRecordEntity> records =
+                generationRecordMapper.selectList(new LambdaQueryWrapper<GenerationRecordEntity>()
+                        .eq(GenerationRecordEntity::getDocumentId, document.getId()));
+        List<String> models = records.stream()
+                .map(GenerationRecordEntity::getModelVersion)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+        return new AiDisclosure(ratio, models, records.size());
+    }
+
+    private static long length(String text) {
+        return text == null ? 0 : text.codePointCount(0, text.length());
     }
 
     private List<DocumentParagraphEntity> withCitationMarkers(String documentId, List<DocumentParagraphEntity> source) {
@@ -642,6 +676,7 @@ public class DocumentService {
         copy.setOutlineNodeId(source.getOutlineNodeId());
         copy.setParagraphOrder(source.getParagraphOrder());
         copy.setContentSourceLevel(source.getContentSourceLevel());
+        copy.setContentOrigin(source.getContentOrigin());
         copy.setSourceMaterialIds(source.getSourceMaterialIds());
         copy.setIsLocked(source.getIsLocked());
         copy.setPlainText(source.getPlainText());
@@ -817,4 +852,8 @@ public class DocumentService {
     }
 
     public record ExportData(DocumentEntity document, List<DocumentParagraphEntity> paragraphs) {}
+
+    /** §33 AI 生成内容标识：AI 参与内容的字数占比、使用过的模型版本和生成记录数。 */
+    public record AiDisclosure(
+            java.math.BigDecimal aiGeneratedRatio, List<String> modelVersions, long generationRecordsCount) {}
 }

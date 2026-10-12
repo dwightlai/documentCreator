@@ -35,7 +35,15 @@ public final class DocumentDtos {
     /** 段落编辑租约：持有期间其他用户不能保存该段落。 */
     public record EditLeaseResponse(String paragraphId, String holderId, java.time.Instant expiresAt) {}
 
-    public record ExportRequest(String format, Boolean retainCitations) {}
+    /**
+     * @param sourceComments DOCX 中为 AI 参与生成的段落添加来源批注（默认开启）
+     * @param aiDisclosure 在正文末尾追加“AI 辅助生成说明”段落（默认关闭，对外发布场景应开启，§33）
+     */
+    public record ExportRequest(String format, Boolean retainCitations, Boolean sourceComments, Boolean aiDisclosure) {
+        public ExportRequest(String format, Boolean retainCitations) {
+            this(format, retainCitations, null, null);
+        }
+    }
 
     public record ParagraphResponse(
             String id,
@@ -45,7 +53,8 @@ public final class DocumentDtos {
             List<String> sourceMaterialIds,
             boolean locked,
             String plainText,
-            int lockVersion) {
+            int lockVersion,
+            String contentOrigin) {
         static ParagraphResponse from(DocumentParagraphEntity entity) {
             return new ParagraphResponse(
                     entity.getId(),
@@ -55,7 +64,8 @@ public final class DocumentDtos {
                     parseIds(entity.getSourceMaterialIds()),
                     Boolean.TRUE.equals(entity.getIsLocked()),
                     entity.getPlainText(),
-                    entity.getLockVersion());
+                    entity.getLockVersion(),
+                    entity.getContentOrigin());
         }
     }
 

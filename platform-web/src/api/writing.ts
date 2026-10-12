@@ -44,7 +44,7 @@ export interface WritingOutline {
   id:string;taskId:string;version:number;confirmed:boolean;confirmedBy?:string;confirmedAt?:string;structureCheckResult:string;lockVersion:number;nodes:OutlineNode[]
 }
 export interface DocumentParagraph {
-  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number
+  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string
 }
 export interface WritingDocument {
   id:string;taskId:string;title:string;contentType:string;totalWordCount:number;securityLevel:string;currentVersion:number;status:string;paragraphs:DocumentParagraph[];updatedAt:string
@@ -171,7 +171,9 @@ export const setParagraphLock = (taskId:string,paragraphId:string,locked:boolean
 export interface EditLease { paragraphId:string;holderId:string;expiresAt:string }
 export const acquireEditLease = (taskId:string,paragraphId:string) => data(http.post<ApiEnvelope<EditLease>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
 export const releaseEditLease = (taskId:string,paragraphId:string) => data(http.delete<ApiEnvelope<null>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
-export const downloadWritingDocument = async (taskId:string,format:'DOCX'|'PDF') => (await http.post(`/writing-tasks/${taskId}/document/export`,{format},{responseType:'blob'})).data as Blob
+export interface AiDisclosure { aiGeneratedRatio:number;modelVersions:string[];generationRecordsCount:number }
+export const getAiDisclosure = (taskId:string) => data(http.get<ApiEnvelope<AiDisclosure>>(`/writing-tasks/${taskId}/document/ai-disclosure`))
+export const downloadWritingDocument = async (taskId:string,format:'DOCX'|'PDF',aiDisclosure=false) => (await http.post(`/writing-tasks/${taskId}/document/export`,{format,aiDisclosure},{responseType:'blob'})).data as Blob
 
 function parseReferencedIds(value:string) {
   try { const parsed:unknown = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.map(String) : [] }
