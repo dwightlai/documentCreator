@@ -53,6 +53,16 @@ platform:
       callback-allowlist: ${OA_CALLBACK_ALLOWLIST:}
       shared-secret: ${OA_SHARED_SECRET:}
       callback-timeout: ${OA_CALLBACK_TIMEOUT:10s}
+  ocr:
+    # 内网 OCR 服务地址，留空则不启用；扫描版 PDF 将提示人工录入
+    endpoint: ${PLATFORM_OCR_ENDPOINT:}
+    timeout: ${PLATFORM_OCR_TIMEOUT:60s}
+    # 访问令牌所在的环境变量名（不直接写令牌）
+    token-env: ${PLATFORM_OCR_TOKEN_ENV:}
+  retention:
+    ai-generated-days: 30
+    ai-generated-max: 50
+    purge-grace-days: 7
   coordination:
     # memory 仅适用于单实例开发；多实例部署必须使用 redis
     type: ${PLATFORM_COORDINATION_TYPE:memory}

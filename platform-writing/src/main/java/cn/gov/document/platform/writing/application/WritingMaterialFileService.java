@@ -3,6 +3,7 @@ package cn.gov.document.platform.writing.application;
 import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.file.DocxSecurityValidator;
+import cn.gov.document.platform.common.ocr.OcrPort;
 import cn.gov.document.platform.common.storage.ObjectStorage;
 import cn.gov.document.platform.writing.api.WritingMaterialDtos;
 import java.io.ByteArrayInputStream;
@@ -27,10 +28,13 @@ public class WritingMaterialFileService {
     private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
     private final WritingMaterialService materialService;
     private final ObjectStorage objectStorage;
+    private final OcrPort ocr;
 
-    public WritingMaterialFileService(WritingMaterialService materialService, ObjectStorage objectStorage) {
+    public WritingMaterialFileService(
+            WritingMaterialService materialService, ObjectStorage objectStorage, OcrPort ocr) {
         this.materialService = materialService;
         this.objectStorage = objectStorage;
+        this.ocr = ocr;
     }
 
     public WritingMaterialDtos.Response upload(
@@ -51,7 +55,14 @@ public class WritingMaterialFileService {
         String originalName =
                 safeFilename(Optional.ofNullable(file.getOriginalFilename()).orElse("material.txt"));
         String extracted = extract(originalName, bytes);
-        if (!StringUtils.hasText(extracted)) throw BusinessException.unprocessable("文件未提取到文本，扫描版 PDF 请先完成 OCR");
+        // 扫描版 PDF 没有文字层，配置了 OCR 服务时自动识别
+        if (!StringUtils.hasText(extracted)
+                && originalName.toLowerCase(Locale.ROOT).endsWith(".pdf")
+                && ocr.enabled())
+            extracted = ocr.recognize(originalName, "application/pdf", bytes).orElse("");
+        if (!StringUtils.hasText(extracted))
+            throw BusinessException.unprocessable(
+                    ocr.enabled() ? "文件未识别出文字，请检查扫描质量或人工录入材料" : "文件未提取到文本，扫描版 PDF 请先完成 OCR");
         String hash = sha256(bytes);
         String key = RequestContext.tenantId() + "/writing-materials/" + taskId + "/"
                 + UUID.randomUUID().toString().replace("-", "") + "/" + originalName;

@@ -30,16 +30,19 @@ public class KnowledgeService {
     private final KnowledgeDocumentMapper documentMapper;
     private final KnowledgeChunkMapper chunkMapper;
     private final KnowledgeFileStore fileStore;
+    private final cn.gov.document.platform.common.ocr.OcrPort ocr;
 
     public KnowledgeService(
             KnowledgeSourceMapper sourceMapper,
             KnowledgeDocumentMapper documentMapper,
             KnowledgeChunkMapper chunkMapper,
-            KnowledgeFileStore fileStore) {
+            KnowledgeFileStore fileStore,
+            cn.gov.document.platform.common.ocr.OcrPort ocr) {
         this.sourceMapper = sourceMapper;
         this.documentMapper = documentMapper;
         this.chunkMapper = chunkMapper;
         this.fileStore = fileStore;
+        this.ocr = ocr;
     }
 
     @Transactional
@@ -115,7 +118,10 @@ public class KnowledgeService {
                 > 0) throw BusinessException.conflict("同一知识库中已存在相同文件");
         String filename = Optional.ofNullable(file.getOriginalFilename()).orElse("document.txt");
         String extracted = extract(filename, bytes);
-        if (!StringUtils.hasText(extracted)) throw BusinessException.unprocessable("文档未提取到可检索文本，扫描件请先完成 OCR");
+        if (!StringUtils.hasText(extracted) && filename.toLowerCase(Locale.ROOT).endsWith(".pdf") && ocr.enabled())
+            extracted = ocr.recognize(filename, "application/pdf", bytes).orElse("");
+        if (!StringUtils.hasText(extracted))
+            throw BusinessException.unprocessable(ocr.enabled() ? "文档未识别出可检索文字，请检查扫描质量" : "文档未提取到可检索文本，扫描件请先完成 OCR");
         KnowledgeDocumentEntity e = new KnowledgeDocumentEntity();
         e.setId(UUID.randomUUID().toString().replace("-", ""));
         e.setTenantId(RequestContext.tenantId());
