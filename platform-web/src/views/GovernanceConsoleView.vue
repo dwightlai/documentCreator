@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import {
@@ -18,15 +18,32 @@ import {
   submitPromptTemplate,
   testDocumentType,
   testPromptTemplate,
+  getSubmissionGate,
+  updateSubmissionGate,
+  type SubmissionGateConfig,
   type AuditLog,
   type DocumentTypeConfig,
   type ModelConfig,
   type PromptTemplate,
 } from '@/api/governance'
 
-type Panel = 'models' | 'prompts' | 'documentTypes' | 'audit'
+type Panel = 'models' | 'prompts' | 'documentTypes' | 'gate' | 'audit'
 
 const activePanel = ref<Panel>('models')
+const gate = ref<SubmissionGateConfig>()
+watch(activePanel, (panel) => { if (panel === 'gate' && !gate.value) loadGate() })
+const GATE_RULES: { key: keyof SubmissionGateConfig; label: string; hint: string }[] = [
+  { key: 'requireReview', label: '必须完成智能审校', hint: '未发起审校的文稿不得提交' },
+  { key: 'requireLatestReview', label: '审校必须对应最新文稿', hint: '审校后除采纳审校建议外的修改，须重新审校' },
+  { key: 'blockOnSevere', label: '存在严重问题禁止提交', hint: '严重问题须处理；忽略时必须填写原因' },
+  { key: 'requireImportantProcessed', label: '重要问题必须全部处理', hint: '重要问题不得处于待处理状态' },
+  { key: 'requireReport', label: '必须生成审校报告', hint: '提交前须生成审校报告留档' },
+]
+async function loadGate() { try { gate.value = await getSubmissionGate() } catch (error) { ElMessage.error(error instanceof Error ? error.message : '门禁配置加载失败') } }
+async function saveGate() {
+  if (!gate.value) return
+  try { gate.value = await updateSubmissionGate(gate.value); ElMessage.success('提交门禁配置已保存') } catch (error) { ElMessage.error(error instanceof Error ? error.message : '保存失败') }
+}
 const loading = ref(false)
 const models = ref<ModelConfig[]>([])
 const prompts = ref<PromptTemplate[]>([])
@@ -183,7 +200,7 @@ onMounted(refreshAll)
       </header>
 
       <nav class="governance-tabs" aria-label="治理模块">
-        <button v-for="item in [{key:'models',label:'模型路由'},{key:'prompts',label:'提示词模板'},{key:'documentTypes',label:'文种配置'},{key:'audit',label:'审计台账'}]" :key="item.key" type="button" :class="{ active: activePanel === item.key }" @click="activePanel = item.key as Panel">
+        <button v-for="item in [{key:'models',label:'模型路由'},{key:'prompts',label:'提示词模板'},{key:'documentTypes',label:'文种配置'},{key:'gate',label:'提交门禁'},{key:'audit',label:'审计台账'}]" :key="item.key" type="button" :class="{ active: activePanel === item.key }" @click="activePanel = item.key as Panel">
           {{ item.label }}<i />
         </button>
       </nav>
@@ -221,6 +238,12 @@ onMounted(refreshAll)
         </div>
       </section>
 
+      <section v-else-if="activePanel === 'gate'" class="governance-panel">
+        <div class="panel-heading"><div><span class="section-no">SUBMISSION GATE / §31.3</span><h3>提交门禁</h3><p>文稿提交 OA 前须通过以下检查。“涉密文稿禁止调用外部模型”由模型网关统一拒绝，不在此配置。</p></div><button class="primary-button" type="button" @click="saveGate">保存配置</button></div>
+        <div v-if="gate" class="gate-config">
+          <label v-for="rule in GATE_RULES" :key="rule.key"><input v-model="gate[rule.key]" type="checkbox"><div><strong>{{ rule.label }}</strong><small>{{ rule.hint }}</small></div></label>
+        </div>
+      </section>
       <section v-else class="governance-panel">
         <header class="panel-heading"><div><span class="section-no">IMMUTABLE AUDIT TRAIL</span><h3>全链路审计台账</h3><p>记录登录访问、内容操作、模型调用、导出下载、规则配置和安全事件。</p></div><div class="audit-filters"><input v-model="auditType" aria-label="审计类型" placeholder="审计类型"><input v-model="auditTarget" aria-label="目标编号" placeholder="目标编号"><button type="button" @click="filterAudits">筛选</button></div></header>
         <div class="audit-ledger"><div class="audit-head"><span>时间 / 类型</span><span>操作与对象</span><span>操作人</span><span>数据级别</span></div><article v-for="item in audits" :key="item.id"><div><time>{{ displayTime(item.occurredAt) }}</time><b>{{ item.auditType }}</b></div><div><strong>{{ item.action }}</strong><p>{{ item.targetType }} / {{ item.targetId }}</p><small>{{ item.detail || '—' }}</small></div><div><strong>{{ item.operatorId }}</strong><small>{{ item.operatorRole }}</small></div><div><span class="level-mark">{{ item.dataLevel || '内部' }}</span><small>{{ item.ipAddress || '—' }}</small></div></article><div v-if="!audits.length" class="governance-empty">当前筛选条件下没有审计记录。</div></div>
@@ -245,5 +268,6 @@ onMounted(refreshAll)
 </template>
 
 <style scoped>
+.gate-config{display:grid;gap:10px;max-width:720px}.gate-config label{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;padding:14px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer}.gate-config input{width:18px;height:18px;margin-top:2px;accent-color:#c4302b}.gate-config div{display:grid;gap:3px}.gate-config strong{font-size:15px}.gate-config small{color:#646a73;font-size:13px}
 .governance-console{padding:34px 42px 70px}.governance-hero{display:grid;grid-template-columns:1.25fr 1fr;gap:56px;padding:38px 42px;background:#17231e;color:#f4f0e8;position:relative;overflow:hidden}.governance-hero:after{content:"治";position:absolute;right:-24px;bottom:-92px;font:220px/1 sans-serif;color:rgba(255,255,255,.035)}.governance-intro h2{margin:18px 0 14px;font:500 38px/1.24 "Noto Sans SC",sans-serif;letter-spacing:-1px}.governance-intro h2 em{color:#d8b36a;font-style:normal}.governance-intro p{max-width:600px;color:#aebbb5;line-height:1.8}.governance-metrics{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid rgba(255,255,255,.13);z-index:1}.governance-metrics article{padding:22px;border-right:1px solid rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13);display:grid;grid-template-columns:1fr auto;align-items:end}.governance-metrics article:nth-child(even){border-right:0}.governance-metrics article:nth-child(n+3){border-bottom:0}.governance-metrics span{color:#8fa097;font-size:13px}.governance-metrics strong{font:500 34px/1 sans-serif}.governance-metrics small{grid-column:1/-1;color:#aebbb5;margin-top:12px}.governance-metrics .alert strong{color:#d8b36a}.governance-intro>.section-no{color:#f09a90}.governance-tabs{display:flex;border-bottom:1px solid #d8d3c8;margin:26px 0 0}.governance-tabs button{border:0;background:none;padding:18px 26px;color:#625f58;position:relative;cursor:pointer;font-size:14px}.governance-tabs button.active{color:#17231e;font-weight:700}.governance-tabs button i{position:absolute;height:2px;left:50%;right:50%;bottom:-1px;background:#a33c32;transition:.2s}.governance-tabs button.active i{left:20px;right:20px}.governance-panel{padding-top:32px}.panel-heading{display:flex;justify-content:space-between;gap:28px;align-items:flex-end;margin-bottom:24px}.panel-heading h3{font:500 28px/1.2 "Noto Sans SC",sans-serif;margin:9px 0}.panel-heading p{color:#625f58;margin:0;max-width:720px;line-height:1.7}.model-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.model-card{background:#fff;border:1px solid #ded9ce;padding:23px;min-height:280px;display:flex;flex-direction:column}.model-card header,.config-ledger article header,.document-type-grid article>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.model-card small,.config-ledger small,.document-type-grid small{color:#908b82}.model-card h4,.config-ledger h4,.document-type-grid h4{font:600 18px/1.3 "Noto Sans SC",sans-serif;margin:5px 0}.model-id{font-family:ui-monospace,monospace;font-size:14px;color:#a33c32;border-bottom:1px solid #ece8df;padding-bottom:18px}.model-card dl{display:grid;gap:10px;margin:4px 0 18px}.model-card dl div{display:flex;justify-content:space-between;gap:12px}.model-card dt,.document-type-grid dt{font-size:14px;color:#908b82}.model-card dd{font-size:14px;margin:0;text-align:right}.model-card footer{border-top:1px solid #ece8df;padding-top:13px;margin-top:auto;display:grid;gap:7px;font-size:13px;color:#908b82;word-break:break-all}.status-chip{font-size:13px;border:1px solid;padding:4px 9px;white-space:nowrap}.status-chip[data-tone=success]{color:#3e7159;border-color:#9ab6a8;background:#edf5f0}.status-chip[data-tone=warning]{color:#936b1f;border-color:#d7c18d;background:#fbf5e7}.status-chip[data-tone=muted]{color:#777;border-color:#ccc;background:#f3f2ef}.status-chip[data-tone=draft]{color:#7b5a55;border-color:#d5c0bb;background:#faf1ef}.config-ledger{border-top:1px solid #ccc6ba}.config-ledger>article{display:grid;grid-template-columns:70px 1fr 100px;gap:22px;padding:24px 0;border-bottom:1px solid #ded9ce}.ledger-index{font:500 25px/1 sans-serif;color:#b8b2a8}.ledger-main p{color:#595751;line-height:1.65;margin:10px 0}.ledger-main footer{display:flex;gap:22px;color:#908b82;font-size:13px}.ledger-main footer time{margin-left:auto}.ledger-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end}.ledger-actions button,.audit-filters button{border:1px solid #bdb7ab;background:#fff;padding:8px 11px;cursor:pointer;color:#56534c}.ledger-actions button.emphasis{background:#17231e;color:#fff;border-color:#17231e}.document-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.document-type-grid>article{background:#fff;border:1px solid #ded9ce;padding:24px}.type-monogram{width:45px;height:45px;background:#a33c32;color:#fff;display:grid;place-items:center;font:500 22px sans-serif;margin-right:12px}.document-type-grid article>header>div:nth-child(2){margin-right:auto}.document-type-grid article>p{color:#77736b;min-height:43px;line-height:1.6}.document-type-grid dl{display:grid;gap:13px;border-top:1px solid #ece8df;border-bottom:1px solid #ece8df;padding:16px 0}.document-type-grid dl div{display:grid;grid-template-columns:80px 1fr}.document-type-grid dd{margin:0;font-size:14px;line-height:1.6}.document-type-grid footer{display:flex;justify-content:space-between;align-items:center;padding-top:15px;color:#908b82;font-size:13px}.audit-filters{display:flex;gap:8px}.audit-filters input{border:1px solid #cfc9bd;background:#fff;padding:10px 12px;width:150px}.audit-ledger{border-top:2px solid #17231e}.audit-head,.audit-ledger article{display:grid;grid-template-columns:190px 1fr 190px 130px;gap:24px}.audit-head{padding:10px 16px;background:#ece8df;color:#77736b;font-size:13px;letter-spacing:1px}.audit-ledger article{padding:18px 16px;border-bottom:1px solid #ded9ce;align-items:start}.audit-ledger article>div{display:grid;gap:5px}.audit-ledger time,.audit-ledger small{font-size:13px;color:#908b82}.audit-ledger b{font-size:14px;color:#a33c32}.audit-ledger strong{font-size:14px}.audit-ledger p{margin:0;color:#595751;font-size:14px}.level-mark{font-size:13px;width:max-content;border-bottom:2px solid #d8b36a;padding-bottom:3px}.governance-empty{grid-column:1/-1;padding:48px;text-align:center;color:#66635c;border:1px dashed #cfc9bd;background:rgba(255,255,255,.45)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px}.form-grid label{display:grid;gap:7px;font-size:14px;color:#69665f}.form-grid .span-2{grid-column:1/-1}.form-grid input,.form-grid select,.form-grid textarea{border:1px solid #cbc5b9;background:#fbfaf7;padding:10px 12px;color:#272d29;font:inherit;resize:vertical}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{outline:2px solid rgba(163,60,50,.16);border-color:#a33c32}@media(max-width:1100px){.governance-hero{grid-template-columns:1fr}.model-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.governance-console{padding:20px}.governance-hero{padding:26px}.model-grid,.document-type-grid{grid-template-columns:1fr}.panel-heading{align-items:flex-start;flex-direction:column}.config-ledger>article{grid-template-columns:45px 1fr}.ledger-actions{grid-column:2;justify-content:flex-start}.audit-head{display:none}.audit-ledger article{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.form-grid .span-2{grid-column:auto}}
 </style>

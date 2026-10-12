@@ -82,7 +82,9 @@ public final class WritingTaskDtos {
             String currentDocumentId,
             Integer lockVersion,
             OffsetDateTime createdAt,
-            OffsetDateTime updatedAt) {
+            OffsetDateTime updatedAt,
+            String sourceSystem,
+            String businessId) {
         public static Response from(WritingTaskEntity entity) {
             return new Response(
                     entity.getId(),
@@ -106,7 +108,9 @@ public final class WritingTaskDtos {
                     entity.getCurrentDocumentId(),
                     entity.getLockVersion(),
                     entity.getCreatedAt(),
-                    entity.getUpdatedAt());
+                    entity.getUpdatedAt(),
+                    entity.getSourceSystem(),
+                    entity.getBusinessId());
         }
     }
 }

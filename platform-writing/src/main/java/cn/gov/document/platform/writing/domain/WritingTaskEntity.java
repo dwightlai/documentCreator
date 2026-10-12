@@ -24,6 +24,10 @@ public class WritingTaskEntity extends BaseEntity {
     private String status;
     private Integer outlineConfirmedVersion;
     private String currentDocumentId;
+    private String sourceSystem;
+    private String businessId;
+    private String draftingDepartment;
+    private String callbackUrl;
 
     public String getTaskName() {
         return taskName;
@@ -167,5 +171,37 @@ public class WritingTaskEntity extends BaseEntity {
 
     public void setCurrentDocumentId(String value) {
         this.currentDocumentId = value;
+    }
+
+    public String getSourceSystem() {
+        return sourceSystem;
+    }
+
+    public void setSourceSystem(String value) {
+        sourceSystem = value;
+    }
+
+    public String getBusinessId() {
+        return businessId;
+    }
+
+    public void setBusinessId(String value) {
+        businessId = value;
+    }
+
+    public String getDraftingDepartment() {
+        return draftingDepartment;
+    }
+
+    public void setDraftingDepartment(String value) {
+        draftingDepartment = value;
+    }
+
+    public String getCallbackUrl() {
+        return callbackUrl;
+    }
+
+    public void setCallbackUrl(String value) {
+        callbackUrl = value;
     }
 }

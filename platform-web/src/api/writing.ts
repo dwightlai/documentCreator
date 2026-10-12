@@ -17,6 +17,8 @@ export interface WritingTask {
   lockVersion?: number
   createdAt: string
   updatedAt: string
+  sourceSystem?: string
+  businessId?: string
 }
 
 export interface PageData<T> { items: T[]; page: number; size: number; total: number }
@@ -175,6 +177,10 @@ export interface DocumentVersion { versionNumber:number;versionType:string;chang
 export const listDocumentVersions = (taskId:string) => data(http.get<ApiEnvelope<DocumentVersion[]>>(`/writing-tasks/${taskId}/document/versions`))
 export const restoreDocumentVersion = (taskId:string,versionNumber:number) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/versions/${versionNumber}/restore`))
 export const protectDocumentVersion = (taskId:string,versionNumber:number,protectedVersion:boolean) => data(http.put<ApiEnvelope<DocumentVersion>>(`/writing-tasks/${taskId}/document/versions/${versionNumber}/protection`,{protectedVersion}))
+export interface GateRule { code:string;name:string;passed:boolean;message:string }
+export interface SubmissionCheck { writingTaskId:string;documentVersion?:number;reviewTaskId?:string;passed:boolean;rules:GateRule[] }
+export const checkSubmission = (taskId:string) => data(http.get<ApiEnvelope<SubmissionCheck>>(`/writing-tasks/${taskId}/submission-check`))
+export const submitToOa = (taskId:string) => data(http.post<ApiEnvelope<{ submissionId:string;documentVersion:number;businessId?:string;callbackJobId?:string }>>(`/writing-tasks/${taskId}/submit-to-oa`))
 export interface AiDisclosure { aiGeneratedRatio:number;modelVersions:string[];generationRecordsCount:number }
 export const getAiDisclosure = (taskId:string) => data(http.get<ApiEnvelope<AiDisclosure>>(`/writing-tasks/${taskId}/document/ai-disclosure`))
 export const downloadWritingDocument = async (taskId:string,format:'DOCX'|'PDF',aiDisclosure=false) => (await http.post(`/writing-tasks/${taskId}/document/export`,{format,aiDisclosure},{responseType:'blob'})).data as Blob

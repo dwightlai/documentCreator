@@ -16,6 +16,9 @@ import {
   downloadWritingDocument,
   generateOutline,
   getCurrentOutline,
+  checkSubmission,
+  submitToOa,
+  type SubmissionCheck,
   getAiDisclosure,
   listDocumentVersions,
   protectDocumentVersion,
@@ -58,6 +61,21 @@ const streamText = ref('')
 const LEASE_RENEW_MS = 4 * 60 * 1000
 const lease = ref<{ paragraphId: string; timer: ReturnType<typeof setInterval> }>()
 const leaseBlocked = reactive<Record<string, string>>({})
+const submitDialog = ref(false)
+const submission = ref<SubmissionCheck>()
+const submitting = ref(false)
+async function openSubmission() {
+  try { submission.value = await checkSubmission(taskId.value); submitDialog.value = true } catch (error) { ElMessage.error(message(error)) }
+}
+async function confirmSubmission() {
+  submitting.value = true
+  try {
+    const result = await submitToOa(taskId.value)
+    submitDialog.value = false
+    ElMessage.success(`已提交 V${result.documentVersion}${result.callbackJobId ? '，正在回传 OA' : ''}；提交版本已受保护`)
+  } catch (error) { ElMessage.error(message(error)); submission.value = await checkSubmission(taskId.value) }
+  finally { submitting.value = false }
+}
 const versionDialog = ref(false)
 const versions = ref<DocumentVersion[]>([])
 async function openVersions() {
@@ -218,7 +236,7 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
@@ -266,6 +284,13 @@ onBeforeUnmount(endEditing)
       <div class="material-form"><label class="file-drop">上传文件（DOCX / PDF / TXT，最大 20MB）<input type="file" accept=".docx,.pdf,.txt" @change="chooseMaterialFile"><span>{{ materialFile?.name || '选择本地文件，系统将提取文本并保存原文件哈希' }}</span></label><div class="manual-divider">或录入经核准的材料片段</div><label>材料名称<input v-model="materialForm.materialName" :disabled="Boolean(materialFile)" placeholder="例如：项目论证报告"></label><div><label>来源<select v-model="materialForm.sourceType" :disabled="Boolean(materialFile)"><option>上传</option><option>知识库</option><option>OA</option></select></label><label>权威级别<select v-model="materialForm.authorityLevel"><option>正式公文</option><option>权威资料</option><option>内部资料</option><option>参考资料</option></select></label></div><div><label>使用方式<select v-model="materialForm.usageMode"><option>全文参考</option><option>指定片段</option><option>仅作背景</option></select></label><label>引用目的<select v-model="materialForm.citationPurpose"><option>事实依据</option><option>政策依据</option><option>案例参考</option><option>表达参考</option></select></label></div><label>选用片段<textarea v-model="materialForm.selectedFragment" :disabled="Boolean(materialFile)" rows="5" placeholder="粘贴经核准、可供生成使用的材料片段" /></label></div>
       <template #footer><button class="secondary-button" type="button" @click="materialDialog=false">取消</button><button class="primary-button" type="button" @click="addMaterial">加入清单</button></template>
     </el-dialog>
+    <el-dialog v-model="submitDialog" title="提交前检查" width="620px">
+      <p class="conflict-intro">按单位配置的提交门禁逐项检查。全部通过后才能提交；提交后该版本受保护，不会被版本保留策略清理。</p>
+      <ul v-if="submission" class="gate-rules">
+        <li v-for="rule in submission.rules" :key="rule.code" :class="rule.passed ? 'passed' : 'failed'"><b>{{ rule.passed ? '✓' : '✕' }}</b><div><strong>{{ rule.name }}</strong><small>{{ rule.message }}</small></div></li>
+      </ul>
+      <template #footer><button class="secondary-button" type="button" @click="submitDialog=false">关闭</button><button class="primary-button" type="button" :disabled="!submission?.passed || submitting" @click="confirmSubmission">{{ submitting ? '正在提交…' : task?.sourceSystem === 'OA' ? '提交并回传 OA' : '提交' }}</button></template>
+    </el-dialog>
     <el-dialog v-model="versionDialog" title="版本记录" width="720px">
       <p class="conflict-intro">AI 生成版本保留 30 天、每篇最多 50 个，到期标记 7 天后清理正文；人工提交、大纲确认、审校前后版本永久保留。重要版本可手动保护。</p>
       <div class="version-list">
@@ -293,6 +318,15 @@ onBeforeUnmount(endEditing)
 </template>
 
 <style scoped>
+.gate-rules{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.gate-rules li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb}
+.gate-rules li b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px}
+.gate-rules li.passed b{background:#22a06b}
+.gate-rules li.failed{border-color:#f6cfcb;background:#fdf0ef}
+.gate-rules li.failed b{background:#c4302b}
+.gate-rules div{display:grid;gap:2px}
+.gate-rules strong{font-size:14px}
+.gate-rules small{color:#646a73;font-size:13px}
 .version-list{display:grid;gap:8px;max-height:460px;overflow:auto}
 .version-list article{display:grid;grid-template-columns:48px 1fr auto auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px}
 .version-list article.current{border-color:#f6cfcb;background:#fdf0ef}

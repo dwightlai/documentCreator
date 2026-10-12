@@ -124,6 +124,19 @@ public class WritingTaskService {
         return entity;
     }
 
+    /** 关联外部业务系统（§31.1 从 OA 发起写作）。 */
+    @Transactional
+    public Response linkExternal(
+            String taskId, String sourceSystem, String businessId, String draftingDepartment, String callbackUrl) {
+        WritingTaskEntity task = require(taskId);
+        task.setSourceSystem(sourceSystem);
+        task.setBusinessId(businessId);
+        task.setDraftingDepartment(draftingDepartment);
+        task.setCallbackUrl(callbackUrl);
+        mapper.updateById(task);
+        return Response.from(require(taskId));
+    }
+
     @Transactional
     public void attachCurrentDocument(String taskId, String documentId) {
         WritingTaskEntity task = require(taskId);

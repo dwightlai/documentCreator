@@ -17,6 +17,7 @@ public class ReviewTaskEntity extends BaseEntity {
     private String status;
     private String initiatorId;
     private String callbackUrl;
+    private Integer documentVersion;
 
     public String getSourceSystem() {
         return sourceSystem;
@@ -112,5 +113,13 @@ public class ReviewTaskEntity extends BaseEntity {
 
     public void setCallbackUrl(String v) {
         callbackUrl = v;
+    }
+
+    public Integer getDocumentVersion() {
+        return documentVersion;
+    }
+
+    public void setDocumentVersion(Integer value) {
+        documentVersion = value;
     }
 }

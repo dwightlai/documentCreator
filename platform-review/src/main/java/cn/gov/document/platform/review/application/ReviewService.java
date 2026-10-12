@@ -193,6 +193,7 @@ public class ReviewService {
         task.setTenantId(RequestContext.tenantId());
         task.setSourceSystem("internal");
         task.setDocumentId(data.document().getId());
+        task.setDocumentVersion(data.document().getCurrentVersion());
         task.setDocumentTypeCode(writingTask.getDocumentTypeCode());
         String planId = request.reviewPlanId();
         if (planService != null) {
