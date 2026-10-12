@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import { initiateReview } from '@/api/review'
 import { isConflict } from '@/api/http'
@@ -17,6 +17,10 @@ import {
   generateOutline,
   getCurrentOutline,
   getAiDisclosure,
+  listDocumentVersions,
+  protectDocumentVersion,
+  restoreDocumentVersion,
+  type DocumentVersion,
   getWritingDocument,
   getWritingTask,
   listWritingMaterials,
@@ -54,6 +58,33 @@ const streamText = ref('')
 const LEASE_RENEW_MS = 4 * 60 * 1000
 const lease = ref<{ paragraphId: string; timer: ReturnType<typeof setInterval> }>()
 const leaseBlocked = reactive<Record<string, string>>({})
+const versionDialog = ref(false)
+const versions = ref<DocumentVersion[]>([])
+async function openVersions() {
+  try { versions.value = await listDocumentVersions(taskId.value); versionDialog.value = true } catch (error) { ElMessage.error(message(error)) }
+}
+async function restoreVersion(version:DocumentVersion) {
+  try {
+    await ElMessageBox.confirm(`将以 V${version.versionNumber} 的内容生成新版本，当前内容仍保留在历史版本中。`, '恢复历史版本')
+    document.value = await restoreDocumentVersion(taskId.value, version.versionNumber)
+    selectedParagraphId.value = document.value.paragraphs[0]?.id ?? ''
+    versions.value = await listDocumentVersions(taskId.value)
+    ElMessage.success(`已从 V${version.versionNumber} 恢复为 V${document.value.currentVersion}`)
+  } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(message(error)) }
+}
+async function toggleProtection(version:DocumentVersion) {
+  try {
+    const changed = await protectDocumentVersion(taskId.value, version.versionNumber, !version.protectedVersion)
+    versions.value = versions.value.map(item => item.versionNumber === changed.versionNumber ? changed : item)
+    ElMessage.success(changed.protectedVersion ? '已保护，该版本不会被保留策略清理' : '已取消保护')
+  } catch (error) { ElMessage.error(message(error)) }
+}
+function versionState(version:DocumentVersion) {
+  if (version.contentPurged) return { label: '正文已清理', cls: 'purged' }
+  if (version.protectedVersion) return { label: '已保护', cls: 'protected' }
+  if (!version.retained) return { label: '待清理', cls: 'pending' }
+  return null
+}
 const disclosure = ref<{ aiGeneratedRatio: number; modelVersions: string[] }>()
 const includeDisclosure = ref(false)
 /** §33 编辑界面标注：蓝色=AI生成/改写/推荐，绿色=引用原文，灰色=人工录入。 */
@@ -187,7 +218,7 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
@@ -235,6 +266,21 @@ onBeforeUnmount(endEditing)
       <div class="material-form"><label class="file-drop">上传文件（DOCX / PDF / TXT，最大 20MB）<input type="file" accept=".docx,.pdf,.txt" @change="chooseMaterialFile"><span>{{ materialFile?.name || '选择本地文件，系统将提取文本并保存原文件哈希' }}</span></label><div class="manual-divider">或录入经核准的材料片段</div><label>材料名称<input v-model="materialForm.materialName" :disabled="Boolean(materialFile)" placeholder="例如：项目论证报告"></label><div><label>来源<select v-model="materialForm.sourceType" :disabled="Boolean(materialFile)"><option>上传</option><option>知识库</option><option>OA</option></select></label><label>权威级别<select v-model="materialForm.authorityLevel"><option>正式公文</option><option>权威资料</option><option>内部资料</option><option>参考资料</option></select></label></div><div><label>使用方式<select v-model="materialForm.usageMode"><option>全文参考</option><option>指定片段</option><option>仅作背景</option></select></label><label>引用目的<select v-model="materialForm.citationPurpose"><option>事实依据</option><option>政策依据</option><option>案例参考</option><option>表达参考</option></select></label></div><label>选用片段<textarea v-model="materialForm.selectedFragment" :disabled="Boolean(materialFile)" rows="5" placeholder="粘贴经核准、可供生成使用的材料片段" /></label></div>
       <template #footer><button class="secondary-button" type="button" @click="materialDialog=false">取消</button><button class="primary-button" type="button" @click="addMaterial">加入清单</button></template>
     </el-dialog>
+    <el-dialog v-model="versionDialog" title="版本记录" width="720px">
+      <p class="conflict-intro">AI 生成版本保留 30 天、每篇最多 50 个，到期标记 7 天后清理正文；人工提交、大纲确认、审校前后版本永久保留。重要版本可手动保护。</p>
+      <div class="version-list">
+        <article v-for="version in versions" :key="version.versionNumber" :class="{ current: version.versionNumber === document?.currentVersion }">
+          <b>V{{ version.versionNumber }}</b>
+          <div><strong>{{ version.changeDescription || version.changeSource }}</strong><small>{{ version.versionType }} · {{ new Date(version.createdAt).toLocaleString('zh-CN', { hour12: false }) }}</small></div>
+          <span v-if="versionState(version)" class="version-state" :class="versionState(version)!.cls">{{ versionState(version)!.label }}</span>
+          <span v-if="version.versionNumber === document?.currentVersion" class="version-state current">当前</span>
+          <footer>
+            <button v-if="!version.contentPurged && version.versionNumber !== document?.currentVersion" type="button" @click="restoreVersion(version)">恢复</button>
+            <button v-if="!version.contentPurged" type="button" @click="toggleProtection(version)">{{ version.protectedVersion ? '取消保护' : '保护' }}</button>
+          </footer>
+        </article>
+      </div>
+    </el-dialog>
     <el-dialog :model-value="!!conflict" title="段落已被他人修改" width="760px" @close="conflict=undefined">
       <p class="conflict-intro">你编辑期间，该段落已形成新版本。请比对后选择：用你的修改覆盖最新版本，或放弃你的修改。系统不会自动合并。</p>
       <div v-if="conflict" class="conflict-compare">
@@ -247,6 +293,20 @@ onBeforeUnmount(endEditing)
 </template>
 
 <style scoped>
+.version-list{display:grid;gap:8px;max-height:460px;overflow:auto}
+.version-list article{display:grid;grid-template-columns:48px 1fr auto auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px}
+.version-list article.current{border-color:#f6cfcb;background:#fdf0ef}
+.version-list b{color:#c4302b}
+.version-list div{display:grid;gap:2px;min-width:0}
+.version-list strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.version-list small{color:#9aa0a8;font-size:12px}
+.version-list footer{display:flex;gap:6px}
+.version-list footer button{padding:4px 10px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+.version-state{padding:1px 8px;border-radius:999px;font-size:12px;background:#f0f2f5;color:#646a73}
+.version-state.protected{background:#e8f5ee;color:#18794e}
+.version-state.pending{background:#fff4e5;color:#9a5b13}
+.version-state.purged{background:#f0f2f5;color:#9aa0a8}
+.version-state.current{background:#fdf0ef;color:#c4302b}
 .origin-tag{margin-right:8px;padding:1px 8px;border-radius:999px;font-style:normal;font-size:12px;cursor:help}
 .origin-tag.ai{background:#e8f0fe;color:#1a56db}
 .origin-tag.quote{background:#e8f5ee;color:#18794e}

@@ -13,6 +13,9 @@ public class DocumentVersionEntity extends BaseEntity {
     private String contentStoragePath;
     private Integer wordCount;
     private Boolean isRetained;
+    private Boolean isProtected;
+    private java.time.OffsetDateTime retentionMarkedAt;
+    private java.time.OffsetDateTime contentPurgedAt;
 
     public String getDocumentId() {
         return documentId;
@@ -76,5 +79,29 @@ public class DocumentVersionEntity extends BaseEntity {
 
     public void setIsRetained(Boolean value) {
         isRetained = value;
+    }
+
+    public Boolean getIsProtected() {
+        return isProtected;
+    }
+
+    public void setIsProtected(Boolean value) {
+        isProtected = value;
+    }
+
+    public java.time.OffsetDateTime getRetentionMarkedAt() {
+        return retentionMarkedAt;
+    }
+
+    public void setRetentionMarkedAt(java.time.OffsetDateTime value) {
+        retentionMarkedAt = value;
+    }
+
+    public java.time.OffsetDateTime getContentPurgedAt() {
+        return contentPurgedAt;
+    }
+
+    public void setContentPurgedAt(java.time.OffsetDateTime value) {
+        contentPurgedAt = value;
     }
 }

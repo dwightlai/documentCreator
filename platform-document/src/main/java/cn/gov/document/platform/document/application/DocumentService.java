@@ -828,7 +828,27 @@ public class DocumentService {
                 .eq(DocumentVersionEntity::getDocumentId, documentId)
                 .eq(DocumentVersionEntity::getVersionNumber, versionNumber));
         if (version == null) throw BusinessException.notFound("文稿版本不存在");
+        if (version.getContentPurgedAt() != null) throw BusinessException.conflict("该版本正文已按版本保留策略清理，仅保留版本元数据");
         return version;
+    }
+
+    /** 管理员保护关键版本，防止被保留策略清理；保护已标记待清理的版本时撤销标记（§14.4）。 */
+    @Transactional
+    public VersionResponse protectVersion(String taskId, int versionNumber, boolean protectedVersion) {
+        DocumentEntity document = requireDocument(taskId);
+        DocumentVersionEntity version = versionMapper.selectOne(new LambdaQueryWrapper<DocumentVersionEntity>()
+                .eq(DocumentVersionEntity::getDocumentId, document.getId())
+                .eq(DocumentVersionEntity::getVersionNumber, versionNumber));
+        if (version == null) throw BusinessException.notFound("文稿版本不存在");
+        if (protectedVersion && version.getContentPurgedAt() != null)
+            throw BusinessException.conflict("该版本正文已清理，无法再保护");
+        version.setIsProtected(protectedVersion);
+        if (protectedVersion) {
+            version.setIsRetained(true);
+            version.setRetentionMarkedAt(null);
+        }
+        versionMapper.updateById(version);
+        return VersionResponse.from(version);
     }
 
     private List<DocumentParagraphEntity> paragraphs(String documentId, int version) {

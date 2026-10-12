@@ -171,6 +171,10 @@ export const setParagraphLock = (taskId:string,paragraphId:string,locked:boolean
 export interface EditLease { paragraphId:string;holderId:string;expiresAt:string }
 export const acquireEditLease = (taskId:string,paragraphId:string) => data(http.post<ApiEnvelope<EditLease>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
 export const releaseEditLease = (taskId:string,paragraphId:string) => data(http.delete<ApiEnvelope<null>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
+export interface DocumentVersion { versionNumber:number;versionType:string;changeSource:string;changeDescription?:string;wordCount:number;createdAt:string;retained:boolean;protectedVersion:boolean;contentPurged:boolean }
+export const listDocumentVersions = (taskId:string) => data(http.get<ApiEnvelope<DocumentVersion[]>>(`/writing-tasks/${taskId}/document/versions`))
+export const restoreDocumentVersion = (taskId:string,versionNumber:number) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/versions/${versionNumber}/restore`))
+export const protectDocumentVersion = (taskId:string,versionNumber:number,protectedVersion:boolean) => data(http.put<ApiEnvelope<DocumentVersion>>(`/writing-tasks/${taskId}/document/versions/${versionNumber}/protection`,{protectedVersion}))
 export interface AiDisclosure { aiGeneratedRatio:number;modelVersions:string[];generationRecordsCount:number }
 export const getAiDisclosure = (taskId:string) => data(http.get<ApiEnvelope<AiDisclosure>>(`/writing-tasks/${taskId}/document/ai-disclosure`))
 export const downloadWritingDocument = async (taskId:string,format:'DOCX'|'PDF',aiDisclosure=false) => (await http.post(`/writing-tasks/${taskId}/document/export`,{format,aiDisclosure},{responseType:'blob'})).data as Blob

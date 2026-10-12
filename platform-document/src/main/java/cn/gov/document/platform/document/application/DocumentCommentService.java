@@ -137,10 +137,12 @@ public class DocumentCommentService {
     }
 
     private void requireVersion(String id, int version) {
-        if (versionMapper.selectCount(new LambdaQueryWrapper<DocumentVersionEntity>()
-                        .eq(DocumentVersionEntity::getDocumentId, id)
-                        .eq(DocumentVersionEntity::getVersionNumber, version))
-                == 0) throw BusinessException.notFound("文稿版本不存在");
+        DocumentVersionEntity entity = versionMapper.selectOne(new LambdaQueryWrapper<DocumentVersionEntity>()
+                .eq(DocumentVersionEntity::getDocumentId, id)
+                .eq(DocumentVersionEntity::getVersionNumber, version));
+        if (entity == null) throw BusinessException.notFound("文稿版本不存在");
+        if (entity.getContentPurgedAt() != null)
+            throw BusinessException.conflict("版本 " + version + " 正文已按版本保留策略清理，无法比较");
     }
 
     private List<DocumentParagraphEntity> paragraphs(String id, int version) {

@@ -58,6 +58,14 @@ public class DocumentController {
         return ApiResponse.success(service.restore(taskId, versionNumber));
     }
 
+    @PutMapping("/versions/{versionNumber}/protection")
+    ApiResponse<DocumentDtos.VersionResponse> protectVersion(
+            @PathVariable String taskId,
+            @PathVariable int versionNumber,
+            @RequestBody DocumentDtos.VersionProtectionRequest request) {
+        return ApiResponse.success(service.protectVersion(taskId, versionNumber, request.protectedVersion()));
+    }
+
     @PutMapping("/paragraphs/{paragraphId}")
     ApiResponse<DocumentDtos.DocumentResponse> updateParagraph(
             @PathVariable String taskId,

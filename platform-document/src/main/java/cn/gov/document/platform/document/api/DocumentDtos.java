@@ -32,6 +32,8 @@ public final class DocumentDtos {
         }
     }
 
+    public record VersionProtectionRequest(boolean protectedVersion) {}
+
     /** 段落编辑租约：持有期间其他用户不能保存该段落。 */
     public record EditLeaseResponse(String paragraphId, String holderId, java.time.Instant expiresAt) {}
 
@@ -75,7 +77,10 @@ public final class DocumentDtos {
             String changeSource,
             String changeDescription,
             int wordCount,
-            OffsetDateTime createdAt) {
+            OffsetDateTime createdAt,
+            boolean retained,
+            boolean protectedVersion,
+            boolean contentPurged) {
         public static VersionResponse from(DocumentVersionEntity entity) {
             return new VersionResponse(
                     entity.getVersionNumber(),
@@ -83,7 +88,10 @@ public final class DocumentDtos {
                     entity.getChangeSource(),
                     entity.getChangeDescription(),
                     entity.getWordCount(),
-                    entity.getCreatedAt());
+                    entity.getCreatedAt(),
+                    !Boolean.FALSE.equals(entity.getIsRetained()),
+                    Boolean.TRUE.equals(entity.getIsProtected()),
+                    entity.getContentPurgedAt() != null);
         }
     }
 
