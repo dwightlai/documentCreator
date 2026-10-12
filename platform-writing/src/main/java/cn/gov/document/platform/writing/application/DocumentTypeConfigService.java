@@ -76,7 +76,8 @@ public class DocumentTypeConfigService {
                         read(entity.getRequiredFields()),
                         read(entity.getRecommendedStructure()),
                         read(entity.getForbiddenPatterns()),
-                        read(entity.getClosingPatterns())));
+                        read(entity.getClosingPatterns()),
+                        entity.getDirection()));
     }
 
     @Transactional
@@ -290,5 +291,6 @@ public class DocumentTypeConfigService {
             List<String> requiredFields,
             List<String> recommendedStructure,
             List<String> forbiddenPatterns,
-            List<String> closingPatterns) {}
+            List<String> closingPatterns,
+            String direction) {}
 }

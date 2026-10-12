@@ -164,7 +164,8 @@ class OutputTemplateApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.outputTemplateId").value(templateId))
                 .andExpect(jsonPath("$.data.documentFileHash").isNotEmpty())
-                .andExpect(jsonPath("$.data.totalIssues").value(4))
+                // 含模板偏差 2 项、L4 结构要素 2 项（请示缺签发人、缺版记印发要素）及正文规则问题
+                .andExpect(jsonPath("$.data.totalIssues").value(6))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -178,7 +179,7 @@ class OutputTemplateApiIntegrationTest {
                         .param("category", "格式版式")
                         .header("X-Tenant-Id", TENANT))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data.length()").value(4))
                 .andExpect(jsonPath("$.data[0].detectionMethod").value("格式解析-L4"))
                 .andExpect(jsonPath("$.data[0].pageNumber").value(1))
                 .andExpect(jsonPath("$.data[0].paragraphNumber").value(1));

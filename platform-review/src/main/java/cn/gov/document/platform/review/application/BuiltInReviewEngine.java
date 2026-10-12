@@ -22,6 +22,8 @@ public class BuiltInReviewEngine {
     private final cn.gov.document.platform.review.application.deep.ContentSafetyInspector safetyInspector =
             new cn.gov.document.platform.review.application.deep.ContentSafetyInspector();
 
+    private final L3StructureInspector l3Structure = new L3StructureInspector();
+
     public BuiltInReviewEngine(EffectiveReviewRuleProvider effectiveRuleProvider) {
         this.effectiveRuleProvider = effectiveRuleProvider;
     }
@@ -32,7 +34,7 @@ public class BuiltInReviewEngine {
             new Rule("L1", "文字", "提示", "帐号", "账号", "信息化语境下统一使用“账号”。", "信息技术术语规范", new BigDecimal("0.95")),
             new Rule("L2", "规范", "重要", "绝对不会", "原则上不会", "绝对化表述可能形成不当承诺，建议审慎表述。", "政务公开表述风险规则", new BigDecimal("0.88")));
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{[a-zA-Z][a-zA-Z0-9_]*}");
-    private static final Pattern REQUEST_IN_REPORT = Pattern.compile("请(?:批准|批复|同意|审定|审批)");
+    private static final Pattern REQUEST_IN_REPORT = Pattern.compile("请(?:批准|批复|同意|审定|审批|批示)");
     private static final Pattern REQUEST_MATTER = Pattern.compile("请(?:批准|批复|同意|审定|审批|予以支持)");
     private static final Pattern REQUEST_ENDING = Pattern.compile("(?:妥否|当否)[，,]?请批示|以上请示[^。；]{0,20}请(?:批复|示)|请予批复");
 
@@ -46,6 +48,23 @@ public class BuiltInReviewEngine {
 
     public List<Candidate> inspect(
             String documentTypeCode,
+            String documentTitle,
+            List<DocumentParagraphEntity> paragraphs,
+            Set<String> enabledLevels,
+            String riskThreshold) {
+        return inspect(
+                documentTypeCode,
+                L3StructureInspector.DEFAULT_DIRECTIONS.get(documentTypeCode),
+                documentTitle,
+                paragraphs,
+                enabledLevels,
+                riskThreshold);
+    }
+
+    /** direction 为文种配置中的行文方向（上行、下行、平行），用于 L3 语气与主送规则。 */
+    public List<Candidate> inspect(
+            String documentTypeCode,
+            String direction,
             String documentTitle,
             List<DocumentParagraphEntity> paragraphs,
             Set<String> enabledLevels,
@@ -131,6 +150,8 @@ public class BuiltInReviewEngine {
                         new BigDecimal("0.97")));
             }
         }
+        if (enabledLevels.contains("L3"))
+            addDeep(result, l3Structure.inspect(documentTypeCode, direction, paragraphs), riskThreshold);
         if (enabledLevels.contains("L5")) addDeep(result, factInspector.inspect(paragraphs), riskThreshold);
         if (enabledLevels.contains("L6")) addDeep(result, logicInspector.inspect(paragraphs), riskThreshold);
         if (enabledLevels.contains("L7")) addDeep(result, safetyInspector.inspect(paragraphs), riskThreshold);

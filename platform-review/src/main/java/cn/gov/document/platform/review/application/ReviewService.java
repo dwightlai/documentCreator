@@ -54,6 +54,7 @@ public class ReviewService {
     private final ObjectStorage objectStorage;
     private final ExclusiveGuard guard;
     private final cn.gov.document.platform.review.application.deep.ModelLogicReviewer modelLogicReviewer;
+    private final cn.gov.document.platform.writing.application.DocumentTypeConfigService documentTypeConfigService;
 
     private static final java.time.Duration REVIEW_RUN_TTL = java.time.Duration.ofMinutes(10);
     private static final java.time.Duration ISSUE_TTL = java.time.Duration.ofMinutes(2);
@@ -71,7 +72,8 @@ public class ReviewService {
             OutputTemplateService outputTemplateService,
             ObjectStorage objectStorage,
             ExclusiveGuard guard,
-            cn.gov.document.platform.review.application.deep.ModelLogicReviewer modelLogicReviewer) {
+            cn.gov.document.platform.review.application.deep.ModelLogicReviewer modelLogicReviewer,
+            cn.gov.document.platform.writing.application.DocumentTypeConfigService documentTypeConfigService) {
         this.taskMapper = taskMapper;
         this.issueMapper = issueMapper;
         this.actionMapper = actionMapper;
@@ -85,6 +87,7 @@ public class ReviewService {
         this.objectStorage = objectStorage;
         this.guard = guard;
         this.modelLogicReviewer = modelLogicReviewer;
+        this.documentTypeConfigService = documentTypeConfigService;
     }
 
     @Transactional
@@ -117,6 +120,12 @@ public class ReviewService {
         // 先完成格式解析，确保无效/恶意 DOCX 不会留下审校任务记录。
         DocxFormatReviewService.Result formatResult =
                 runtimePlan.levels().contains("L4") ? formatReviewService.compare(outputTemplateId, content) : null;
+        List<DocxFormatReviewService.Deviation> formatDeviations = new java.util.ArrayList<>();
+        if (formatResult != null) {
+            formatDeviations.addAll(formatResult.deviations());
+            formatDeviations.addAll(
+                    formatReviewService.inspectStructure(content, direction(writingTask.getDocumentTypeCode())));
+        }
 
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setTenantId(RequestContext.tenantId());
@@ -142,7 +151,8 @@ public class ReviewService {
                 runtimePlan,
                 writingTask.getSecurityLevel());
         if (formatResult != null) {
-            for (DocxFormatReviewService.Deviation deviation : formatResult.deviations()) {
+            for (DocxFormatReviewService.Deviation deviation : formatDeviations) {
+                if (!atOrAboveThreshold(deviation.riskLevel(), runtimePlan.riskThreshold())) continue;
                 ReviewIssueEntity issue = new ReviewIssueEntity();
                 issue.setTenantId(RequestContext.tenantId());
                 issue.setReviewTaskId(task.getId());
@@ -483,7 +493,12 @@ public class ReviewService {
             ReviewPlanService.RuntimePlan plan,
             String securityLevel) {
         List<BuiltInReviewEngine.Candidate> candidates = engine.inspect(
-                documentTypeCode, title, paragraphs, new LinkedHashSet<>(plan.levels()), plan.riskThreshold());
+                documentTypeCode,
+                direction(documentTypeCode),
+                title,
+                paragraphs,
+                new LinkedHashSet<>(plan.levels()),
+                plan.riskThreshold());
         java.util.Map<String, String> groups = mergeGroups(candidates);
         int number = 1;
         for (BuiltInReviewEngine.Candidate candidate : candidates) {
@@ -513,6 +528,25 @@ public class ReviewService {
             }
         }
         return number;
+    }
+
+    private static boolean atOrAboveThreshold(String risk, String threshold) {
+        List<String> order = List.of("提示", "一般", "重要", "严重");
+        return order.indexOf(risk) >= Math.max(0, order.indexOf(threshold));
+    }
+
+    /** 行文方向以租户生效的文种配置为准，未配置时使用平台默认。 */
+    private String direction(String documentTypeCode) {
+        if (documentTypeConfigService != null) {
+            String configured = documentTypeConfigService
+                    .effective(documentTypeCode)
+                    .map(
+                            cn.gov.document.platform.writing.application.DocumentTypeConfigService.RuntimeConfig
+                                    ::direction)
+                    .orElse(null);
+            if (StringUtils.hasText(configured)) return configured;
+        }
+        return L3StructureInspector.DEFAULT_DIRECTIONS.get(documentTypeCode);
     }
 
     /**

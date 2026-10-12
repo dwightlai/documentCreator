@@ -31,7 +31,11 @@ final class BuiltInDocumentTypes {
         return definition == null
                 ? Optional.empty()
                 : Optional.of(new DocumentTypeConfigService.RuntimeConfig(
-                        definition.required(), definition.structure(), definition.forbidden(), definition.closing()));
+                        definition.required(),
+                        definition.structure(),
+                        definition.forbidden(),
+                        definition.closing(),
+                        definition.direction()));
     }
 
     private static DocumentTypeConfigDtos.Response response(Definition definition) {

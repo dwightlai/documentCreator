@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -84,6 +85,104 @@ public class DocxFormatReviewService {
         } catch (IOException invalidDocument) {
             throw BusinessException.unprocessable("待审文稿不是有效 DOCX 文件");
         }
+    }
+
+    private static final Pattern DOC_NUMBER = Pattern.compile("\\p{IsHan}{1,10}〔\\d{4}〕\\d+号");
+    private static final Pattern DOC_NUMBER_WRONG_BRACKET =
+            Pattern.compile("\\p{IsHan}{1,10}[\\[［(（【]\\d{4}[\\]］)）】]\\d+号");
+    private static final Pattern IMPRINT = Pattern.compile("\\d{4}年\\d{1,2}月\\d{1,2}日\\s*印发");
+    private static final Pattern CHINESE_DATE =
+            Pattern.compile("[〇零一二三四五六七八九]{4}年[一二三四五六七八九十]{1,2}月[一二三四五六七八九十]{1,3}日");
+    private static final String GB_9704 = "GB/T 9704—2012《党政机关公文格式》";
+
+    /**
+     * L4 增强：不依赖输出模板的公文结构要素检查——上行文签发人、发文字号及六角括号、版记印发要素与抄送位置、成文日期数字写法。
+     */
+    public List<Deviation> inspectStructure(byte[] documentBytes, String direction) {
+        try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(documentBytes))) {
+            List<String> head = new ArrayList<>();
+            document.getHeaderList().forEach(header -> header.getParagraphs().forEach(p -> head.add(p.getText())));
+            List<String> body = meaningful(document).stream()
+                    .map(XWPFParagraph::getText)
+                    .map(String::strip)
+                    .toList();
+            head.addAll(body.subList(0, Math.min(10, body.size())));
+            List<String> tail = new ArrayList<>(body.subList(Math.max(0, body.size() - 8), body.size()));
+            document.getFooterList().forEach(footer -> footer.getParagraphs().forEach(p -> tail.add(p.getText())));
+            String headText = String.join("\n", head);
+            String tailText = String.join("\n", tail);
+            List<Deviation> result = new ArrayList<>();
+
+            if ("上行".equals(direction) && !headText.contains("签发人")) {
+                result.add(new Deviation(
+                        "SIGNER", "重要", "签发人", "上行文标注签发人姓名", "未标注", null, "上行文应在发文字号右侧标注签发人姓名（" + GB_9704 + " 7.2.4）"));
+            }
+            if (!DOC_NUMBER.matcher(headText).find()) {
+                Matcher wrong = DOC_NUMBER_WRONG_BRACKET.matcher(headText);
+                if (wrong.find()) {
+                    result.add(new Deviation(
+                            "DOC_NUMBER_BRACKET",
+                            "一般",
+                            "发文字号年份括号",
+                            "六角括号〔〕",
+                            wrong.group(),
+                            null,
+                            "发文字号中的年份应使用六角括号“〔〕”（" + GB_9704 + " 7.2.3）"));
+                } else {
+                    result.add(new Deviation(
+                            "DOC_NUMBER",
+                            "提示",
+                            "发文字号",
+                            "机关代字〔年份〕序号",
+                            "未识别",
+                            null,
+                            "版头中未识别到发文字号，请确认是否需要编排（" + GB_9704 + " 7.2.3）"));
+                }
+            }
+            int imprintIndex = indexOf(tail, IMPRINT);
+            if (imprintIndex < 0) {
+                result.add(new Deviation(
+                        "IMPRINT",
+                        "一般",
+                        "版记印发要素",
+                        "印发机关和印发日期",
+                        "未识别",
+                        null,
+                        "版记中未识别到印发机关和印发日期（" + GB_9704 + " 7.4.2）"));
+            } else {
+                int copyIndex = indexOf(tail, Pattern.compile("^抄送[：:]"));
+                if (copyIndex > imprintIndex) {
+                    result.add(new Deviation(
+                            "COPY_TO_POSITION",
+                            "一般",
+                            "抄送位置",
+                            "位于印发机关和印发日期之上",
+                            "位于其下",
+                            null,
+                            "抄送机关应编排在印发机关和印发日期之上（" + GB_9704 + " 7.4）"));
+                }
+            }
+            Matcher chineseDate = CHINESE_DATE.matcher(tailText + "\n" + String.join("\n", body));
+            if (chineseDate.find()) {
+                result.add(new Deviation(
+                        "DATE_NUMERALS",
+                        "一般",
+                        "成文日期写法",
+                        "阿拉伯数字",
+                        chineseDate.group(),
+                        null,
+                        "成文日期应使用阿拉伯数字将年、月、日标全（" + GB_9704 + " 7.3.5）"));
+            }
+            return result;
+        } catch (IOException invalidDocument) {
+            throw BusinessException.unprocessable("待审文稿不是有效 DOCX 文件");
+        }
+    }
+
+    private static int indexOf(List<String> lines, Pattern pattern) {
+        for (int i = 0; i < lines.size(); i++)
+            if (pattern.matcher(lines.get(i).strip()).find()) return i;
+        return -1;
     }
 
     private void compare(
