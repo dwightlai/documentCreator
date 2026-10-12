@@ -29,6 +29,9 @@ export interface ReviewIssue {
   confidenceScore: number
   processingStatus: string
   processingNote?: string
+  detectionMethod: string
+  mergedGroupId?: string
+  autoFixAllowed: boolean
 }
 
 export type ReviewAction = 'accept' | 'ignore' | 'modify' | 'transfer'
@@ -46,8 +49,15 @@ export async function listReviewTasks() {
   const response = await http.get<ApiEnvelope<ReviewTask[]>>('/review-tasks')
   return response.data.data
 }
-export async function initiateReview(writingTaskId: string) {
-  const response = await http.post<ApiEnvelope<ReviewTask>>(`/writing-tasks/${writingTaskId}/initiate-review`)
+export interface ReviewPlan { id: string; planCode: string; planName: string; applicableScenarios: string; reviewLevels: string[] }
+
+export async function listReviewPlans() {
+  const response = await http.get<ApiEnvelope<ReviewPlan[]>>('/review-plans')
+  return response.data.data
+}
+
+export async function initiateReview(writingTaskId: string, reviewPlanId?: string) {
+  const response = await http.post<ApiEnvelope<ReviewTask>>(`/writing-tasks/${writingTaskId}/initiate-review`, reviewPlanId ? { reviewPlanId } : undefined)
   return response.data.data
 }
 export async function listReviewIssues(reviewTaskId: string) {

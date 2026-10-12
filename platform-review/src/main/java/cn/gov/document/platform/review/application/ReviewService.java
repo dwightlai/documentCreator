@@ -53,6 +53,7 @@ public class ReviewService {
     private final OutputTemplateService outputTemplateService;
     private final ObjectStorage objectStorage;
     private final ExclusiveGuard guard;
+    private final cn.gov.document.platform.review.application.deep.ModelLogicReviewer modelLogicReviewer;
 
     private static final java.time.Duration REVIEW_RUN_TTL = java.time.Duration.ofMinutes(10);
     private static final java.time.Duration ISSUE_TTL = java.time.Duration.ofMinutes(2);
@@ -69,7 +70,8 @@ public class ReviewService {
             DocxFormatReviewService formatReviewService,
             OutputTemplateService outputTemplateService,
             ObjectStorage objectStorage,
-            ExclusiveGuard guard) {
+            ExclusiveGuard guard,
+            cn.gov.document.platform.review.application.deep.ModelLogicReviewer modelLogicReviewer) {
         this.taskMapper = taskMapper;
         this.issueMapper = issueMapper;
         this.actionMapper = actionMapper;
@@ -82,6 +84,7 @@ public class ReviewService {
         this.outputTemplateService = outputTemplateService;
         this.objectStorage = objectStorage;
         this.guard = guard;
+        this.modelLogicReviewer = modelLogicReviewer;
     }
 
     @Transactional
@@ -131,15 +134,13 @@ public class ReviewService {
         objectStorage.put(key, content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
         task.setDocumentFileId(key);
         task.setDocumentFileHash(hash);
-        int number = 1;
-        for (BuiltInReviewEngine.Candidate candidate : engine.inspect(
+        int number = insertInspection(
+                task.getId(),
                 writingTask.getDocumentTypeCode(),
                 importedParagraphs.isEmpty() ? null : importedParagraphs.get(0).getPlainText(),
                 importedParagraphs,
-                new LinkedHashSet<>(runtimePlan.levels()),
-                runtimePlan.riskThreshold())) {
-            insertCandidate(task.getId(), number++, candidate);
-        }
+                runtimePlan,
+                writingTask.getSecurityLevel());
         if (formatResult != null) {
             for (DocxFormatReviewService.Deviation deviation : formatResult.deviations()) {
                 ReviewIssueEntity issue = new ReviewIssueEntity();
@@ -194,16 +195,14 @@ public class ReviewService {
         task.setInitiatorId(RequestContext.userId());
         task.setCallbackUrl(request.callbackUrl());
         taskMapper.insert(task);
-        int number = 1;
         ReviewPlanService.RuntimePlan runtimePlan = planService.runtime(planId);
-        for (BuiltInReviewEngine.Candidate candidate : engine.inspect(
+        insertInspection(
+                task.getId(),
                 writingTask.getDocumentTypeCode(),
                 data.document().getTitle(),
                 data.paragraphs(),
-                new LinkedHashSet<>(runtimePlan.levels()),
-                runtimePlan.riskThreshold())) {
-            insertCandidate(task.getId(), number++, candidate);
-        }
+                runtimePlan,
+                writingTask.getSecurityLevel());
         task.setStatus("审校完成");
         taskMapper.updateById(task);
         return get(task.getId());
@@ -361,21 +360,29 @@ public class ReviewService {
     public ReviewDtos.IssueResponse accept(String taskId, String issueNumber, ReviewDtos.ProcessRequest request) {
         ReviewTaskEntity task = requireTask(taskId);
         ReviewIssueEntity issue = requirePendingIssue(taskId, issueNumber);
+        if (AutoFixPolicy.isManualOnly(issue.getDetectionMethod())) {
+            throw BusinessException.unprocessable("事实数据、逻辑和内容安全类问题禁止自动修改，请人工修改后标记“修改完成”");
+        }
         if (!StringUtils.hasText(issue.getSuggestedFix())) {
             throw BusinessException.unprocessable("该问题需要人工修改，不能直接自动采纳");
         }
         if (task.getDocumentId() == null || issue.getParagraphId() == null) {
             throw BusinessException.unprocessable("导入文稿问题需在原 DOCX 中人工修改后重新审校");
         }
-        DocumentParagraphEntity paragraph = documentService.exportData(task.getWritingTaskId()).paragraphs().stream()
-                .filter(item -> item.getId().equals(issue.getParagraphId()))
-                .findFirst()
-                .orElseThrow(() -> BusinessException.conflict("文稿已产生新版本，请重新发起审校后再采纳"));
+        // 同一段落的多个问题依次采纳时，每次采纳都会产生新版本；按位置定位当前版本段落，再以原文比对确认定位未失效
+        DocumentParagraphEntity paragraph =
+                documentService.currentParagraphAt(task.getWritingTaskId(), issue.getParagraphId());
         String text = paragraph.getPlainText();
         int start = issue.getCharPositionStart();
         int end = issue.getCharPositionEnd();
         if (start < 0 || end > text.length() || !text.substring(start, end).equals(issue.getOriginalText())) {
-            throw BusinessException.conflict("问题定位内容已变化，请重新审校");
+            // 同段落前面的问题已被采纳导致偏移变化：原文在段落中唯一出现时仍可安全定位
+            int first = text.indexOf(issue.getOriginalText());
+            if (first < 0 || text.indexOf(issue.getOriginalText(), first + 1) >= 0) {
+                throw BusinessException.conflict("问题定位内容已变化，请重新审校");
+            }
+            start = first;
+            end = first + issue.getOriginalText().length();
         }
         String changed = text.substring(0, start) + issue.getSuggestedFix() + text.substring(end);
         documentService.updateParagraph(
@@ -465,7 +472,78 @@ public class ReviewService {
         }
     }
 
-    private void insertCandidate(String taskId, int number, BuiltInReviewEngine.Candidate candidate) {
+    /**
+     * 执行规则审校与（方案包含 L6 时）模型辅助逻辑审校，为可合并的同类问题分配合并组后入库，返回下一个问题序号。
+     */
+    private int insertInspection(
+            String taskId,
+            String documentTypeCode,
+            String title,
+            List<DocumentParagraphEntity> paragraphs,
+            ReviewPlanService.RuntimePlan plan,
+            String securityLevel) {
+        List<BuiltInReviewEngine.Candidate> candidates = engine.inspect(
+                documentTypeCode, title, paragraphs, new LinkedHashSet<>(plan.levels()), plan.riskThreshold());
+        java.util.Map<String, String> groups = mergeGroups(candidates);
+        int number = 1;
+        for (BuiltInReviewEngine.Candidate candidate : candidates) {
+            insertCandidate(taskId, number++, candidate, "规则-" + candidate.level(), groups.get(mergeKey(candidate)));
+        }
+        boolean includesHints = !StringUtils.hasText(plan.riskThreshold()) || "提示".equals(plan.riskThreshold());
+        if (modelLogicReviewer != null && plan.levels().contains("L6") && includesHints) {
+            for (var finding : modelLogicReviewer.review(documentTypeCode, paragraphs, securityLevel, taskId)) {
+                insertCandidate(
+                        taskId,
+                        number++,
+                        new BuiltInReviewEngine.Candidate(
+                                finding.level(),
+                                finding.paragraph().getId(),
+                                finding.paragraph().getParagraphOrder(),
+                                finding.category(),
+                                finding.risk(),
+                                finding.start(),
+                                finding.end(),
+                                finding.original(),
+                                null,
+                                finding.explanation(),
+                                finding.basis(),
+                                finding.confidence()),
+                        "模型-L6",
+                        null);
+            }
+        }
+        return number;
+    }
+
+    /**
+     * 错误合并（§20）：同一层级、同一原文且有相同修改建议的非严重问题出现两次及以上时归入同一合并组，便于一次确认后批量处理。
+     * 严重问题和无修改建议的事实、逻辑、内容安全问题不合并。
+     */
+    private static java.util.Map<String, String> mergeGroups(List<BuiltInReviewEngine.Candidate> candidates) {
+        java.util.Map<String, Long> counts = candidates.stream()
+                .map(ReviewService::mergeKey)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.groupingBy(key -> key, java.util.stream.Collectors.counting()));
+        java.util.Map<String, String> groups = new java.util.HashMap<>();
+        counts.forEach((key, count) -> {
+            if (count > 1)
+                groups.put(key, java.util.UUID.randomUUID().toString().replace("-", ""));
+        });
+        return groups;
+    }
+
+    private static String mergeKey(BuiltInReviewEngine.Candidate candidate) {
+        if (!StringUtils.hasText(candidate.replacement()) || "严重".equals(candidate.risk())) return null;
+        return candidate.level() + "|" + candidate.category() + "|" + candidate.original() + "|"
+                + candidate.replacement();
+    }
+
+    private void insertCandidate(
+            String taskId,
+            int number,
+            BuiltInReviewEngine.Candidate candidate,
+            String detectionMethod,
+            String groupId) {
         ReviewIssueEntity issue = new ReviewIssueEntity();
         issue.setTenantId(RequestContext.tenantId());
         issue.setReviewTaskId(taskId);
@@ -481,7 +559,8 @@ public class ReviewService {
         issue.setSuggestedFix(candidate.replacement());
         issue.setIssueExplanation(candidate.explanation());
         issue.setRuleBasis(candidate.basis());
-        issue.setDetectionMethod("规则-" + candidate.level());
+        issue.setDetectionMethod(detectionMethod);
+        issue.setMergedGroupId(groupId);
         issue.setConfidenceScore(candidate.confidence());
         issue.setProcessingStatus("待处理");
         issueMapper.insert(issue);

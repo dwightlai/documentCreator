@@ -211,7 +211,7 @@ public class ModelGatewayService implements ModelGenerationPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = RuntimeException.class)
     public Optional<ModelGenerationPort.Result> generate(
             String scene,
             String dataLevel,

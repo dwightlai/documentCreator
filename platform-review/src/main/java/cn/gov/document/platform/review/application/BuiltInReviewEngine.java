@@ -15,6 +15,13 @@ import org.springframework.stereotype.Component;
 public class BuiltInReviewEngine {
     private final EffectiveReviewRuleProvider effectiveRuleProvider;
 
+    private final cn.gov.document.platform.review.application.deep.FactDataInspector factInspector =
+            new cn.gov.document.platform.review.application.deep.FactDataInspector();
+    private final cn.gov.document.platform.review.application.deep.LogicInspector logicInspector =
+            new cn.gov.document.platform.review.application.deep.LogicInspector();
+    private final cn.gov.document.platform.review.application.deep.ContentSafetyInspector safetyInspector =
+            new cn.gov.document.platform.review.application.deep.ContentSafetyInspector();
+
     public BuiltInReviewEngine(EffectiveReviewRuleProvider effectiveRuleProvider) {
         this.effectiveRuleProvider = effectiveRuleProvider;
     }
@@ -82,7 +89,8 @@ public class BuiltInReviewEngine {
                         match.start(),
                         match.end(),
                         match.original(),
-                        match.replacement(),
+                        // 内容安全类词条只提示，不提供自动替换（§21）
+                        "L7".equals(level) ? null : match.replacement(),
                         match.explanation(),
                         match.basis(),
                         match.confidence());
@@ -91,7 +99,7 @@ public class BuiltInReviewEngine {
                                 && existing.start() == candidate.start()
                                 && existing.end() == candidate.end()
                                 && existing.original().equals(candidate.original())
-                                && existing.replacement().equals(candidate.replacement()));
+                                && java.util.Objects.equals(existing.replacement(), candidate.replacement()));
                 if (!duplicate) {
                     result.add(candidate);
                 }
@@ -123,6 +131,9 @@ public class BuiltInReviewEngine {
                         new BigDecimal("0.97")));
             }
         }
+        if (enabledLevels.contains("L5")) addDeep(result, factInspector.inspect(paragraphs), riskThreshold);
+        if (enabledLevels.contains("L6")) addDeep(result, logicInspector.inspect(paragraphs), riskThreshold);
+        if (enabledLevels.contains("L7")) addDeep(result, safetyInspector.inspect(paragraphs), riskThreshold);
         return result.stream()
                 .sorted(Comparator.comparingInt(Candidate::paragraphNumber).thenComparingInt(Candidate::start))
                 .toList();
@@ -241,8 +252,33 @@ public class BuiltInReviewEngine {
         }
     }
 
+    private void addDeep(
+            List<Candidate> result,
+            List<cn.gov.document.platform.review.application.deep.Finding> findings,
+            String riskThreshold) {
+        for (var finding : findings) {
+            if (!atOrAbove(finding.risk(), riskThreshold)) continue;
+            result.add(new Candidate(
+                    finding.level(),
+                    finding.paragraph().getId(),
+                    finding.paragraph().getParagraphOrder(),
+                    finding.category(),
+                    finding.risk(),
+                    finding.start(),
+                    finding.end(),
+                    finding.original(),
+                    null,
+                    finding.explanation(),
+                    finding.basis(),
+                    finding.confidence()));
+        }
+    }
+
     private String levelForCategory(String category) {
-        return "文字".equals(category) ? "L1" : "规范".equals(category) ? "L2" : "L3";
+        if ("文字".equals(category)) return "L1";
+        if ("规范".equals(category)) return "L2";
+        if ("内容安全".equals(category) || "敏感词".equals(category)) return "L7";
+        return "L3";
     }
 
     private boolean atOrAbove(String risk, String threshold) {

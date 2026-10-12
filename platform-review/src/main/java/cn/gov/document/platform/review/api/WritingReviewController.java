@@ -14,7 +14,12 @@ public class WritingReviewController {
     }
 
     @PostMapping("/initiate-review")
-    ApiResponse<ReviewDtos.TaskResponse> initiate(@PathVariable String writingTaskId) {
-        return ApiResponse.success(service.create(new ReviewDtos.CreateRequest(writingTaskId, null, null)));
+    ApiResponse<ReviewDtos.TaskResponse> initiate(
+            @PathVariable String writingTaskId, @RequestBody(required = false) InitiateRequest request) {
+        String planId = request == null ? null : request.reviewPlanId();
+        return ApiResponse.success(service.create(new ReviewDtos.CreateRequest(writingTaskId, planId, null)));
     }
+
+    /** 可选指定审校方案；未指定时使用默认“公文规范审校”。 */
+    record InitiateRequest(String reviewPlanId) {}
 }

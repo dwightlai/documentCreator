@@ -673,14 +673,24 @@ public class DocumentService {
                 });
     }
 
-    public EditLeaseResponse acquireEditLease(String taskId, String paragraphId) {
-        DocumentEntity document = requireDocument(taskId);
-        // 页面可能停留在旧版本，按位置映射到当前版本中的同一段落
+    /**
+     * 将任意版本的段落 ID 按“大纲节点 + 段落序号”映射到当前版本中的同一段落。页面停留在旧版本、或同一事务中连续修改同一段落时使用。
+     */
+    public DocumentParagraphEntity currentParagraphAt(String taskId, String paragraphId) {
+        return currentParagraphAt(requireDocument(taskId), paragraphId);
+    }
+
+    private DocumentParagraphEntity currentParagraphAt(DocumentEntity document, String paragraphId) {
         DocumentParagraphEntity base = requireAnyVersionParagraph(document, paragraphId);
-        DocumentParagraphEntity paragraph = paragraphs(document.getId(), document.getCurrentVersion()).stream()
+        return paragraphs(document.getId(), document.getCurrentVersion()).stream()
                 .filter(p -> samePosition(p, base))
                 .findFirst()
                 .orElseThrow(() -> BusinessException.conflict("段落在最新版本中已被删除或移动，请刷新后重试"));
+    }
+
+    public EditLeaseResponse acquireEditLease(String taskId, String paragraphId) {
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity paragraph = currentParagraphAt(document, paragraphId);
         String key = leaseKey(document, paragraph);
         String user = RequestContext.userId();
         if (!coordination.tryLock(key, user, EDIT_LEASE_TTL)) throw BusinessException.conflict(leaseHolderMessage(key));

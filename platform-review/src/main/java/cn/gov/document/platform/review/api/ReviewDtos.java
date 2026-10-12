@@ -85,7 +85,9 @@ public final class ReviewDtos {
             BigDecimal confidenceScore,
             String processingStatus,
             String processingNote,
-            Integer lockVersion) {
+            Integer lockVersion,
+            String mergedGroupId,
+            boolean autoFixAllowed) {
         public static IssueResponse from(ReviewIssueEntity i) {
             return new IssueResponse(
                     i.getId(),
@@ -105,7 +107,9 @@ public final class ReviewDtos {
                     i.getConfidenceScore(),
                     i.getProcessingStatus(),
                     i.getProcessingNote(),
-                    i.getLockVersion());
+                    i.getLockVersion(),
+                    i.getMergedGroupId(),
+                    cn.gov.document.platform.review.application.AutoFixPolicy.allows(i));
         }
     }
 
