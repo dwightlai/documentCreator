@@ -59,6 +59,20 @@ platform:
     timeout: ${PLATFORM_OCR_TIMEOUT:60s}
     # 访问令牌所在的环境变量名（不直接写令牌）
     token-env: ${PLATFORM_OCR_TOKEN_ENV:}
+  knowledge:
+    # 向量化服务（OpenAI-compatible /embeddings），留空则知识检索只使用全文模式
+    embedding:
+      endpoint: ${KNOWLEDGE_EMBEDDING_ENDPOINT:}
+      model: ${KNOWLEDGE_EMBEDDING_MODEL:bge-m3}
+      token-env: ${KNOWLEDGE_EMBEDDING_TOKEN_ENV:}
+    # database：向量以 CLOB 存于切片表（适合中小规模）；milvus：使用 Milvus REST v2
+    vector-store: ${KNOWLEDGE_VECTOR_STORE:database}
+    vector-min-score: 0.5
+    milvus:
+      endpoint: ${MILVUS_ENDPOINT:}
+      collection: ${MILVUS_COLLECTION:knowledge_chunks}
+      dimensions: ${MILVUS_DIMENSIONS:1024}
+      token-env: ${MILVUS_TOKEN_ENV:}
   retention:
     ai-generated-days: 30
     ai-generated-max: 50

@@ -31,18 +31,30 @@ public class KnowledgeService {
     private final KnowledgeChunkMapper chunkMapper;
     private final KnowledgeFileStore fileStore;
     private final cn.gov.document.platform.common.ocr.OcrPort ocr;
+    private final cn.gov.document.platform.knowledge.vector.EmbeddingClient embeddings;
+    private final cn.gov.document.platform.knowledge.vector.VectorStore vectorStore;
+
+    /** 混合检索 RRF 常数（Reciprocal Rank Fusion）。 */
+    private static final int RRF_K = 60;
+
+    @org.springframework.beans.factory.annotation.Value("${platform.knowledge.vector-min-score:0.5}")
+    private double vectorMinScore = 0.5;
 
     public KnowledgeService(
             KnowledgeSourceMapper sourceMapper,
             KnowledgeDocumentMapper documentMapper,
             KnowledgeChunkMapper chunkMapper,
             KnowledgeFileStore fileStore,
-            cn.gov.document.platform.common.ocr.OcrPort ocr) {
+            cn.gov.document.platform.common.ocr.OcrPort ocr,
+            cn.gov.document.platform.knowledge.vector.EmbeddingClient embeddings,
+            cn.gov.document.platform.knowledge.vector.VectorStore vectorStore) {
         this.sourceMapper = sourceMapper;
         this.documentMapper = documentMapper;
         this.chunkMapper = chunkMapper;
         this.fileStore = fileStore;
         this.ocr = ocr;
+        this.embeddings = embeddings;
+        this.vectorStore = vectorStore;
     }
 
     @Transactional
@@ -152,8 +164,11 @@ public class KnowledgeService {
         if ("已完成".equals(document.getParsedStatus()))
             return new KnowledgeDtos.ParseResponse(
                     documentId, "已完成", document.getChunkCount(), List.of("文档已解析，本次未重复切分"));
+        KnowledgeSourceEntity source = requireSource(sourceId);
+        if (vectorEnabled(source)) vectorStore.deleteByDocument(RequestContext.tenantId(), documentId);
         chunkMapper.delete(
                 new LambdaQueryWrapper<KnowledgeChunkEntity>().eq(KnowledgeChunkEntity::getDocumentId, documentId));
+        List<KnowledgeChunkEntity> created = new java.util.ArrayList<>();
         String text = document.getExtractedText()
                 .replace("\r\n", "\n")
                 .replaceAll("[ \\t]+", " ")
@@ -177,6 +192,7 @@ public class KnowledgeService {
                 chunk.setStartPosition(start);
                 chunk.setEndPosition(end);
                 chunkMapper.insert(chunk);
+                created.add(chunk);
             }
             if (end >= text.length()) break;
             start = Math.max(start + 1, end - OVERLAP);
@@ -184,10 +200,62 @@ public class KnowledgeService {
         document.setChunkCount(order - 1);
         document.setParsedStatus("已完成");
         documentMapper.updateById(document);
-        return new KnowledgeDtos.ParseResponse(documentId, "已完成", document.getChunkCount(), List.of());
+        List<String> warnings = new java.util.ArrayList<>();
+        if (vectorEnabled(source)) {
+            try {
+                index(source, documentId, created);
+            } catch (BusinessException e) {
+                // 向量化失败不影响全文检索，保留解析结果并提示管理员重新向量化
+                warnings.add("向量化失败：" + e.getMessage() + "；已保留全文检索，可稍后重新向量化");
+            }
+        }
+        return new KnowledgeDtos.ParseResponse(documentId, "已完成", document.getChunkCount(), warnings);
+    }
+
+    /** 对已解析文档重新生成向量（模型更换或向量化失败后使用）。 */
+    @Transactional
+    public KnowledgeDtos.ParseResponse vectorize(String sourceId, String documentId) {
+        KnowledgeSourceEntity source = requireSource(sourceId);
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        if (!embeddings.enabled()) throw BusinessException.unprocessable("向量化服务尚未配置；当前仅启用权限前置的全文检索");
+        if (!vectorEnabled(source)) throw BusinessException.unprocessable("该知识库存储类型不包含向量检索");
+        if (!"已完成".equals(document.getParsedStatus())) throw BusinessException.unprocessable("请先完成文档解析");
+        List<KnowledgeChunkEntity> chunks = chunkMapper.selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+                .eq(KnowledgeChunkEntity::getDocumentId, documentId)
+                .orderByAsc(KnowledgeChunkEntity::getChunkOrder));
+        vectorStore.deleteByDocument(RequestContext.tenantId(), documentId);
+        index(source, documentId, chunks);
+        return new KnowledgeDtos.ParseResponse(documentId, "已完成", chunks.size(), List.of());
+    }
+
+    private void index(KnowledgeSourceEntity source, String documentId, List<KnowledgeChunkEntity> chunks) {
+        if (chunks.isEmpty()) return;
+        List<float[]> vectors = embeddings.embed(
+                chunks.stream().map(KnowledgeChunkEntity::getChunkText).toList());
+        Integer dimensions = source.getVectorDimensions();
+        if (dimensions != null && vectors.get(0).length != dimensions)
+            throw BusinessException.unprocessable("向量维度 " + vectors.get(0).length + " 与知识库配置的 " + dimensions + " 维不一致");
+        List<cn.gov.document.platform.knowledge.vector.VectorStore.Record> records = new java.util.ArrayList<>();
+        for (int i = 0; i < chunks.size(); i++)
+            records.add(new cn.gov.document.platform.knowledge.vector.VectorStore.Record(
+                    chunks.get(i).getId(), documentId, vectors.get(i)));
+        vectorStore.upsert(RequestContext.tenantId(), records);
+    }
+
+    private boolean vectorEnabled(KnowledgeSourceEntity source) {
+        String type = source.getStorageType() == null ? "" : source.getStorageType();
+        return embeddings.enabled() && (type.contains("向量") || type.contains("混合"));
     }
 
     public List<KnowledgeDtos.SearchResponse> search(String query, String sourceId, int limit) {
+        return search(query, sourceId, limit, null);
+    }
+
+    /**
+     * 权限前置的知识检索（§26）。mode 为 keyword（全文）、vector（语义）或 hybrid（默认，向量服务可用时启用）：
+     * 先按租户、权限级别和有效期筛出允许的文档，再分别做全文与向量检索，以 RRF 融合排序。
+     */
+    public List<KnowledgeDtos.SearchResponse> search(String query, String sourceId, int limit, String mode) {
         if (!StringUtils.hasText(query) || query.trim().length() < 2)
             throw BusinessException.unprocessable("检索词至少 2 个字符");
         int safeLimit = Math.min(50, Math.max(1, limit));
@@ -213,18 +281,82 @@ public class KnowledgeService {
         Map<String, KnowledgeDocumentEntity> docs =
                 allowed.stream().collect(Collectors.toMap(KnowledgeDocumentEntity::getId, d -> d));
         String keyword = query.trim();
-        return chunkMapper
-                .selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
-                        .in(KnowledgeChunkEntity::getDocumentId, docs.keySet())
-                        .like(KnowledgeChunkEntity::getChunkText, keyword))
-                .stream()
-                .map(chunk -> {
+        String effectiveMode = mode == null ? "hybrid" : mode.toLowerCase(java.util.Locale.ROOT);
+        if (!List.of("keyword", "vector", "hybrid").contains(effectiveMode))
+            throw BusinessException.unprocessable("检索模式仅支持 keyword、vector 或 hybrid");
+        if ("vector".equals(effectiveMode) && !embeddings.enabled())
+            throw BusinessException.unprocessable("向量化服务尚未配置，无法进行语义检索");
+        int candidates = safeLimit * 3;
+
+        List<KnowledgeChunkEntity> keywordHits = List.of();
+        if (!"vector".equals(effectiveMode)) {
+            keywordHits = chunkMapper
+                    .selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+                            .in(KnowledgeChunkEntity::getDocumentId, docs.keySet())
+                            .like(KnowledgeChunkEntity::getChunkText, keyword))
+                    .stream()
+                    .sorted(Comparator.comparingInt((KnowledgeChunkEntity c) -> occurrences(c.getChunkText(), keyword)
+                                    + (docs.get(c.getDocumentId())
+                                                    .getDocumentTitle()
+                                                    .contains(keyword)
+                                            ? 1
+                                            : 0))
+                            .reversed())
+                    .limit(candidates)
+                    .toList();
+        }
+        List<cn.gov.document.platform.knowledge.vector.VectorStore.Hit> vectorHits = List.of();
+        if (!"keyword".equals(effectiveMode) && embeddings.enabled()) {
+            // 只在向量化知识库的允许文档范围内做语义检索
+            List<String> vectorDocuments = allowed.stream()
+                    .filter(d -> vectorEnabled(sourceMap.get(d.getSourceId())))
+                    .map(KnowledgeDocumentEntity::getId)
+                    .toList();
+            if (!vectorDocuments.isEmpty())
+                vectorHits =
+                        vectorStore
+                                .search(
+                                        RequestContext.tenantId(),
+                                        embeddings.embed(keyword),
+                                        vectorDocuments,
+                                        candidates)
+                                .stream()
+                                // 低于相似度阈值的切片视为不相关，避免把无关材料带入写作问答
+                                .filter(hit -> hit.score() >= vectorMinScore)
+                                .toList();
+        }
+
+        Map<String, Double> fused = new java.util.LinkedHashMap<>();
+        Map<String, String> matchType = new java.util.HashMap<>();
+        for (int i = 0; i < keywordHits.size(); i++) {
+            fused.merge(keywordHits.get(i).getId(), 1.0 / (RRF_K + i + 1), Double::sum);
+            matchType.put(keywordHits.get(i).getId(), "关键词");
+        }
+        for (int i = 0; i < vectorHits.size(); i++) {
+            String id = vectorHits.get(i).chunkId();
+            fused.merge(id, 1.0 / (RRF_K + i + 1), Double::sum);
+            matchType.merge(id, "语义", (a, b) -> "混合");
+        }
+        if (fused.isEmpty()) return List.of();
+        Map<String, KnowledgeChunkEntity> chunks = new java.util.HashMap<>();
+        keywordHits.forEach(c -> chunks.put(c.getId(), c));
+        List<String> missing =
+                fused.keySet().stream().filter(id -> !chunks.containsKey(id)).toList();
+        if (!missing.isEmpty())
+            chunkMapper
+                    .selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+                            .in(KnowledgeChunkEntity::getId, missing)
+                            .in(KnowledgeChunkEntity::getDocumentId, docs.keySet()))
+                    .forEach(c -> chunks.put(c.getId(), c));
+        double best = 2.0 / (RRF_K + 1);
+        return fused.entrySet().stream()
+                .filter(e -> chunks.containsKey(e.getKey()))
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(safeLimit)
+                .map(e -> {
+                    KnowledgeChunkEntity chunk = chunks.get(e.getKey());
                     KnowledgeDocumentEntity d = docs.get(chunk.getDocumentId());
                     KnowledgeSourceEntity s = sourceMap.get(d.getSourceId());
-                    int occurrences = occurrences(chunk.getChunkText(), keyword);
-                    double score = Math.min(
-                            1.0,
-                            0.55 + occurrences * 0.1 + (d.getDocumentTitle().contains(keyword) ? 0.15 : 0));
                     return new KnowledgeDtos.SearchResponse(
                             s.getId(),
                             s.getSourceName(),
@@ -235,12 +367,10 @@ public class KnowledgeService {
                             snippet(chunk.getChunkText(), keyword),
                             d.getAuthorityLevel(),
                             d.getPermissionLevel(),
-                            score,
-                            d.getOriginalFileHash());
+                            Math.round(Math.min(1.0, e.getValue() / best) * 1000) / 1000.0,
+                            d.getOriginalFileHash(),
+                            matchType.get(e.getKey()));
                 })
-                .sorted(Comparator.comparingDouble(KnowledgeDtos.SearchResponse::score)
-                        .reversed())
-                .limit(safeLimit)
                 .toList();
     }
 

@@ -8,6 +8,18 @@ public class KnowledgeChunkEntity extends BaseEntity {
     private String documentId, chunkText, chunkTextHash, vectorId, keywords;
     private Integer chunkOrder, startPosition, endPosition, pageNumber;
 
+    /** 数据库向量存储模式下的向量（JSON 数组）。默认查询不加载，避免全文检索读取大字段。 */
+    @com.baomidou.mybatisplus.annotation.TableField(select = false)
+    private String embedding;
+
+    public String getEmbedding() {
+        return embedding;
+    }
+
+    public void setEmbedding(String v) {
+        embedding = v;
+    }
+
     public String getDocumentId() {
         return documentId;
     }

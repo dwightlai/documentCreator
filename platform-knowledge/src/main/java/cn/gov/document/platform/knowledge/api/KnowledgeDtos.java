@@ -94,5 +94,7 @@ public final class KnowledgeDtos {
             String authorityLevel,
             String permissionLevel,
             double score,
-            String fileHash) {}
+            String fileHash,
+            /** 命中方式：关键词、语义或混合。 */
+            String matchType) {}
 }

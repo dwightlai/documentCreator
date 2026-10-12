@@ -81,15 +81,16 @@ public class KnowledgeController {
 
     @PostMapping("/sources/{sourceId}/documents/{documentId}/vectorize")
     @PreAuthorize("hasRole('platform.admin')")
-    ApiResponse<Void> vectorize(@PathVariable String sourceId, @PathVariable String documentId) {
-        throw cn.gov.document.platform.common.error.BusinessException.unprocessable("向量服务尚未配置；当前仅启用权限前置的全文检索降级");
+    ApiResponse<KnowledgeDtos.ParseResponse> vectorize(@PathVariable String sourceId, @PathVariable String documentId) {
+        return ApiResponse.success(service.vectorize(sourceId, documentId));
     }
 
     @GetMapping("/search")
     ApiResponse<List<KnowledgeDtos.SearchResponse>> search(
             @RequestParam String q,
             @RequestParam(required = false) String sourceId,
-            @RequestParam(defaultValue = "10") int limit) {
-        return ApiResponse.success(service.search(q, sourceId, limit));
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String mode) {
+        return ApiResponse.success(service.search(q, sourceId, limit, mode));
     }
 }
