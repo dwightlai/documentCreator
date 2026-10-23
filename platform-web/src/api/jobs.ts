@@ -1,4 +1,4 @@
-import { http, type ApiEnvelope } from './http'
+import { http, randomId, type ApiEnvelope } from './http'
 
 export interface AsyncJob {
   id: string
@@ -28,4 +28,4 @@ export const listJobs = (status?: string) => data(http.get<ApiEnvelope<AsyncJob[
 export const getJobEvents = (jobId: string, afterEventId = 0) => data(http.get<ApiEnvelope<JobEvent[]>>(`/jobs/${jobId}/events/history`, { params: { afterEventId } }))
 export const cancelJob = (jobId: string) => data(http.delete<ApiEnvelope<AsyncJob>>(`/jobs/${jobId}`, { headers: { 'Idempotency-Key': `cancel-${jobId}` } }))
 export const retryJob = (jobId: string) => data(http.post<ApiEnvelope<AsyncJob>>(`/jobs/${jobId}/retry`, undefined, { headers: { 'Idempotency-Key': `retry-${jobId}-${Date.now()}` } }))
-export const submitHealthCheck = () => data(http.post<ApiEnvelope<AsyncJob>>('/jobs', { jobType: 'SYSTEM_HEALTH_CHECK', businessId: `manual-${Date.now()}` }, { headers: { 'Idempotency-Key': `health-${crypto.randomUUID()}` } }))
+export const submitHealthCheck = () => data(http.post<ApiEnvelope<AsyncJob>>('/jobs', { jobType: 'SYSTEM_HEALTH_CHECK', businessId: `manual-${Date.now()}` }, { headers: { 'Idempotency-Key': `health-${randomId()}` } }))

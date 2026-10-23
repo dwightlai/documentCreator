@@ -1,4 +1,4 @@
-import { http, type ApiEnvelope } from './http'
+import { http, randomId, type ApiEnvelope } from './http'
 import { accessToken, usesOidc } from '@/auth/identity'
 
 export interface WritingTask {
@@ -146,7 +146,7 @@ async function recoverPersistedStream(taskId:string,baselineVersion:number,onEve
 export async function streamDocumentSection(taskId:string,nodeId:string,instruction:string,onEvent:(event:string,data:Record<string,unknown>)=>void) {
   let baselineVersion=0
   try { baselineVersion=(await getWritingDocument(taskId)).currentVersion } catch { /* 首次生成尚无文稿。 */ }
-  const headers:Record<string,string>={'Content-Type':'application/json','X-Request-Id':crypto.randomUUID().replaceAll('-','')}
+  const headers:Record<string,string>={'Content-Type':'application/json','X-Request-Id':randomId()}
   if(usesOidc()) headers.Authorization=`Bearer ${await accessToken()}`
   else { headers['X-Tenant-Id']=import.meta.env.VITE_TENANT_ID||'local-government';headers['X-User-Id']=import.meta.env.VITE_USER_ID||'local-user' }
   const base=import.meta.env.VITE_API_BASE_URL||'/api/v1'
