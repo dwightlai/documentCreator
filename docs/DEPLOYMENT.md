@@ -21,21 +21,21 @@
 - 后端和前端容器只读运行，启用 `no-new-privileges`；
 - Nginx 禁止 SSE 缓冲并设置 CSP、点击劫持、MIME、Referrer 和 Permissions Policy 响应头。
 
-## 可选：定稿稿在线编辑（ONLYOFFICE Docs）
+## 定稿稿在线编辑（ONLYOFFICE Docs）
 
-写作工作区“套红排版”生成的定稿稿默认可下载 DOCX。需要在浏览器中直接微调版式时，可启用 ONLYOFFICE 在线编辑，默认关闭。
+写作工作区“套红排版”生成定稿稿后，默认在浏览器中用 ONLYOFFICE 在线编辑微调版式，保存为新的定稿稿；也可下载 DOCX。`compose.yaml` 默认包含 `onlyoffice` 服务，前端 nginx 在 `/office/` 下同源代理文档服务器，因此无需放宽平台的内容安全策略。
 
-启用前确认：
+已确认事项：
 
-- **许可**：社区版为 AGPL v3，限制同时编辑连接数，超出需购买企业版；平台只通过接口集成，不修改其源码。
+- **许可**：接受社区版 AGPL v3 及同时编辑连接数限制，超出需购买企业版；平台只通过接口集成，不修改其源码。
 - **信创**：当前不作为约束；日后有信创要求时以 WPS 中台替换，在线编辑通过独立适配层接入，替换不影响定稿业务流程。
-- **字体**：仿宋_GB2312、方正小标宋简体等公文字体须取得授权后放入 `deploy/onlyoffice/fonts/`，否则编辑器以替代字体显示。
+- **字体（待确认授权）**：仿宋_GB2312、方正小标宋简体等公文字体须取得授权后放入 `deploy/onlyoffice/fonts/`（或 `ONLYOFFICE_FONTS_DIR` 指定的目录），否则编辑器以替代字体显示，版式以下载的 DOCX 为准。
 
-启用步骤：
+部署要点：
 
-1. 在 `.env` 中设置 `ONLYOFFICE_JWT_SECRET`（至少 32 字节的随机值，平台与文档服务器共用），可选 `ONLYOFFICE_VERSION`（默认 9.4.0，上线前按安全公告更新）。
-2. 叠加启动：`docker compose -f compose.yaml -f deploy/onlyoffice/compose.onlyoffice.yaml --env-file .env up -d`。
-3. 叠加文件会：启动 `onlyoffice` 服务；为后端开启 `PLATFORM_ONLYOFFICE_*` 配置；用 `deploy/onlyoffice/nginx.conf` 替换前端 nginx 配置，在 `/office/` 下同源代理文档服务器，因此无需放宽平台的内容安全策略。修改 `platform-web/nginx.conf` 时请同步该文件。
+1. `.env` 必须设置 `ONLYOFFICE_JWT_SECRET`（至少 32 字符的随机值，平台与文档服务器共用，不得与其他密钥相同），预检脚本会校验；`ONLYOFFICE_VERSION` 默认 9.4.0，上线前按安全公告更新到已验证的固定版本。
+2. 文档服务器首次启动约需 1—2 分钟，健康检查通过前打开在线编辑会提示加载失败；其数据卷只存编辑缓存，定稿稿文件由平台对象存储保存，无需单独备份。
+3. 临时停用在线编辑：设置 `PLATFORM_ONLYOFFICE_ENABLED=false`，界面不再显示在线编辑入口，套红与下载不受影响。
 
 安全约束（已实现）：
 

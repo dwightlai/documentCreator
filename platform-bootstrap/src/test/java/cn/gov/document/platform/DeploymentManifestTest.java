@@ -32,6 +32,19 @@ class DeploymentManifestTest {
                 .containsKeys("MINIO_ACCESS_KEY", "MINIO_SECRET_KEY")
                 .doesNotContainKeys("MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD");
 
+        // 定稿稿在线编辑默认启用：文档服务器固定版本、启用 JWT，后端与前端同源代理均已接线
+        Map<String, Object> onlyOffice = (Map<String, Object>) services.get("onlyoffice");
+        assertThat(onlyOffice.get("image").toString()).startsWith("onlyoffice/documentserver:").doesNotContain(":latest");
+        assertThat((Map<String, Object>) onlyOffice.get("environment")).containsEntry("JWT_ENABLED", "true");
+        assertThat(environment)
+                .containsKeys("PLATFORM_ONLYOFFICE_ENABLED", "PLATFORM_ONLYOFFICE_JWT_SECRET")
+                .containsEntry("PLATFORM_ONLYOFFICE_INTERNAL_URL", "http://onlyoffice");
+        Map<String, Object> web = (Map<String, Object>) services.get("web");
+        assertThat((Map<String, Object>) web.get("depends_on")).containsKey("onlyoffice");
+        Path nginx = manifest.getParent().resolve("platform-web/nginx.conf");
+        assertThat(Files.readString(nginx))
+                .contains("location /office/", "proxy_pass http://onlyoffice/", "X-Frame-Options SAMEORIGIN");
+
         Map<String, Object> minioInit = (Map<String, Object>) services.get("minio-init");
         Map<String, Object> minioInitEnvironment = (Map<String, Object>) minioInit.get("environment");
         assertThat(minioInitEnvironment)

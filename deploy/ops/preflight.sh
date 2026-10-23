@@ -24,6 +24,7 @@ done < "${ENV_FILE}"
 required=(
   POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD MINIO_ACCESS_KEY MINIO_SECRET_KEY
   KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_DB_PASSWORD OIDC_PUBLIC_URL PLATFORM_PUBLIC_URL PLATFORM_ALLOWED_ORIGINS
+  ONLYOFFICE_JWT_SECRET
 )
 for key in "${required[@]}"; do
   value="${values[${key}]:-}"
@@ -37,13 +38,19 @@ for key in "${required[@]}"; do
   fi
 done
 
-password_keys=(POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD MINIO_SECRET_KEY KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_DB_PASSWORD)
+password_keys=(POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD MINIO_SECRET_KEY KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_DB_PASSWORD ONLYOFFICE_JWT_SECRET)
 for key in "${password_keys[@]}"; do
   if (( ${#values[${key}]} < 20 )); then
     echo "${key} must contain at least 20 characters" >&2
     exit 2
   fi
 done
+
+# ONLYOFFICE 与平台共用的 JWT 密钥（HS256），后端启动时同样要求至少 32 字节
+if (( ${#values[ONLYOFFICE_JWT_SECRET]} < 32 )); then
+  echo "ONLYOFFICE_JWT_SECRET must contain at least 32 characters" >&2
+  exit 2
+fi
 
 for ((left=0; left<${#password_keys[@]}; left++)); do
   for ((right=left+1; right<${#password_keys[@]}; right++)); do

@@ -114,6 +114,12 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-document-platform}
       MODEL_ALLOWED_ENDPOINTS: ${MODEL_ALLOWED_ENDPOINTS:-}
+      # 定稿稿在线编辑（ONLYOFFICE Docs）：浏览器经前端 nginx 的 /office/ 同源访问，文档服务器经内网回调后端
+      PLATFORM_ONLYOFFICE_ENABLED: ${PLATFORM_ONLYOFFICE_ENABLED:-true}
+      PLATFORM_ONLYOFFICE_PUBLIC_URL: ${PLATFORM_PUBLIC_URL:-http://localhost:8088}/office
+      PLATFORM_ONLYOFFICE_INTERNAL_URL: http://onlyoffice
+      PLATFORM_ONLYOFFICE_CALLBACK_BASE_URL: http://backend:18089
+      PLATFORM_ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?ONLYOFFICE_JWT_SECRET is required}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75 -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai}
     volumes:
       - platform-files:/app/data/files
@@ -136,6 +142,27 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # 定稿稿在线编辑。社区版为 AGPL v3 并限制同时编辑连接数；公文字体须授权后放入 ONLYOFFICE_FONTS_DIR。
+  onlyoffice:
+    image: onlyoffice/documentserver:${ONLYOFFICE_VERSION:-9.4.0}
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?ONLYOFFICE_JWT_SECRET is required}
+      JWT_HEADER: Authorization
+      # 文档服务器需访问内网中的平台后端（拉取定稿稿、保存回调）
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+      - ${ONLYOFFICE_FONTS_DIR:-./deploy/onlyoffice/fonts}:/usr/share/fonts/truetype/custom:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/healthcheck | grep true"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
+    restart: unless-stopped
+
   web:
     build:
       context: ./platform-web
@@ -154,6 +181,8 @@ services:
       - no-new-privileges:true
     depends_on:
       backend: { condition: service_healthy }
+      # nginx 启动时解析 /office/ 代理的上游主机名
+      onlyoffice: { condition: service_started }
     restart: unless-stopped
 
 volumes:
@@ -162,3 +191,5 @@ volumes:
   minio-data:
   keycloak-postgres-data:
   platform-files:
+  onlyoffice-data:
+  onlyoffice-logs:

@@ -139,8 +139,9 @@ const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12
             </li>
           </ul>
           <footer>
-            <button type="button" class="primary-button" @click="download">下载定稿 DOCX</button>
-            <button v-if="onlineEnabled" type="button" class="secondary-button" :disabled="stale || awaitingSave" :title="stale ? '正文已更新，请先重新套红' : '在 ONLYOFFICE 中微调版式，关闭后保存为新的定稿稿'" @click="editOnline">{{ awaitingSave ? '等待保存…' : '在线编辑' }}</button>
+            <!-- 启用在线编辑时以在线编辑为定稿主操作，下载作为备选 -->
+            <button v-if="onlineEnabled" type="button" class="primary-button" :disabled="stale || awaitingSave" :title="stale ? '正文已更新，请先重新套红' : '在 ONLYOFFICE 中微调版式，关闭后保存为新的定稿稿'" @click="editOnline">{{ awaitingSave ? '等待保存…' : '在线编辑' }}</button>
+            <button type="button" :class="onlineEnabled ? 'secondary-button' : 'primary-button'" @click="download">下载定稿 DOCX</button>
           </footer>
         </template>
         <p v-else class="typeset-empty">尚未生成定稿稿。填写左侧要素后生成，可下载 DOCX 并查看格式检查结果。</p>
