@@ -46,7 +46,7 @@ export interface WritingOutline {
   id:string;taskId:string;version:number;confirmed:boolean;confirmedBy?:string;confirmedAt?:string;structureCheckResult:string;lockVersion:number;nodes:OutlineNode[]
 }
 export interface DocumentParagraph {
-  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string
+  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string;richContent?:string
 }
 export interface WritingDocument {
   id:string;taskId:string;title:string;contentType:string;totalWordCount:number;securityLevel:string;currentVersion:number;status:string;paragraphs:DocumentParagraph[];updatedAt:string
@@ -168,7 +168,7 @@ export async function streamDocumentSection(taskId:string,nodeId:string,instruct
   }
   if(!completed)await recoverPersistedStream(taskId,baselineVersion,onEvent)
 }
-export const updateDocumentParagraph = (taskId:string,paragraph:DocumentParagraph) => data(http.put<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraph.id}`,{plainText:paragraph.plainText,lockVersion:paragraph.lockVersion,changeDescription:'正文工作台人工编辑'}))
+export const updateDocumentParagraph = (taskId:string,paragraph:DocumentParagraph) => data(http.put<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraph.id}`,{plainText:paragraph.plainText,richContent:paragraph.richContent,lockVersion:paragraph.lockVersion,changeDescription:'正文工作台人工编辑'}))
 export const setParagraphLock = (taskId:string,paragraphId:string,locked:boolean) => data(locked?http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`):http.delete<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`))
 export interface EditLease { paragraphId:string;holderId:string;expiresAt:string }
 export const acquireEditLease = (taskId:string,paragraphId:string) => data(http.post<ApiEnvelope<EditLease>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))

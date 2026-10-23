@@ -220,6 +220,7 @@ public class DocumentService {
                 copy.setParagraphOrder(old.getParagraphOrder() + 1);
             if (!"续写".equals(generationType) && old.getId().equals(source.getId())) {
                 copy.setPlainText(output);
+                copy.setRichContent(null);
                 copy.setContentSourceLevel("无来源");
                 copy.setContentOrigin("AI改写");
             }
@@ -319,6 +320,7 @@ public class DocumentService {
         paragraphId = source.getId();
         if (Boolean.TRUE.equals(source.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能修改");
         ensureNotLeasedByOthers(document, source);
+        EditedContent edited = editedContent(source, request);
         int oldVersion = document.getCurrentVersion();
         int nextVersion = oldVersion + 1;
         List<DocumentParagraphEntity> oldParagraphs = paragraphs(document.getId(), oldVersion);
@@ -326,7 +328,8 @@ public class DocumentService {
         for (DocumentParagraphEntity old : oldParagraphs) {
             DocumentParagraphEntity copy = cloneParagraph(old, nextVersion);
             if (old.getId().equals(paragraphId)) {
-                copy.setPlainText(request.plainText().trim());
+                copy.setPlainText(edited.plainText());
+                copy.setRichContent(edited.richContent());
                 copy.setContentSourceLevel("手工");
                 copy.setContentOrigin("人工录入");
             }
@@ -336,6 +339,26 @@ public class DocumentService {
         createVersion(document, "人工提交", "用户手工", request.changeDescription());
         refreshDocument(document);
         return get(taskId);
+    }
+
+    private record EditedContent(String plainText, String richContent) {}
+
+    /**
+     * 富文本编辑提交时以富文本为准推导纯文本，保证审校看到的就是导出的内容；只提交纯文本时（如采纳审校建议）尽量把改动落回原富文本以保留格式，
+     * 无法安全落回时降级为纯文本段落。
+     */
+    private static EditedContent editedContent(DocumentParagraphEntity source, UpdateParagraphRequest request) {
+        if (request.richContent() != null && !request.richContent().isBlank()) {
+            String text = RichContent.plainText(RichContent.parse(request.richContent()));
+            if (text.isEmpty()) throw BusinessException.unprocessable("段落内容不能为空");
+            if (text.length() > 30000) throw BusinessException.unprocessable("段落内容不能超过 30000 字");
+            return new EditedContent(text, request.richContent());
+        }
+        String text = request.plainText().trim();
+        String rich = source.getRichContent() == null
+                ? null
+                : RichContent.rebase(source.getRichContent(), source.getPlainText(), text);
+        return new EditedContent(text, rich);
     }
 
     @Transactional
@@ -444,6 +467,8 @@ public class DocumentService {
                                             ? ""
                                             : value.citation().getCitedFragment()));
             copy.setPlainText(marked + references.toString());
+            // 引用标注插在纯文本位置上，带引用的段落按纯文本导出
+            if (!positioned.isEmpty()) copy.setRichContent(null);
             result.add(copy);
         }
         return result;
@@ -680,6 +705,7 @@ public class DocumentService {
         copy.setSourceMaterialIds(source.getSourceMaterialIds());
         copy.setIsLocked(source.getIsLocked());
         copy.setPlainText(source.getPlainText());
+        copy.setRichContent(source.getRichContent());
         return copy;
     }
 
@@ -758,7 +784,8 @@ public class DocumentService {
                 .filter(p -> samePosition(p, base))
                 .findFirst()
                 .orElseThrow(() -> BusinessException.conflict("段落在最新版本中已被删除或移动，请刷新后重试"));
-        if (!Objects.equals(current.getPlainText(), base.getPlainText()))
+        if (!Objects.equals(current.getPlainText(), base.getPlainText())
+                || !Objects.equals(current.getRichContent(), base.getRichContent()))
             throw BusinessException.conflict("段落已被其他用户修改，请比对最新内容后再保存");
         return current;
     }

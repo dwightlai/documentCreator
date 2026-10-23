@@ -1,5 +1,6 @@
 package cn.gov.document.platform.document.api;
 
+import cn.gov.document.platform.document.application.RichContent;
 import cn.gov.document.platform.document.domain.DocumentEntity;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
 import cn.gov.document.platform.document.domain.DocumentVersionEntity;
@@ -26,9 +27,10 @@ public final class DocumentDtos {
             @NotBlank @Size(max = 30000) String plainText,
             @NotNull Integer lockVersion,
             @Size(max = 500) String changeDescription,
-            Integer baseVersion) {
+            Integer baseVersion,
+            @Size(max = RichContent.MAX_LENGTH) String richContent) {
         public UpdateParagraphRequest(String plainText, Integer lockVersion, String changeDescription) {
-            this(plainText, lockVersion, changeDescription, null);
+            this(plainText, lockVersion, changeDescription, null, null);
         }
     }
 
@@ -56,7 +58,8 @@ public final class DocumentDtos {
             boolean locked,
             String plainText,
             int lockVersion,
-            String contentOrigin) {
+            String contentOrigin,
+            String richContent) {
         static ParagraphResponse from(DocumentParagraphEntity entity) {
             return new ParagraphResponse(
                     entity.getId(),
@@ -67,7 +70,8 @@ public final class DocumentDtos {
                     Boolean.TRUE.equals(entity.getIsLocked()),
                     entity.getPlainText(),
                     entity.getLockVersion(),
-                    entity.getContentOrigin());
+                    entity.getContentOrigin(),
+                    entity.getRichContent());
         }
     }
 

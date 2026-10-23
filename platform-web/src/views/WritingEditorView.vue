@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
+import RichParagraphEditor from '@/components/RichParagraphEditor.vue'
+import { toEditorDoc } from '@/editor/richText'
+import type { JSONContent } from '@tiptap/vue-3'
 import { initiateReview } from '@/api/review'
 import { isConflict } from '@/api/http'
 import {
@@ -109,7 +112,7 @@ const includeDisclosure = ref(false)
 const ORIGIN_CLASS: Record<string, string> = { AI生成: 'ai', AI改写: 'ai', AI推荐: 'ai', 引用原文: 'quote', 人工录入: 'manual' }
 const aiPercent = computed(() => disclosure.value ? Math.round(disclosure.value.aiGeneratedRatio * 100) : 0)
 async function refreshDisclosure() { try { disclosure.value = await getAiDisclosure(taskId.value) } catch { disclosure.value = undefined } }
-const conflict = ref<{ mine: string; latest: DocumentParagraph; latestDocument: WritingDocument }>()
+const conflict = ref<{ mine: string; mineRich?: string; latest: DocumentParagraph; latestDocument: WritingDocument }>()
 const materialForm = reactive({ materialName:'', sourceType:'上传', authorityLevel:'正式公文', usageMode:'全文参考', citationPurpose:'事实依据', permissionStatus:'允许', selectedFragment:'', locked:true })
 
 const selectedNode = computed(() => outline.value?.nodes.find((item) => item.id === selectedNodeId.value))
@@ -195,8 +198,8 @@ async function saveParagraph(paragraph:DocumentParagraph) {
     try {
       const latestDocument = await getWritingDocument(taskId.value)
       const latest = latestDocument.paragraphs.find((item) => samePosition(item, paragraph))
-      if (!latest || latest.plainText === paragraph.plainText) { ElMessage.warning(message(error)); return }
-      conflict.value = { mine: paragraph.plainText, latest, latestDocument }
+      if (!latest || (latest.plainText === paragraph.plainText && latest.richContent === paragraph.richContent)) { ElMessage.warning(message(error)); return }
+      conflict.value = { mine: paragraph.plainText, mineRich: paragraph.richContent, latest, latestDocument }
     } catch (reloadError) { ElMessage.error(message(reloadError)) }
   }
 }
@@ -204,7 +207,7 @@ async function overwriteWithMine() {
   const current = conflict.value
   if (!current) return
   try {
-    document.value = await updateDocumentParagraph(taskId.value, { ...current.latest, plainText: current.mine })
+    document.value = await updateDocumentParagraph(taskId.value, { ...current.latest, plainText: current.mine, richContent: current.mineRich })
     selectedParagraphId.value = document.value.paragraphs.find((item) => samePosition(item, current.latest))?.id ?? ''
     conflict.value = undefined
     await endEditing()
@@ -219,6 +222,11 @@ async function discardMine() {
   conflict.value = undefined
   await endEditing()
   ElMessage.info('已放弃本次修改并载入最新内容')
+}
+/** 富文本编辑结果同时保留纯文本，供字数显示和冲突比对；保存时服务端以富文本为准重新推导纯文本。 */
+function onRichUpdate(paragraph:DocumentParagraph, doc:JSONContent, plainText:string) {
+  paragraph.richContent = JSON.stringify(doc)
+  paragraph.plainText = plainText
 }
 async function toggleLock(paragraph:DocumentParagraph) { try { document.value=await setParagraphLock(taskId.value,paragraph.id,!paragraph.locked); ElMessage.success(paragraph.locked?'段落已解锁':'段落已锁定') } catch(error){ElMessage.error(message(error))} }
 async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format,includeDisclosure.value); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
@@ -271,7 +279,7 @@ onBeforeUnmount(endEditing)
           <section v-if="document?.paragraphs.length" class="paper-sheet">
             <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
             <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><textarea v-model="paragraph.plainText" :disabled="paragraph.locked" :readonly="!!leaseBlocked[paragraph.id]" @focus="beginEditing(paragraph)" rows="8" @click.stop /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
             </article>
           </section>
           <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>

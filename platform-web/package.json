@@ -18,6 +18,11 @@
     "perf:baseline": "node performance/load-baseline.mjs"
   },
   "dependencies": {
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
+    "@tiptap/vue-3": "3.31.4",
     "axios": "^1.13.4",
     "element-plus": "^2.13.2",
     "keycloak-js": "^26.2.2",

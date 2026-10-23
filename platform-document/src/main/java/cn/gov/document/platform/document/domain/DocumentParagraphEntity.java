@@ -14,6 +14,7 @@ public class DocumentParagraphEntity extends BaseEntity {
     private Boolean isLocked;
     private String contentOrigin;
     private String plainText;
+    private String richContent;
 
     public String getDocumentId() {
         return documentId;
@@ -86,5 +87,14 @@ public class DocumentParagraphEntity extends BaseEntity {
 
     public void setPlainText(String value) {
         plainText = value;
+    }
+
+    /** 编辑器富文本 JSON，为空表示纯文本段落。正文变化而格式无法保留时必须同时清空，避免与 plainText 不一致。 */
+    public String getRichContent() {
+        return richContent;
+    }
+
+    public void setRichContent(String value) {
+        richContent = value;
     }
 }

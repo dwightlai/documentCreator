@@ -34,8 +34,15 @@ public class PdfExporter {
         Font bodyFont = font(Font.PLAIN, BODY_SIZE);
         Font titleFont = font(Font.BOLD, 46);
         List<TextLine> lines = new ArrayList<>();
-        for (DocumentParagraphEntity paragraph : paragraphs)
-            lines.addAll(wrap(paragraph.getPlainText(), bodyFont, WIDTH - MARGIN_X * 2));
+        for (DocumentParagraphEntity paragraph : paragraphs) {
+            if (paragraph.getRichContent() == null) {
+                lines.addAll(wrap(paragraph.getPlainText(), bodyFont, WIDTH - MARGIN_X * 2));
+                continue;
+            }
+            // 富文本段落的纯文本以换行分隔块、制表符分隔表格单元格；PDF 暂按文本行输出，格式以 DOCX 为准
+            for (String block : paragraph.getPlainText().split("\n"))
+                lines.addAll(wrap(block.replace("\t", "　　"), bodyFont, WIDTH - MARGIN_X * 2));
+        }
         int firstPageCapacity = (HEIGHT - BOTTOM - (TOP + 160)) / LINE_HEIGHT;
         int otherCapacity = (HEIGHT - BOTTOM - TOP) / LINE_HEIGHT;
         List<List<TextLine>> pages = new ArrayList<>();
