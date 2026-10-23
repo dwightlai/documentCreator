@@ -56,26 +56,56 @@ public class DocumentCommentService {
         entity.setCommenterId(RequestContext.userId());
         entity.setCommentType(request.commentType());
         entity.setCommentText(request.commentText().trim());
+        entity.setQuotedText(
+                request.quotedText() == null || request.quotedText().isBlank() ? null : request.quotedText().strip());
         entity.setIsResolved(false);
         commentMapper.insert(entity);
-        return DocumentCommentDtos.CommentResponse.from(entity);
+        return withCurrentParagraphs(document, List.of(entity)).get(0);
     }
 
     public List<DocumentCommentDtos.CommentResponse> list(String documentId, Boolean resolved) {
-        requireDocument(documentId);
-        return commentMapper
-                .selectList(new LambdaQueryWrapper<DocumentCommentEntity>()
+        DocumentEntity document = requireDocument(documentId);
+        return withCurrentParagraphs(
+                document,
+                commentMapper.selectList(new LambdaQueryWrapper<DocumentCommentEntity>()
                         .eq(DocumentCommentEntity::getDocumentId, documentId)
                         .eq(resolved != null, DocumentCommentEntity::getIsResolved, resolved)
-                        .orderByAsc(DocumentCommentEntity::getCreatedAt))
-                .stream()
-                .map(DocumentCommentDtos.CommentResponse::from)
+                        .orderByAsc(DocumentCommentEntity::getCreatedAt)));
+    }
+
+    /** 批注挂在创建时版本的段落上；按“大纲节点 + 段落序号”映射到当前版本同一位置的段落（与段落编辑的变基规则一致）。 */
+    private List<DocumentCommentDtos.CommentResponse> withCurrentParagraphs(
+            DocumentEntity document, List<DocumentCommentEntity> comments) {
+        List<String> ids = comments.stream()
+                .map(DocumentCommentEntity::getParagraphId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
                 .toList();
+        if (ids.isEmpty()) return comments.stream().map(c -> DocumentCommentDtos.CommentResponse.from(c, null)).toList();
+        Map<String, DocumentParagraphEntity> origins =
+                paragraphMapper.selectList(new LambdaQueryWrapper<DocumentParagraphEntity>()
+                                .in(DocumentParagraphEntity::getId, ids)
+                                .eq(DocumentParagraphEntity::getDocumentId, document.getId()))
+                        .stream()
+                        .collect(Collectors.toMap(DocumentParagraphEntity::getId, Function.identity()));
+        Map<String, String> current = paragraphs(document.getId(), document.getCurrentVersion()).stream()
+                .collect(Collectors.toMap(DocumentCommentService::position, DocumentParagraphEntity::getId, (a, b) -> a));
+        return comments.stream()
+                .map(comment -> {
+                    DocumentParagraphEntity origin = origins.get(comment.getParagraphId());
+                    return DocumentCommentDtos.CommentResponse.from(
+                            comment, origin == null ? null : current.get(position(origin)));
+                })
+                .toList();
+    }
+
+    private static String position(DocumentParagraphEntity paragraph) {
+        return paragraph.getOutlineNodeId() + "#" + paragraph.getParagraphOrder();
     }
 
     @Transactional
     public DocumentCommentDtos.CommentResponse resolve(String documentId, String commentId) {
-        requireDocument(documentId);
+        DocumentEntity document = requireDocument(documentId);
         DocumentCommentEntity entity = commentMapper.selectOne(new LambdaQueryWrapper<DocumentCommentEntity>()
                 .eq(DocumentCommentEntity::getId, commentId)
                 .eq(DocumentCommentEntity::getDocumentId, documentId));
@@ -86,7 +116,7 @@ public class DocumentCommentService {
             entity.setResolvedAt(OffsetDateTime.now());
             commentMapper.updateById(entity);
         }
-        return DocumentCommentDtos.CommentResponse.from(entity);
+        return withCurrentParagraphs(document, List.of(entity)).get(0);
     }
 
     public DocumentCommentDtos.CompareResponse compare(String documentId, int fromVersion, int toVersion) {

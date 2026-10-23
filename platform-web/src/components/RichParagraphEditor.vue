@@ -58,7 +58,32 @@ function replaceRange(from: number, to: number, expected: string, text: string) 
   if (!current || to > current.state.doc.content.size || current.state.doc.textBetween(from, to) !== expected) return false
   return current.chain().focus().command(({ tr }) => { tr.insertText(text, from, to); return true }).run()
 }
-defineExpose({ editor, replaceRange })
+/** 当前选中的文字（批注引用用），超过 1000 字时截断。只读段落同样可以选中文字。 */
+function selectedText() {
+  const current = editor.value
+  if (!current || current.state.selection.empty) return ''
+  const { from, to } = current.state.selection
+  return Array.from(current.state.doc.textBetween(from, to, '\n').trim()).slice(0, MAX_SELECTION).join('')
+}
+
+/** 在段落中选中第一处引用文字并滚动到可见位置；文字已被修改时返回 false。 */
+function revealText(text: string) {
+  const current = editor.value
+  if (!current || !text) return false
+  let found: { from: number; to: number } | undefined
+  current.state.doc.descendants((node, pos) => {
+    if (found) return false
+    if (!node.isTextblock) return true
+    // 叶子节点（换行）按一个字符计，偏移与文档位置一一对应
+    const index = current.state.doc.textBetween(pos + 1, pos + node.nodeSize - 1, undefined, '\n').indexOf(text)
+    if (index >= 0) found = { from: pos + 1 + index, to: pos + 1 + index + text.length }
+    return false
+  })
+  if (!found) return false
+  current.chain().focus().setTextSelection(found).scrollIntoView().run()
+  return true
+}
+defineExpose({ editor, replaceRange, selectedText, revealText })
 
 type Action = { label: string; text: string; run: () => void; active?: () => boolean; enabled?: () => boolean }
 const chain = () => editor.value!.chain().focus()

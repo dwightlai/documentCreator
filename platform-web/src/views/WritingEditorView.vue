@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import RichParagraphEditor from '@/components/RichParagraphEditor.vue'
 import SelectionRewriteDialog from '@/components/SelectionRewriteDialog.vue'
+import ParagraphComments from '@/components/ParagraphComments.vue'
 import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
 import type { JSONContent } from '@tiptap/vue-3'
 import { initiateReview } from '@/api/review'
@@ -45,6 +46,11 @@ import {
   type WritingOutline,
   type WritingTask,
   requestSelectionCandidates,
+  listDocumentComments,
+  createDocumentComment,
+  resolveDocumentComment,
+  type CommentType,
+  type DocumentComment,
   type SelectionCandidate,
   type SelectionOperation,
 } from '@/api/writing'
@@ -268,13 +274,50 @@ function adoptCandidate(candidate:SelectionCandidate) {
   rewriteOpen.value = false
   ElMessage.success('已替换选中文字，保存新版本后生效；该段落将标记为“AI改写”')
 }
+/** 正文批注：服务端把每条批注映射到当前版本同一位置的段落（currentParagraphId），段落每次保存后重新拉取。 */
+const comments = ref<DocumentComment[]>([])
+const showResolved = ref(false)
+const commentDraft = ref<{ paragraph: DocumentParagraph; quotedText: string; commentType: CommentType; commentText: string; saving: boolean }>()
+const visible = (comment:DocumentComment) => showResolved.value || !comment.resolved
+const commentsFor = (paragraphId:string) => comments.value.filter((comment) => comment.currentParagraphId === paragraphId && visible(comment))
+const openCount = (paragraph:DocumentParagraph) => comments.value.filter((comment) => comment.currentParagraphId === paragraph.id && !comment.resolved).length
+const orphanComments = computed(() => comments.value.filter((comment) => comment.paragraphId && !comment.currentParagraphId && visible(comment)))
+async function loadComments() {
+  if (!document.value) return
+  try { comments.value = await listDocumentComments(document.value.id) } catch (error) { ElMessage.error(message(error)) }
+}
+function openComment(paragraph:DocumentParagraph) {
+  commentDraft.value = { paragraph, quotedText: editorRefs[paragraph.id]?.selectedText() ?? '', commentType: '意见', commentText: '', saving: false }
+}
+async function submitComment() {
+  const draft = commentDraft.value
+  if (!draft || !document.value) return
+  if (!draft.commentText.trim()) { ElMessage.warning('请填写批注内容'); return }
+  draft.saving = true
+  try {
+    const created = await createDocumentComment(document.value.id, { paragraphId: draft.paragraph.id, commentType: draft.commentType, commentText: draft.commentText.trim(), quotedText: draft.quotedText || undefined })
+    comments.value = [...comments.value, created]
+    commentDraft.value = undefined
+    ElMessage.success('批注已添加')
+  } catch (error) { ElMessage.error(message(error)); draft.saving = false }
+}
+async function resolveComment(comment:DocumentComment) {
+  if (!document.value) return
+  try {
+    const resolved = await resolveDocumentComment(document.value.id, comment.id)
+    comments.value = comments.value.map((item) => item.id === resolved.id ? resolved : item)
+  } catch (error) { ElMessage.error(message(error)) }
+}
+function revealQuote(paragraph:DocumentParagraph, text:string) {
+  if (!editorRefs[paragraph.id]?.revealText(text)) ElMessage.info('引用的文字已在后续修改中变化，未能定位')
+}
 async function toggleLock(paragraph:DocumentParagraph) { try { document.value=await setParagraphLock(taskId.value,paragraph.id,!paragraph.locked); ElMessage.success(paragraph.locked?'段落已解锁':'段落已锁定') } catch(error){ElMessage.error(message(error))} }
 async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format,includeDisclosure.value); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
 async function startReview(){try{const review=await initiateReview(taskId.value);ElMessage.success('审校任务已创建，正在进入问题工作台');await router.push({path:'/review',query:{taskId:review.id}})}catch(error){ElMessage.error(message(error))}}
 function chooseMaterialFile(event:Event){materialFile.value=(event.target as HTMLInputElement).files?.[0]}
 
 onMounted(load)
-watch(() => document.value?.currentVersion, (version) => { if (version) refreshDisclosure() })
+watch(() => document.value?.currentVersion, (version) => { if (version) { refreshDisclosure(); loadComments() } })
 onBeforeUnmount(endEditing)
 </script>
 
@@ -313,14 +356,16 @@ onBeforeUnmount(endEditing)
         </aside>
 
         <main class="document-column">
-          <header><div><span class="section-no">03 / MANUSCRIPT</span><h3>正文纸面</h3></div><span v-if="document">{{ document.totalWordCount }} 字 · V{{ document.currentVersion }}</span></header>
+          <header><div><span class="section-no">03 / MANUSCRIPT</span><h3>正文纸面</h3></div><span v-if="document" class="manuscript-meta"><label class="resolved-toggle"><input v-model="showResolved" type="checkbox"> 显示已解决批注</label>{{ document.totalWordCount }} 字 · V{{ document.currentVersion }}</span></header>
           <div v-if="selectedNode" class="generation-bar"><div><strong>{{ selectedNode.title }}</strong><input v-model="instruction" aria-label="生成要求"></div><button type="button" :disabled="!outline?.confirmed||generatingId===selectedNode.id" @click="generate(selectedNode)">{{ !outline?.confirmed?'请先确认提纲':generatingId===selectedNode.id?'生成中…':'生成本节' }}</button></div>
           <div v-if="generatingId && streamText" class="stream-preview"><span>LIVE / 流式草稿</span><p>{{ streamText }}</p></div>
           <section v-if="document?.paragraphs.length" class="paper-sheet">
             <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
             <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" title="选中文字后添加批注，可引用该文字" @click.stop="openComment(paragraph)">批注{{ openCount(paragraph) ? `（${openCount(paragraph)}）` : '' }}</button><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <ParagraphComments :comments="commentsFor(paragraph.id)" @resolve="resolveComment" @reveal="(text) => revealQuote(paragraph, text)" />
             </article>
+            <section v-if="orphanComments.length" class="orphan-comments"><h4>原段落已删除的批注</h4><ParagraphComments :comments="orphanComments" @resolve="resolveComment" /></section>
           </section>
           <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
           <aside v-if="selectedParagraph" class="paragraph-inspector"><span>当前段落</span><b>{{ selectedParagraph.contentSourceLevel }}</b><small>{{ selectedParagraph.sourceMaterialIds.length }} 项来源 · lock {{ selectedParagraph.lockVersion }}</small></aside>
@@ -355,6 +400,15 @@ onBeforeUnmount(endEditing)
       </div>
     </el-dialog>
     <SelectionRewriteDialog v-if="rewrite" v-model="rewriteOpen" :operation="rewrite.operation" :selected-text="rewrite.request.text" :candidates="rewrite.candidates" :loading="rewrite.loading" @regenerate="loadCandidates" @adopt="adoptCandidate" />
+    <el-dialog :model-value="!!commentDraft" :title="commentDraft ? `批注 · 第 ${commentDraft.paragraph.paragraphOrder} 段` : '批注'" width="560px" @close="commentDraft=undefined">
+      <form v-if="commentDraft" class="comment-form" @submit.prevent="submitComment">
+        <div v-if="commentDraft.quotedText" class="comment-form-quote"><span>引用</span><p>{{ commentDraft.quotedText }}</p><button type="button" @click="commentDraft.quotedText=''">移除引用</button></div>
+        <p v-else class="comment-form-hint">未选中文字，批注将针对整段。可先在正文中选中文字再添加批注。</p>
+        <div class="comment-form-types" role="radiogroup" aria-label="批注类型"><label v-for="type in (['意见', '批注'] as const)" :key="type"><input v-model="commentDraft.commentType" type="radio" :value="type"> {{ type }}</label></div>
+        <textarea v-model="commentDraft.commentText" rows="5" maxlength="10000" aria-label="批注内容" placeholder="写下意见或修改建议" />
+      </form>
+      <template #footer><button class="secondary-button" type="button" @click="commentDraft=undefined">取消</button><button class="primary-button" type="button" :disabled="commentDraft?.saving" @click="submitComment">添加批注</button></template>
+    </el-dialog>
     <el-dialog :model-value="!!conflict" title="段落已被他人修改" width="760px" @close="conflict=undefined">
       <p class="conflict-intro">你编辑期间，该段落已形成新版本。请比对后选择：用你的修改覆盖最新版本，或放弃你的修改。系统不会自动合并。</p>
       <div v-if="conflict" class="conflict-compare">
@@ -367,6 +421,18 @@ onBeforeUnmount(endEditing)
 </template>
 
 <style scoped>
+.manuscript-meta{display:flex;align-items:center;gap:14px}
+.resolved-toggle{display:flex;align-items:center;gap:4px;cursor:pointer}
+.orphan-comments{margin-top:24px;padding-top:16px;border-top:1px dashed #d8d3c8}
+.orphan-comments h4{margin:0;font-size:13px;color:#5f5b54}
+.comment-form{display:grid;gap:12px}
+.comment-form-quote{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 12px;background:#fdf8ec;border-left:3px solid #d8a43a}
+.comment-form-quote span{font-size:12px;color:#7a5612}
+.comment-form-quote p{margin:0;font-size:14px;line-height:1.7;max-height:120px;overflow:auto;white-space:pre-wrap}
+.comment-form-quote button{border:0;background:none;color:#5f5b54;cursor:pointer;font-size:12px}
+.comment-form-hint{margin:0;color:#5f5b54;font-size:13px}
+.comment-form-types{display:flex;gap:16px;font-size:14px}
+.comment-form textarea{border:1px solid #c9c3b7;padding:10px;font:inherit;resize:vertical}
 .gate-rules{margin:0;padding:0;list-style:none;display:grid;gap:8px}
 .gate-rules li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb}
 .gate-rules li b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px}

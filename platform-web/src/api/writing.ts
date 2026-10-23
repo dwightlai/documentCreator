@@ -196,3 +196,9 @@ export interface SelectionCandidate { generationId:string;style:string;text:stri
 export interface SelectionCandidates { paragraphId:string;operation:SelectionOperation;selectedText:string;candidates:SelectionCandidate[] }
 /** A4 划词改写：只生成候选、不修改正文；采用后随段落保存提交 adoptedGenerationIds。 */
 export const requestSelectionCandidates = (taskId:string,payload:{ paragraphId:string;operation:SelectionOperation;selectedText:string;instruction?:string;count?:number }) => data(http.post<ApiEnvelope<SelectionCandidates>>(`/writing-tasks/${taskId}/generate/selection-candidates`,payload))
+export type CommentType = '批注' | '意见'
+/** 正文批注。paragraphId 是创建时版本的段落；currentParagraphId 是当前版本同一位置的段落（已删除时为空），界面按它挂载批注。 */
+export interface DocumentComment { id:string;documentId:string;paragraphId?:string;currentParagraphId?:string;commenterId:string;commentType:string;commentText:string;quotedText?:string;resolved:boolean;resolvedBy?:string;resolvedAt?:string;createdAt:string }
+export const listDocumentComments = (documentId:string) => data(http.get<ApiEnvelope<DocumentComment[]>>(`/documents/${documentId}/comments`))
+export const createDocumentComment = (documentId:string,payload:{ paragraphId:string;commentType:CommentType;commentText:string;quotedText?:string }) => data(http.post<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments`,payload))
+export const resolveDocumentComment = (documentId:string,commentId:string) => data(http.put<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments/${commentId}/resolve`))

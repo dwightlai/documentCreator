@@ -14,6 +14,16 @@ public class DocumentCommentEntity extends BaseEntity {
     private Boolean isResolved;
     private String resolvedBy;
     private OffsetDateTime resolvedAt;
+    private String quotedText;
+
+    /** 批注针对的选中文字；为空表示针对整段。 */
+    public String getQuotedText() {
+        return quotedText;
+    }
+
+    public void setQuotedText(String v) {
+        quotedText = v;
+    }
 
     public String getDocumentId() {
         return documentId;
