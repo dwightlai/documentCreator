@@ -10,8 +10,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM nginx:1.28-alpine
+# 非 root 运行：nginx 官方维护的 unprivileged 镜像（uid 101），临时文件与 pid 写入 /tmp，兼容只读根文件系统
+FROM nginxinc/nginx-unprivileged:1.30-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-HEALTHCHECK --interval=15s --timeout=3s --retries=5 CMD wget -qO- http://127.0.0.1/healthz || exit 1
+USER 101
+EXPOSE 8088
+HEALTHCHECK --interval=15s --timeout=3s --retries=5 CMD wget -qO- http://127.0.0.1:8088/healthz || exit 1

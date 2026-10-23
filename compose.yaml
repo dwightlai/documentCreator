@@ -171,12 +171,13 @@ services:
         VITE_OIDC_URL: ${OIDC_PUBLIC_URL:-http://localhost:8180}
         VITE_OIDC_REALM: ${OIDC_REALM:-document-platform}
         VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-document-platform-web}
-    ports: ["${PLATFORM_WEB_PORT:-8088}:80"]
+    ports: ["${PLATFORM_WEB_PORT:-8088}:8088"]
     read_only: true
     tmpfs:
       - /var/cache/nginx:size=64m
       - /var/run:size=8m
-      - /tmp:size=16m
+      # 非 root 镜像的请求体与代理缓冲临时文件、pid 均写入 /tmp，需容纳 60MB 上传与 ONLYOFFICE 代理
+      - /tmp:size=192m
     security_opt:
       - no-new-privileges:true
     depends_on:
