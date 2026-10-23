@@ -22,6 +22,7 @@ declare module 'vue' {
     ElOption: typeof import('element-plus/es')['ElOption']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ParagraphComments: typeof import('./src/components/ParagraphComments.vue')['default']
+    ParagraphSuggestions: typeof import('./src/components/ParagraphSuggestions.vue')['default']
     RichParagraphEditor: typeof import('./src/components/RichParagraphEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

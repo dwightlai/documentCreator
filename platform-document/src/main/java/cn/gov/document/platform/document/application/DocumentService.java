@@ -320,29 +320,90 @@ public class DocumentService {
         lockDocumentWrites(taskId);
         DocumentEntity document = requireDocument(taskId);
         DocumentParagraphEntity source = resolveEditableParagraph(document, paragraphId, request.lockVersion());
-        paragraphId = source.getId();
         if (Boolean.TRUE.equals(source.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能修改");
         ensureNotLeasedByOthers(document, source);
         EditedContent edited = editedContent(source, request);
         boolean aiAssisted = adoptsSelectionCandidates(document, source, request.adoptedGenerationIds());
-        int oldVersion = document.getCurrentVersion();
-        int nextVersion = oldVersion + 1;
-        List<DocumentParagraphEntity> oldParagraphs = paragraphs(document.getId(), oldVersion);
+        applyEdit(document, source, edited, aiAssisted, "用户手工", request.changeDescription());
+        return get(taskId);
+    }
+
+    /** 以修改后的段落形成新版本；人工保存和接受修订共用，保证来源标识、引用复制和版本记录规则一致。 */
+    private void applyEdit(
+            DocumentEntity document,
+            DocumentParagraphEntity source,
+            EditedContent edited,
+            boolean aiAssisted,
+            String changeSource,
+            String description) {
+        int nextVersion = document.getCurrentVersion() + 1;
+        List<DocumentParagraphEntity> oldParagraphs = paragraphs(document.getId(), document.getCurrentVersion());
         document.setCurrentVersion(nextVersion);
         for (DocumentParagraphEntity old : oldParagraphs) {
             DocumentParagraphEntity copy = cloneParagraph(old, nextVersion);
-            if (old.getId().equals(paragraphId)) {
+            boolean edit = old.getId().equals(source.getId());
+            if (edit) {
                 copy.setPlainText(edited.plainText());
                 copy.setRichContent(edited.richContent());
                 copy.setContentSourceLevel(aiAssisted ? "无来源" : "手工");
                 copy.setContentOrigin(aiAssisted ? "AI改写" : "人工录入");
             }
             paragraphMapper.insert(copy);
-            if (!old.getId().equals(paragraphId)) cloneCitations(old.getId(), copy.getId(), document.getId());
+            if (!edit) cloneCitations(old.getId(), copy.getId(), document.getId());
         }
-        createVersion(document, "人工提交", "用户手工", request.changeDescription());
+        createVersion(document, "人工提交", changeSource, description);
         refreshDocument(document);
+    }
+
+    /** 修订模式下提出的段落修改：base 为提出时的原文段落，内容已按与直接保存相同的规则校验和推导。 */
+    record ProposedEdit(DocumentEntity document, DocumentParagraphEntity base, String plainText, String richContent) {}
+
+    /** 修订建议使用：按与直接保存相同的规则校验并推导修改内容，不修改正文。 */
+    ProposedEdit proposeEdit(String taskId, String paragraphId, UpdateParagraphRequest request) {
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity base = resolveEditableParagraph(document, paragraphId, request.lockVersion());
+        if (Boolean.TRUE.equals(base.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能提出修订");
+        EditedContent edited = editedContent(base, request);
+        if (edited.plainText().equals(base.getPlainText()) && Objects.equals(edited.richContent(), base.getRichContent()))
+            throw BusinessException.unprocessable("修订内容与原文相同");
+        adoptsSelectionCandidates(document, base, request.adoptedGenerationIds());
+        return new ProposedEdit(document, base, edited.plainText(), edited.richContent());
+    }
+
+    /**
+     * 接受修订：当前版本同一位置的段落必须仍是提出修订时的原文，否则说明段落已被他人修改，返回冲突而不是覆盖。
+     *
+     * @param base 提出修订时的原文快照（位置和内容）
+     */
+    DocumentResponse acceptEdit(
+            String taskId,
+            DocumentParagraphEntity base,
+            String plainText,
+            String richContent,
+            List<String> adoptedGenerationIds,
+            String description) {
+        lockDocumentWrites(taskId);
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity current = paragraphs(document.getId(), document.getCurrentVersion()).stream()
+                .filter(p -> samePosition(p, base))
+                .findFirst()
+                .orElseThrow(() -> BusinessException.conflict("修订针对的段落已被删除或移动"));
+        if (!Objects.equals(current.getPlainText(), base.getPlainText())
+                || !Objects.equals(current.getRichContent(), base.getRichContent()))
+            throw BusinessException.conflict("段落在提出修订后已被修改，该修订已过期");
+        if (Boolean.TRUE.equals(current.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能接受修订");
+        ensureNotLeasedByOthers(document, current);
+        boolean aiAssisted = adoptsSelectionCandidates(document, current, adoptedGenerationIds);
+        applyEdit(document, current, new EditedContent(plainText, richContent), aiAssisted, "修订接受", description);
         return get(taskId);
+    }
+
+    DocumentEntity documentOf(String taskId) {
+        return requireDocument(taskId);
+    }
+
+    List<DocumentParagraphEntity> currentParagraphs(DocumentEntity document) {
+        return paragraphs(document.getId(), document.getCurrentVersion());
     }
 
     private record EditedContent(String plainText, String richContent) {}

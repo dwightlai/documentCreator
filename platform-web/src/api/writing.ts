@@ -202,3 +202,9 @@ export interface DocumentComment { id:string;documentId:string;paragraphId?:stri
 export const listDocumentComments = (documentId:string) => data(http.get<ApiEnvelope<DocumentComment[]>>(`/documents/${documentId}/comments`))
 export const createDocumentComment = (documentId:string,payload:{ paragraphId:string;commentType:CommentType;commentText:string;quotedText?:string }) => data(http.post<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments`,payload))
 export const resolveDocumentComment = (documentId:string,commentId:string) => data(http.put<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments/${commentId}/resolve`))
+/** 修订模式下的段落修订建议；stale 表示原文在提出后已被修改，只能拒绝。 */
+export interface DocumentSuggestion { id:string;documentId:string;baseParagraphId:string;baseVersion:number;currentParagraphId?:string;stale:boolean;status:'待处理'|'已接受'|'已拒绝';proposerId:string;basePlainText:string;proposedPlainText:string;proposedRichContent?:string;aiAssisted:boolean;decidedBy?:string;decidedAt?:string;decisionNote?:string;acceptedVersion?:number;createdAt:string }
+export const listSuggestions = (taskId:string) => data(http.get<ApiEnvelope<DocumentSuggestion[]>>(`/writing-tasks/${taskId}/document/suggestions`))
+export const createSuggestion = (taskId:string,paragraph:DocumentParagraph) => data(http.post<ApiEnvelope<DocumentSuggestion>>(`/writing-tasks/${taskId}/document/suggestions`,{paragraphId:paragraph.id,lockVersion:paragraph.lockVersion,plainText:paragraph.plainText,richContent:paragraph.richContent,adoptedGenerationIds:paragraph.adoptedGenerationIds}))
+export const acceptSuggestion = (taskId:string,suggestionId:string) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/suggestions/${suggestionId}/accept`))
+export const rejectSuggestion = (taskId:string,suggestionId:string) => data(http.post<ApiEnvelope<DocumentSuggestion>>(`/writing-tasks/${taskId}/document/suggestions/${suggestionId}/reject`))
