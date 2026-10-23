@@ -47,6 +47,8 @@ export interface WritingOutline {
 }
 export interface DocumentParagraph {
   id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string;richContent?:string
+  /** 仅前端：本次编辑采用的划词改写候选，随保存提交，服务端据此把段落标记为 AI 改写 */
+  adoptedGenerationIds?:string[]
 }
 export interface WritingDocument {
   id:string;taskId:string;title:string;contentType:string;totalWordCount:number;securityLevel:string;currentVersion:number;status:string;paragraphs:DocumentParagraph[];updatedAt:string
@@ -168,7 +170,7 @@ export async function streamDocumentSection(taskId:string,nodeId:string,instruct
   }
   if(!completed)await recoverPersistedStream(taskId,baselineVersion,onEvent)
 }
-export const updateDocumentParagraph = (taskId:string,paragraph:DocumentParagraph) => data(http.put<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraph.id}`,{plainText:paragraph.plainText,richContent:paragraph.richContent,lockVersion:paragraph.lockVersion,changeDescription:'正文工作台人工编辑'}))
+export const updateDocumentParagraph = (taskId:string,paragraph:DocumentParagraph) => data(http.put<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraph.id}`,{plainText:paragraph.plainText,richContent:paragraph.richContent,adoptedGenerationIds:paragraph.adoptedGenerationIds,lockVersion:paragraph.lockVersion,changeDescription:'正文工作台人工编辑'}))
 export const setParagraphLock = (taskId:string,paragraphId:string,locked:boolean) => data(locked?http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`):http.delete<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/lock`))
 export interface EditLease { paragraphId:string;holderId:string;expiresAt:string }
 export const acquireEditLease = (taskId:string,paragraphId:string) => data(http.post<ApiEnvelope<EditLease>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}/edit-lease`))
@@ -189,3 +191,8 @@ function parseReferencedIds(value:string) {
   try { const parsed:unknown = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.map(String) : [] }
   catch { return [] }
 }
+export type SelectionOperation = '改写' | '润色' | '扩写' | '缩写'
+export interface SelectionCandidate { generationId:string;style:string;text:string;modelVersion?:string }
+export interface SelectionCandidates { paragraphId:string;operation:SelectionOperation;selectedText:string;candidates:SelectionCandidate[] }
+/** A4 划词改写：只生成候选、不修改正文；采用后随段落保存提交 adoptedGenerationIds。 */
+export const requestSelectionCandidates = (taskId:string,payload:{ paragraphId:string;operation:SelectionOperation;selectedText:string;instruction?:string;count?:number }) => data(http.post<ApiEnvelope<SelectionCandidates>>(`/writing-tasks/${taskId}/generate/selection-candidates`,payload))

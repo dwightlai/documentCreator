@@ -64,4 +64,10 @@ public class DocumentGenerationController {
             @PathVariable String taskId, @Valid @RequestBody DocumentDtos.TransformRequest request) {
         return ApiResponse.success(service.transform(taskId, "扩写", request));
     }
+
+    @PostMapping("/selection-candidates")
+    ApiResponse<DocumentDtos.SelectionCandidatesResponse> selectionCandidates(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.SelectionCandidatesRequest request) {
+        return ApiResponse.success(service.selectionCandidates(taskId, request));
+    }
 }

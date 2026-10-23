@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import RichParagraphEditor from '@/components/RichParagraphEditor.vue'
-import { toEditorDoc } from '@/editor/richText'
+import SelectionRewriteDialog from '@/components/SelectionRewriteDialog.vue'
+import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
 import type { JSONContent } from '@tiptap/vue-3'
 import { initiateReview } from '@/api/review'
 import { isConflict } from '@/api/http'
@@ -43,6 +44,9 @@ import {
   type WritingMaterial,
   type WritingOutline,
   type WritingTask,
+  requestSelectionCandidates,
+  type SelectionCandidate,
+  type SelectionOperation,
 } from '@/api/writing'
 
 const route = useRoute()
@@ -112,7 +116,7 @@ const includeDisclosure = ref(false)
 const ORIGIN_CLASS: Record<string, string> = { AI生成: 'ai', AI改写: 'ai', AI推荐: 'ai', 引用原文: 'quote', 人工录入: 'manual' }
 const aiPercent = computed(() => disclosure.value ? Math.round(disclosure.value.aiGeneratedRatio * 100) : 0)
 async function refreshDisclosure() { try { disclosure.value = await getAiDisclosure(taskId.value) } catch { disclosure.value = undefined } }
-const conflict = ref<{ mine: string; mineRich?: string; latest: DocumentParagraph; latestDocument: WritingDocument }>()
+const conflict = ref<{ mine: string; mineRich?: string; mineAdopted?: string[]; latest: DocumentParagraph; latestDocument: WritingDocument }>()
 const materialForm = reactive({ materialName:'', sourceType:'上传', authorityLevel:'正式公文', usageMode:'全文参考', citationPurpose:'事实依据', permissionStatus:'允许', selectedFragment:'', locked:true })
 
 const selectedNode = computed(() => outline.value?.nodes.find((item) => item.id === selectedNodeId.value))
@@ -199,7 +203,7 @@ async function saveParagraph(paragraph:DocumentParagraph) {
       const latestDocument = await getWritingDocument(taskId.value)
       const latest = latestDocument.paragraphs.find((item) => samePosition(item, paragraph))
       if (!latest || (latest.plainText === paragraph.plainText && latest.richContent === paragraph.richContent)) { ElMessage.warning(message(error)); return }
-      conflict.value = { mine: paragraph.plainText, mineRich: paragraph.richContent, latest, latestDocument }
+      conflict.value = { mine: paragraph.plainText, mineRich: paragraph.richContent, mineAdopted: paragraph.adoptedGenerationIds, latest, latestDocument }
     } catch (reloadError) { ElMessage.error(message(reloadError)) }
   }
 }
@@ -207,7 +211,7 @@ async function overwriteWithMine() {
   const current = conflict.value
   if (!current) return
   try {
-    document.value = await updateDocumentParagraph(taskId.value, { ...current.latest, plainText: current.mine, richContent: current.mineRich })
+    document.value = await updateDocumentParagraph(taskId.value, { ...current.latest, plainText: current.mine, richContent: current.mineRich, adoptedGenerationIds: current.mineAdopted })
     selectedParagraphId.value = document.value.paragraphs.find((item) => samePosition(item, current.latest))?.id ?? ''
     conflict.value = undefined
     await endEditing()
@@ -227,6 +231,42 @@ async function discardMine() {
 function onRichUpdate(paragraph:DocumentParagraph, doc:JSONContent, plainText:string) {
   paragraph.richContent = JSON.stringify(doc)
   paragraph.plainText = plainText
+}
+/** A4 划词改写：编辑器实例按段落 ID 登记，采用候选时替换对应编辑器中的原选区。 */
+type ParagraphEditor = InstanceType<typeof RichParagraphEditor>
+const editorRefs: Record<string, ParagraphEditor> = {}
+function setEditorRef(paragraphId:string, el:unknown) { if (el) editorRefs[paragraphId] = el as ParagraphEditor; else delete editorRefs[paragraphId] }
+const rewrite = ref<{ paragraph: DocumentParagraph; request: SelectionRewrite; operation: SelectionOperation; candidates: SelectionCandidate[]; loading: boolean }>()
+const rewriteOpen = ref(false)
+let rewriteSeq = 0
+async function loadCandidates(operation:SelectionOperation, instruction?:string) {
+  const current = rewrite.value
+  if (!current) return
+  const seq = ++rewriteSeq
+  current.operation = operation
+  current.loading = true
+  try {
+    const result = await requestSelectionCandidates(taskId.value, { paragraphId: current.paragraph.id, operation, selectedText: current.request.text, instruction: instruction || undefined })
+    if (seq === rewriteSeq) current.candidates = result.candidates
+  } catch (error) { if (seq === rewriteSeq) { current.candidates = []; ElMessage.error(message(error)) } }
+  finally { if (seq === rewriteSeq) current.loading = false }
+}
+function startRewrite(paragraph:DocumentParagraph, request:SelectionRewrite) {
+  rewrite.value = { paragraph, request, operation: request.operation, candidates: [], loading: true }
+  rewriteOpen.value = true
+  loadCandidates(request.operation)
+}
+function adoptCandidate(candidate:SelectionCandidate) {
+  const current = rewrite.value
+  if (!current) return
+  const { from, to, text } = current.request
+  if (!editorRefs[current.paragraph.id]?.replaceRange(from, to, text, candidate.text)) {
+    ElMessage.warning('原选中文字已变化，请重新选择后再改写')
+    return
+  }
+  current.paragraph.adoptedGenerationIds = [...(current.paragraph.adoptedGenerationIds ?? []), candidate.generationId]
+  rewriteOpen.value = false
+  ElMessage.success('已替换选中文字，保存新版本后生效；该段落将标记为“AI改写”')
 }
 async function toggleLock(paragraph:DocumentParagraph) { try { document.value=await setParagraphLock(taskId.value,paragraph.id,!paragraph.locked); ElMessage.success(paragraph.locked?'段落已解锁':'段落已锁定') } catch(error){ElMessage.error(message(error))} }
 async function download(format:'DOCX'|'PDF') { try { const blob=await downloadWritingDocument(taskId.value,format,includeDisclosure.value); const url=URL.createObjectURL(blob); const link=window.document.createElement('a');link.href=url;link.download=`${document.value?.title??'公文'}.${format.toLowerCase()}`;link.click();URL.revokeObjectURL(url) } catch(error){ElMessage.error(message(error))} }
@@ -279,7 +319,7 @@ onBeforeUnmount(endEditing)
           <section v-if="document?.paragraphs.length" class="paper-sheet">
             <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
             <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
             </article>
           </section>
           <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
@@ -314,6 +354,7 @@ onBeforeUnmount(endEditing)
         </article>
       </div>
     </el-dialog>
+    <SelectionRewriteDialog v-if="rewrite" v-model="rewriteOpen" :operation="rewrite.operation" :selected-text="rewrite.request.text" :candidates="rewrite.candidates" :loading="rewrite.loading" @regenerate="loadCandidates" @adopt="adoptCandidate" />
     <el-dialog :model-value="!!conflict" title="段落已被他人修改" width="760px" @close="conflict=undefined">
       <p class="conflict-intro">你编辑期间，该段落已形成新版本。请比对后选择：用你的修改覆盖最新版本，或放弃你的修改。系统不会自动合并。</p>
       <div v-if="conflict" class="conflict-compare">

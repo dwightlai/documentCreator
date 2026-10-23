@@ -8,6 +8,9 @@ import cn.gov.document.platform.common.model.ModelGenerationPort;
 import cn.gov.document.platform.document.api.DocumentDtos.DocumentResponse;
 import cn.gov.document.platform.document.api.DocumentDtos.EditLeaseResponse;
 import cn.gov.document.platform.document.api.DocumentDtos.GenerateSectionRequest;
+import cn.gov.document.platform.document.api.DocumentDtos.SelectionCandidate;
+import cn.gov.document.platform.document.api.DocumentDtos.SelectionCandidatesRequest;
+import cn.gov.document.platform.document.api.DocumentDtos.SelectionCandidatesResponse;
 import cn.gov.document.platform.document.api.DocumentDtos.UpdateParagraphRequest;
 import cn.gov.document.platform.document.api.DocumentDtos.VersionResponse;
 import cn.gov.document.platform.document.domain.DocumentCitationEntity;
@@ -321,6 +324,7 @@ public class DocumentService {
         if (Boolean.TRUE.equals(source.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能修改");
         ensureNotLeasedByOthers(document, source);
         EditedContent edited = editedContent(source, request);
+        boolean aiAssisted = adoptsSelectionCandidates(document, source, request.adoptedGenerationIds());
         int oldVersion = document.getCurrentVersion();
         int nextVersion = oldVersion + 1;
         List<DocumentParagraphEntity> oldParagraphs = paragraphs(document.getId(), oldVersion);
@@ -330,8 +334,8 @@ public class DocumentService {
             if (old.getId().equals(paragraphId)) {
                 copy.setPlainText(edited.plainText());
                 copy.setRichContent(edited.richContent());
-                copy.setContentSourceLevel("手工");
-                copy.setContentOrigin("人工录入");
+                copy.setContentSourceLevel(aiAssisted ? "无来源" : "手工");
+                copy.setContentOrigin(aiAssisted ? "AI改写" : "人工录入");
             }
             paragraphMapper.insert(copy);
             if (!old.getId().equals(paragraphId)) cloneCitations(old.getId(), copy.getId(), document.getId());
@@ -359,6 +363,61 @@ public class DocumentService {
                 ? null
                 : RichContent.rebase(source.getRichContent(), source.getPlainText(), text);
         return new EditedContent(text, rich);
+    }
+
+    /** 划词操作对应的生成类型（生成记录 generation_type）；采用候选时据此确认记录来自划词改写。 */
+    private static final Map<String, String> SELECTION_TYPES =
+            Map.of("改写", "划词改写", "润色", "划词润色", "扩写", "划词扩写", "缩写", "划词缩写");
+
+    /** 多个候选之间的差异来自明确的表达风格，而不是随机采样，便于用户理解为什么给出这几个版本。 */
+    private static final List<String> CANDIDATE_STYLES = List.of("规范庄重", "简洁凝练", "具体充实");
+
+    /** 为选中文字生成候选表达，不修改正文；每个候选单独留存生成记录，供采用时核验和 AI 标识统计。 */
+    @Transactional
+    public SelectionCandidatesResponse selectionCandidates(String taskId, SelectionCandidatesRequest request) {
+        WritingTaskEntity task = taskService.require(taskId);
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity paragraph = currentParagraphAt(document, request.paragraphId());
+        if (Boolean.TRUE.equals(paragraph.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能执行 AI 写作操作");
+        ensureNotLeasedByOthers(document, paragraph);
+        String type = SELECTION_TYPES.get(request.operation());
+        String selected = request.selectedText().strip();
+        int count = request.count() == null ? CANDIDATE_STYLES.size() : request.count();
+        java.util.Set<String> seen = new java.util.HashSet<>(List.of(selected));
+        List<SelectionCandidate> candidates = new ArrayList<>();
+        for (String style : CANDIDATE_STYLES.subList(0, count)) {
+            long started = System.nanoTime();
+            Generated generated = selectionText(request.operation(), task, paragraph.getPlainText(), selected, request.instruction(), style);
+            String output = generated.output() == null ? "" : generated.output().strip();
+            // 规则引擎兜底时不同风格可能给出相同结果，与原文相同或重复的候选不返回
+            if (output.isEmpty() || !seen.add(output)) continue;
+            Generated stripped = generated.withOutput(output);
+            String id = recordGeneration(taskId, document.getId(), paragraph.getId(), type, null, stripped, started, false);
+            candidates.add(new SelectionCandidate(id, style, output, generated.modelVersion()));
+        }
+        return new SelectionCandidatesResponse(paragraph.getId(), request.operation(), selected, candidates);
+    }
+
+    /** 保存时核验采用的候选确实是为该段落（同一位置）生成的划词候选；采用任一候选的段落整体标记为 AI 改写。 */
+    private boolean adoptsSelectionCandidates(
+            DocumentEntity document, DocumentParagraphEntity paragraph, List<String> generationIds) {
+        if (generationIds == null || generationIds.isEmpty()) return false;
+        java.util.Set<String> ids = new java.util.HashSet<>(generationIds);
+        List<GenerationRecordEntity> records =
+                generationRecordMapper.selectList(new LambdaQueryWrapper<GenerationRecordEntity>()
+                        .in(GenerationRecordEntity::getId, ids)
+                        .eq(GenerationRecordEntity::getDocumentId, document.getId()));
+        if (records.size() != ids.size()) throw BusinessException.unprocessable("采用的 AI 候选不存在");
+        for (GenerationRecordEntity record : records) {
+            if (!SELECTION_TYPES.containsValue(record.getGenerationType()))
+                throw BusinessException.unprocessable("采用的记录不是划词改写候选");
+            DocumentParagraphEntity origin = paragraphMapper.selectOne(new LambdaQueryWrapper<DocumentParagraphEntity>()
+                    .eq(DocumentParagraphEntity::getId, record.getParagraphId())
+                    .eq(DocumentParagraphEntity::getDocumentId, document.getId()));
+            if (origin == null || !samePosition(origin, paragraph))
+                throw BusinessException.unprocessable("采用的 AI 候选不属于该段落");
+        }
+        return true;
     }
 
     @Transactional
@@ -526,7 +585,7 @@ public class DocumentService {
         versionMapper.updateById(version);
     }
 
-    private void recordGeneration(
+    private String recordGeneration(
             String taskId,
             String documentId,
             String paragraphId,
@@ -558,6 +617,7 @@ public class DocumentService {
         record.setIsStreaming(streaming);
         record.setRetryCount(0);
         generationRecordMapper.insert(record);
+        return record.getId();
     }
 
     private Generated generateSectionText(WritingTaskEntity task, WritingOutlineNodeEntity node, String instruction) {
@@ -616,6 +676,36 @@ public class DocumentService {
         return fallback(type, generator.transform(type, task, source, instruction, target), materials, input);
     }
 
+    /** 划词候选：选中文字为改写对象，所在段落作为上下文，风格提示区分各候选。规则引擎兜底时按操作映射到整段改写规则。 */
+    private Generated selectionText(
+            String operation, WritingTaskEntity task, String paragraph, String selected, String instruction, String style) {
+        var materials = materialService.prepareGenerationContext(task.getId());
+        String request = (instruction == null ? "" : instruction.strip());
+        String input = "操作：" + operation + "（只改写选中文字，输出可直接替换选中文字的内容，不要输出解释）\n选中文字：" + selected
+                + "\n所在段落：" + paragraph + "\n表达风格：" + style + "\n要求：" + request + "\n\n" + materials.text();
+        Map<String, Object> variables = new java.util.LinkedHashMap<>();
+        variables.put("topic", task.getWritingTopic());
+        variables.put("operation", operation);
+        variables.put("source", selected);
+        variables.put("context", paragraph);
+        variables.put("style", style);
+        variables.put("instruction", request);
+        variables.put("targetWordCount", "");
+        variables.put("materials", materials.text());
+        ModelGenerationPort port = modelPort.getIfAvailable();
+        if (port != null) {
+            var result = port.generate(
+                    "文本改写", dataLevel(task.getSecurityLevel()), task.getDocumentTypeCode(), input, variables, "写作", task.getId());
+            if (result.isPresent()) return fromModel(result.get(), materials, input);
+        }
+        String ruleType = switch (operation) {
+            case "扩写" -> "扩写";
+            case "缩写" -> "压缩";
+            default -> "改写";
+        };
+        return fallback(ruleType, generator.transform(ruleType, task, selected, instruction, null), materials, input);
+    }
+
     private Generated fromModel(
             ModelGenerationPort.Result r, WritingMaterialService.GenerationContext materials, String input) {
         return new Generated(
@@ -666,7 +756,21 @@ public class DocumentService {
             int outputTokens,
             int materialSnapshotVersion,
             List<String> sourceMaterialIds,
-            String inputContext) {}
+            String inputContext) {
+        Generated withOutput(String value) {
+            return new Generated(
+                    value,
+                    modelConfigId,
+                    modelVersion,
+                    promptTemplateId,
+                    promptTemplateVersion,
+                    inputTokens,
+                    outputTokens,
+                    materialSnapshotVersion,
+                    sourceMaterialIds,
+                    inputContext);
+        }
+    }
 
     private String toJsonArray(List<String> values) {
         return values.stream()

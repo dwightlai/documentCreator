@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => {
   },
   preview: { host: '0.0.0.0', port: 4173, proxy },
   build: { target: 'es2022', sourcemap: true },
-  test: { environment: 'jsdom', globals: true, include: ['src/**/*.spec.ts', 'src/**/*.test.ts'] },
+  // element-plus 按需引入会带上样式文件，交给 Vite 处理，否则挂载 Element Plus 组件的测试无法加载 .css
+  test: { environment: 'jsdom', globals: true, include: ['src/**/*.spec.ts', 'src/**/*.test.ts'], server: { deps: { inline: ['element-plus'] } } },
   }
 })

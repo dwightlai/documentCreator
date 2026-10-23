@@ -24,6 +24,7 @@ declare module 'vue' {
     RichParagraphEditor: typeof import('./src/components/RichParagraphEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SelectionRewriteDialog: typeof import('./src/components/SelectionRewriteDialog.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

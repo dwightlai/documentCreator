@@ -5,9 +5,11 @@ import cn.gov.document.platform.document.domain.DocumentEntity;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
 import cn.gov.document.platform.document.domain.DocumentVersionEntity;
 import cn.gov.document.platform.document.domain.GenerationRecordEntity;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,11 +30,30 @@ public final class DocumentDtos {
             @NotNull Integer lockVersion,
             @Size(max = 500) String changeDescription,
             Integer baseVersion,
-            @Size(max = RichContent.MAX_LENGTH) String richContent) {
+            @Size(max = RichContent.MAX_LENGTH) String richContent,
+            @Size(max = 20) List<String> adoptedGenerationIds) {
         public UpdateParagraphRequest(String plainText, Integer lockVersion, String changeDescription) {
-            this(plainText, lockVersion, changeDescription, null, null);
+            this(plainText, lockVersion, changeDescription, null, null, null);
         }
     }
+
+    /**
+     * 划词改写：只生成候选、不修改正文。用户采用候选后随段落保存提交 adoptedGenerationIds，段落据此标记为 AI 改写（§33）。
+     *
+     * @param operation 改写、润色、扩写、缩写
+     * @param count 候选数量，1–3 个；相同的候选会去重，实际返回可能更少
+     */
+    public record SelectionCandidatesRequest(
+            @NotBlank String paragraphId,
+            @NotBlank @Pattern(regexp = "改写|润色|扩写|缩写") String operation,
+            @NotBlank @Size(max = 1000) String selectedText,
+            @Size(max = 500) String instruction,
+            @Min(1) @Max(3) Integer count) {}
+
+    public record SelectionCandidate(String generationId, String style, String text, String modelVersion) {}
+
+    public record SelectionCandidatesResponse(
+            String paragraphId, String operation, String selectedText, List<SelectionCandidate> candidates) {}
 
     public record VersionProtectionRequest(boolean protectedVersion) {}
 

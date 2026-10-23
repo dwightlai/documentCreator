@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/vue-3'
+import type { SelectionOperation } from '@/api/writing'
 
 /**
  * 段落富文本与纯文本的换算，规则与服务端 RichContent 保持一致：块之间换行，列表项带编号前缀，表格单元格以制表符分隔。
@@ -57,3 +58,6 @@ function writeBlock(node: JSONContent, prefix: string, out: string[]) {
       break
   }
 }
+
+/** 编辑器内一次划词改写请求：from/to 为选区在编辑器文档中的位置，采用候选时据此替换。 */
+export type SelectionRewrite = { operation: SelectionOperation; from: number; to: number; text: string }
