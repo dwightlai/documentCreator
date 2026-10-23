@@ -80,6 +80,13 @@ platform:
   coordination:
     # memory 仅适用于单实例开发；多实例部署必须使用 redis
     type: ${PLATFORM_COORDINATION_TYPE:memory}
+  onlyoffice:
+    # 定稿稿在线编辑（ONLYOFFICE Docs），默认关闭。启用需配置浏览器访问地址、文档服务器回调平台的地址与 JWT 密钥（≥32 字节，与文档服务器一致）
+    enabled: ${PLATFORM_ONLYOFFICE_ENABLED:false}
+    public-url: ${PLATFORM_ONLYOFFICE_PUBLIC_URL:}
+    internal-url: ${PLATFORM_ONLYOFFICE_INTERNAL_URL:}
+    callback-base-url: ${PLATFORM_ONLYOFFICE_CALLBACK_BASE_URL:}
+    jwt-secret: ${PLATFORM_ONLYOFFICE_JWT_SECRET:}
   storage:
     type: ${PLATFORM_STORAGE_TYPE:local}
     file-root: ${PLATFORM_FILE_STORAGE_ROOT:./data/files}

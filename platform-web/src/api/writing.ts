@@ -215,3 +215,8 @@ export interface DocumentTypeset { id:string;documentVersion:number;stale:boolea
 export const latestTypeset = (taskId:string) => data(http.get<ApiEnvelope<DocumentTypeset|undefined>>(`/writing-tasks/${taskId}/document/typesets/latest`))
 export const createTypeset = (taskId:string,values:Record<string,string>,templateId?:string) => data(http.post<ApiEnvelope<DocumentTypeset>>(`/writing-tasks/${taskId}/document/typesets`,{templateId,values}))
 export const downloadTypeset = async (taskId:string,typesetId:string) => (await http.get<Blob>(`/writing-tasks/${taskId}/document/typesets/${typesetId}/file`,{responseType:'blob'})).data
+/** 定稿稿在线编辑（ONLYOFFICE）：未启用时 enabled 为 false。 */
+export interface OnlyOfficeStatus { enabled:boolean;documentServerUrl?:string }
+export interface OnlyOfficeEditorConfig { documentServerUrl:string;config:Record<string,unknown> }
+export const onlyOfficeStatus = () => data(http.get<ApiEnvelope<OnlyOfficeStatus>>('/onlyoffice/status'))
+export const typesetEditorConfig = (taskId:string,typesetId:string) => data(http.get<ApiEnvelope<OnlyOfficeEditorConfig>>(`/writing-tasks/${taskId}/document/typesets/${typesetId}/editor-config`))

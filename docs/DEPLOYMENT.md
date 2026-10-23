@@ -21,6 +21,28 @@
 - 后端和前端容器只读运行，启用 `no-new-privileges`；
 - Nginx 禁止 SSE 缓冲并设置 CSP、点击劫持、MIME、Referrer 和 Permissions Policy 响应头。
 
+## 可选：定稿稿在线编辑（ONLYOFFICE Docs）
+
+写作工作区“套红排版”生成的定稿稿默认可下载 DOCX。需要在浏览器中直接微调版式时，可启用 ONLYOFFICE 在线编辑，默认关闭。
+
+启用前确认：
+
+- **许可**：社区版为 AGPL v3，限制同时编辑连接数，超出需购买企业版；平台只通过接口集成，不修改其源码。
+- **信创**：ONLYOFFICE 为境外厂商产品，项目有信创要求时先确认是否允许使用；适配层与业务解耦，可改接 WPS Web Office。
+- **字体**：仿宋_GB2312、方正小标宋简体等公文字体须取得授权后放入 `deploy/onlyoffice/fonts/`，否则编辑器以替代字体显示。
+
+启用步骤：
+
+1. 在 `.env` 中设置 `ONLYOFFICE_JWT_SECRET`（至少 32 字节的随机值，平台与文档服务器共用），可选 `ONLYOFFICE_VERSION`（默认 9.4.0，上线前按安全公告更新）。
+2. 叠加启动：`docker compose -f compose.yaml -f deploy/onlyoffice/compose.onlyoffice.yaml --env-file .env up -d`。
+3. 叠加文件会：启动 `onlyoffice` 服务；为后端开启 `PLATFORM_ONLYOFFICE_*` 配置；用 `deploy/onlyoffice/nginx.conf` 替换前端 nginx 配置，在 `/office/` 下同源代理文档服务器，因此无需放宽平台的内容安全策略。修改 `platform-web/nginx.conf` 时请同步该文件。
+
+安全约束（已实现）：
+
+- 编辑器配置由后端用共享密钥签名；文档服务器拉取文件、保存回调这两个入口不经 OIDC 登录，凭平台签发、24 小时有效、绑定租户与定稿稿的令牌访问，回调内容还须带有文档服务器的签名；
+- 保存时只从配置的文档服务器地址下载文件（浏览器地址改写为内部地址），校验为安全的 DOCX 后追加为新的定稿稿，不覆盖原稿，也不回写正文段落；
+- 正文更新后旧定稿稿标记为需重新套红，不能在线编辑。
+
 ## 仍需目标环境确认
 
 - 双应用实例、数据库主从/WAL 异地归档及实际 RTO≤4 小时、RPO≤5 分钟；

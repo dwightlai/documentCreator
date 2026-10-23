@@ -139,6 +139,12 @@ public class DocumentTypesetService {
     public DocumentTypesetDtos.TypesetResponse saveEdited(String taskId, String parentId, byte[] docx) {
         DocumentTypesetEntity parent = require(taskId, parentId);
         DocumentEntity document = documentService.documentOf(taskId);
+        // 强制保存后关闭编辑器会再次回调同一文件：与最近一次定稿稿内容相同时不重复记录
+        DocumentTypesetEntity latest = mapper.selectOne(new LambdaQueryWrapper<DocumentTypesetEntity>()
+                .eq(DocumentTypesetEntity::getDocumentId, document.getId())
+                .orderByDesc(DocumentTypesetEntity::getCreatedAt)
+                .last("LIMIT 1"));
+        if (latest != null && latest.getFileHash().equals(sha256(docx))) return response(latest, document);
         WritingTaskEntity task = taskService.require(taskId);
         String direction = parent.getTemplateId() == null
                 ? defaultDirection(task.getDocumentTypeCode())

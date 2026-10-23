@@ -21,6 +21,7 @@ declare module 'vue' {
     ElInputNumber: typeof import('element-plus/es')['ElInputNumber']
     ElOption: typeof import('element-plus/es')['ElOption']
     ElSelect: typeof import('element-plus/es')['ElSelect']
+    OnlyOfficeEditor: typeof import('./src/components/OnlyOfficeEditor.vue')['default']
     ParagraphComments: typeof import('./src/components/ParagraphComments.vue')['default']
     ParagraphSuggestions: typeof import('./src/components/ParagraphSuggestions.vue')['default']
     RichParagraphEditor: typeof import('./src/components/RichParagraphEditor.vue')['default']

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createTypeset, downloadTypeset, latestTypeset, type DocumentTypeset } from '@/api/writing'
+import { createTypeset, downloadTypeset, latestTypeset, onlyOfficeStatus, typesetEditorConfig, type DocumentTypeset, type OnlyOfficeEditorConfig } from '@/api/writing'
+import OnlyOfficeEditor from '@/components/OnlyOfficeEditor.vue'
 import { listOutputTemplates, type OutputTemplate } from '@/api/templates'
 
 /**
@@ -32,13 +33,18 @@ const loading = ref(false)
 const generating = ref(false)
 const upward = computed(() => UPWARD.includes(props.documentTypeCode))
 const stale = computed(() => !!latest.value && latest.value.documentVersion !== props.currentVersion)
+/** 在线编辑（ONLYOFFICE）：服务端启用后才显示；编辑器关闭后文档服务器回调保存，形成新的定稿稿。 */
+const onlineEnabled = ref(false)
+const editing = ref<OnlyOfficeEditorConfig>()
+const awaitingSave = ref(false)
 
 function message(error: unknown) { return error instanceof Error ? error.message : '操作失败，请稍后重试' }
 
 async function open() {
   loading.value = true
   try {
-    const [typeset, all] = await Promise.all([latestTypeset(props.taskId), listOutputTemplates()])
+    const [typeset, all, office] = await Promise.all([latestTypeset(props.taskId), listOutputTemplates(), onlyOfficeStatus().catch(() => ({ enabled: false }))])
+    onlineEnabled.value = office.enabled
     latest.value = typeset ?? undefined
     templates.value = all.filter((item) => item.documentTypeCode === props.documentTypeCode && item.lifecycleStatus === '生效')
     // 沿用上次填写的要素；日期每次默认取当天，不沿用
@@ -71,6 +77,29 @@ async function download() {
     link.click()
     URL.revokeObjectURL(url)
   } catch (error) { ElMessage.error(message(error)) }
+}
+async function editOnline() {
+  if (!latest.value) return
+  try { editing.value = await typesetEditorConfig(props.taskId, latest.value.id) } catch (error) { ElMessage.error(message(error)) }
+}
+/** 文档服务器在所有人关闭编辑器后约 10 秒回调保存：轮询最新定稿稿，出现新记录即更新。 */
+async function closeEditor() {
+  const before = latest.value?.id
+  editing.value = undefined
+  awaitingSave.value = true
+  try {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+      const current = await latestTypeset(props.taskId)
+      if (current && current.id !== before) {
+        latest.value = current
+        ElMessage.success('在线编辑已保存为新的定稿稿')
+        return
+      }
+    }
+    ElMessage.info('未检测到修改；如有修改，文档服务器保存后重新打开本窗口即可看到')
+  } catch (error) { ElMessage.error(message(error)) }
+  finally { awaitingSave.value = false }
 }
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
 </script>
@@ -111,12 +140,15 @@ const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12
           </ul>
           <footer>
             <button type="button" class="primary-button" @click="download">下载定稿 DOCX</button>
-            <slot name="actions" :typeset="latest" />
+            <button v-if="onlineEnabled" type="button" class="secondary-button" :disabled="stale || awaitingSave" :title="stale ? '正文已更新，请先重新套红' : '在 ONLYOFFICE 中微调版式，关闭后保存为新的定稿稿'" @click="editOnline">{{ awaitingSave ? '等待保存…' : '在线编辑' }}</button>
           </footer>
         </template>
         <p v-else class="typeset-empty">尚未生成定稿稿。填写左侧要素后生成，可下载 DOCX 并查看格式检查结果。</p>
       </section>
     </div>
+  </el-dialog>
+  <el-dialog :model-value="!!editing" title="在线编辑定稿稿（ONLYOFFICE）" fullscreen destroy-on-close @close="closeEditor">
+    <OnlyOfficeEditor v-if="editing" :document-server-url="editing.documentServerUrl" :config="editing.config" @error="(text) => ElMessage.error(text)" />
   </el-dialog>
 </template>
 
