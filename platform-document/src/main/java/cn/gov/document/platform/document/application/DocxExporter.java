@@ -2,22 +2,17 @@ package cn.gov.document.platform.document.application;
 
 import cn.gov.document.platform.document.domain.DocumentEntity;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFComment;
 import org.apache.poi.xwpf.usermodel.XWPFComments;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -53,10 +48,12 @@ public class DocxExporter {
             for (DocumentParagraphEntity item : paragraphs) {
                 String note = comments == null ? null : sourceNote(item);
                 BigInteger id = BigInteger.valueOf(commentId);
-                BodyWriter body = new BodyWriter(word, note == null ? null : id);
+                RichDocxWriter body = new RichDocxWriter(
+                        new AppendTarget(word),
+                        note == null ? null : first -> first.getCTP().addNewCommentRangeStart().setId(id));
                 if (item.getRichContent() == null) body.plain(item.getPlainText());
                 else body.rich(RichContent.parse(item.getRichContent()));
-                XWPFParagraph paragraph = body.first;
+                XWPFParagraph paragraph = body.first();
                 if (note != null && paragraph != null) {
                     paragraph.getCTP().addNewCommentRangeEnd().setId(id);
                     paragraph.createRun().getCTR().addNewCommentReference().setId(id);
@@ -82,105 +79,34 @@ public class DocxExporter {
         }
     }
 
-    /** 把一个正文段落写入 DOCX：纯文本段落写成一个 Word 段落；富文本按块写出段落、列表和表格。来源批注挂在写出的第一个 Word 段落上。 */
-    private static final class BodyWriter {
-        private static final int BODY_SIZE = 16;
-        private static final int CELL_SIZE = 14;
-        private final XWPFDocument word;
-        private final BigInteger commentId;
-        private XWPFParagraph first;
-
-        BodyWriter(XWPFDocument word, BigInteger commentId) {
-            this.word = word;
-            this.commentId = commentId;
+    /** 普通导出：内容追加到文末，正文三号仿宋、首行缩进两字，表格内四号。 */
+    private record AppendTarget(XWPFDocument word) implements RichDocxWriter.Target {
+        @Override
+        public XWPFParagraph newParagraph() {
+            return word.createParagraph();
         }
 
-        void plain(String text) {
-            XWPFParagraph paragraph = start(word.createParagraph(), 0, false);
-            run(paragraph, BODY_SIZE).setText(text == null ? "" : text);
+        @Override
+        public XWPFTable newTable() {
+            return word.createTable();
         }
 
-        void rich(JsonNode doc) {
-            for (JsonNode block : doc.path("content")) {
-                if ("table".equals(block.path("type").asText())) table(block);
-                else block(block, 0, "", word::createParagraph, false, false);
-            }
-        }
-
-        private void block(
-                JsonNode node, int level, String prefix, Supplier<XWPFParagraph> factory, boolean cell, boolean bold) {
-            switch (node.path("type").asText()) {
-                case "paragraph" -> {
-                    XWPFParagraph paragraph = start(factory.get(), level, cell);
-                    int size = cell ? CELL_SIZE : BODY_SIZE;
-                    if (!prefix.isEmpty()) run(paragraph, size).setText(prefix);
-                    for (JsonNode child : node.path("content")) {
-                        XWPFRun run = run(paragraph, size);
-                        if ("hardBreak".equals(child.path("type").asText())) {
-                            run.addBreak();
-                            continue;
-                        }
-                        run.setText(child.path("text").asText());
-                        if (bold || RichContent.hasMark(child, "bold")) run.setBold(true);
-                        if (RichContent.hasMark(child, "italic")) run.setItalic(true);
-                        if (RichContent.hasMark(child, "underline")) run.setUnderline(UnderlinePatterns.SINGLE);
-                    }
-                }
-                case "bulletList", "orderedList" -> {
-                    boolean ordered = "orderedList".equals(node.path("type").asText());
-                    int number = node.path("attrs").path("start").asInt(1);
-                    int index = 0;
-                    for (JsonNode item : node.path("content")) {
-                        String itemPrefix = ordered ? (number + index) + ". " : "• ";
-                        int child = 0;
-                        for (JsonNode itemBlock : item.path("content"))
-                            block(itemBlock, level + 1, child++ == 0 ? itemPrefix : "", factory, cell, bold);
-                        index++;
-                    }
-                }
-                default -> {}
-            }
-        }
-
-        private void table(JsonNode node) {
-            List<JsonNode> rows = new ArrayList<>();
-            node.path("content").forEach(rows::add);
-            int columns = rows.stream().mapToInt(row -> row.path("content").size()).max().orElse(0);
-            if (rows.isEmpty() || columns == 0) return;
-            XWPFTable table = word.createTable(rows.size(), columns);
-            table.setWidth("100%");
-            for (int r = 0; r < rows.size(); r++) {
-                JsonNode cells = rows.get(r).path("content");
-                for (int c = 0; c < cells.size(); c++) {
-                    XWPFTableCell cell = table.getRow(r).getCell(c);
-                    boolean header = "tableHeader".equals(cells.get(c).path("type").asText());
-                    int[] used = {0};
-                    Supplier<XWPFParagraph> factory =
-                            () -> used[0]++ == 0 ? cell.getParagraphs().get(0) : cell.addParagraph();
-                    for (JsonNode block : cells.get(c).path("content")) block(block, 0, "", factory, true, header);
-                }
-            }
-        }
-
-        private XWPFParagraph start(XWPFParagraph paragraph, int level, boolean cell) {
+        @Override
+        public void style(XWPFParagraph paragraph, int level, boolean cell) {
             if (cell) {
                 paragraph.setSpacingBetween(1.2);
-            } else {
-                paragraph.setFirstLineIndent(840);
-                if (level > 1) paragraph.setIndentationLeft(420 * (level - 1));
-                paragraph.setSpacingBetween(1.75);
+                return;
             }
-            if (first == null) {
-                first = paragraph;
-                if (commentId != null) paragraph.getCTP().addNewCommentRangeStart().setId(commentId);
-            }
-            return paragraph;
+            paragraph.setFirstLineIndent(840);
+            if (level > 1) paragraph.setIndentationLeft(420 * (level - 1));
+            paragraph.setSpacingBetween(1.75);
         }
 
-        private static XWPFRun run(XWPFParagraph paragraph, int size) {
+        @Override
+        public XWPFRun newRun(XWPFParagraph paragraph, boolean cell) {
             XWPFRun run = paragraph.createRun();
             run.setFontFamily("仿宋_GB2312");
-            run.setFontSize(size);
+            run.setFontSize(cell ? 14 : 16);
             return run;
         }
     }

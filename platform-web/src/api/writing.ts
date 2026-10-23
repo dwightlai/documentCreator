@@ -208,3 +208,10 @@ export const listSuggestions = (taskId:string) => data(http.get<ApiEnvelope<Docu
 export const createSuggestion = (taskId:string,paragraph:DocumentParagraph) => data(http.post<ApiEnvelope<DocumentSuggestion>>(`/writing-tasks/${taskId}/document/suggestions`,{paragraphId:paragraph.id,lockVersion:paragraph.lockVersion,plainText:paragraph.plainText,richContent:paragraph.richContent,adoptedGenerationIds:paragraph.adoptedGenerationIds}))
 export const acceptSuggestion = (taskId:string,suggestionId:string) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/suggestions/${suggestionId}/accept`))
 export const rejectSuggestion = (taskId:string,suggestionId:string) => data(http.post<ApiEnvelope<DocumentSuggestion>>(`/writing-tasks/${taskId}/document/suggestions/${suggestionId}/reject`))
+/** L4 格式检查偏差（与输出模板或 GB/T 9704 要素比对）。 */
+export interface FormatDeviation { dimensionCode:string;riskLevel:string;dimensionName:string;expectedValue?:string;actualValue?:string;paragraphIndex?:number;description?:string }
+/** 套红排版生成或在线编辑保存的定稿稿；stale 表示正文已在排版后更新。templateId 为空表示内置标准版式。 */
+export interface DocumentTypeset { id:string;documentVersion:number;stale:boolean;templateId?:string;templateName:string;fieldValues:Record<string,string>;deviationCount:number;deviations:FormatDeviation[];source:string;fileSize:number;createdBy?:string;createdAt:string }
+export const latestTypeset = (taskId:string) => data(http.get<ApiEnvelope<DocumentTypeset|undefined>>(`/writing-tasks/${taskId}/document/typesets/latest`))
+export const createTypeset = (taskId:string,values:Record<string,string>,templateId?:string) => data(http.post<ApiEnvelope<DocumentTypeset>>(`/writing-tasks/${taskId}/document/typesets`,{templateId,values}))
+export const downloadTypeset = async (taskId:string,typesetId:string) => (await http.get<Blob>(`/writing-tasks/${taskId}/document/typesets/${typesetId}/file`,{responseType:'blob'})).data

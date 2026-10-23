@@ -26,7 +26,11 @@ public class DocxFormatReviewService {
     }
 
     public Result compare(String templateId, byte[] documentBytes) {
-        byte[] templateBytes = templateService.fileContent(templateId);
+        return compareWith(templateId, templateService.fileContent(templateId), documentBytes);
+    }
+
+    /** 与给定模板文件比对；内置标准版式没有模板记录，templateId 可为空。 */
+    public Result compareWith(String templateId, byte[] templateBytes, byte[] documentBytes) {
         try (XWPFDocument standard = new XWPFDocument(new ByteArrayInputStream(templateBytes));
                 XWPFDocument actual = new XWPFDocument(new ByteArrayInputStream(documentBytes))) {
             List<Deviation> deviations = new ArrayList<>();

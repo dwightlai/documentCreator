@@ -2,6 +2,8 @@ package cn.gov.document.platform.document.template;
 
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.common.file.DocxSecurityValidator;
+import cn.gov.document.platform.document.application.RichContent;
+import cn.gov.document.platform.document.application.RichDocxWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
@@ -20,6 +23,9 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.xmlbeans.XmlCursor;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -43,7 +49,13 @@ public class DocxTemplateEngine {
             "{paragraph}",
             "{/sections}",
             "{#has_attachment}",
-            "{/has_attachment}");
+            "{/has_attachment}",
+            "{#has_copy_to}",
+            "{/has_copy_to}",
+            "{#has_signer}",
+            "{/has_signer}");
+    /** 独占一段的正文占位符：套红排版时按段展开为多个 Word 段落。 */
+    private static final Set<String> BODY_SLOTS = Set.of("{content}", "{#sections}{paragraph}{/sections}");
 
     public Inspection inspect(String fileName, byte[] bytes) {
         DocxSecurityValidator.validate(fileName, bytes, MAX_TEMPLATE_BYTES, "DOCX 模板");
@@ -77,12 +89,103 @@ public class DocxTemplateEngine {
     }
 
     public byte[] render(byte[] template, Map<String, String> values, List<String> sections) {
+        return fill(template, document -> {}, values, sections);
+    }
+
+    /** 套红排版的一段正文：富文本为空时按纯文本写入（多行文字拆成多个 Word 段落）。 */
+    public record BodyBlock(String plainText, String richContent) {}
+
+    /**
+     * 套红排版：正文写到模板中独占一段的正文占位符位置，每段生成独立的 Word 段落并沿用占位段落的段落与字体格式，保留加粗、列表和表格；
+     * 其余占位符按普通规则替换。模板的正文占位符与其他文字同处一段时，退回按纯文本合并写入。
+     */
+    public byte[] renderDocument(byte[] template, Map<String, String> values, List<BodyBlock> body) {
+        List<String> plain = body.stream().map(BodyBlock::plainText).toList();
+        Map<String, String> merged = new java.util.HashMap<>(values);
+        merged.put("content", String.join(System.lineSeparator(), plain));
+        return fill(template, document -> expandBody(document, body), merged, plain);
+    }
+
+    private void expandBody(XWPFDocument document, List<BodyBlock> body) {
+        XWPFParagraph slot = document.getParagraphs().stream()
+                .filter(paragraph -> BODY_SLOTS.contains(paragraph.getText().strip()))
+                .findFirst()
+                .orElse(null);
+        if (slot == null) return;
+        SlotTarget target = new SlotTarget(document, slot);
+        for (BodyBlock block : body) {
+            if (block.richContent() != null) {
+                new RichDocxWriter(target, null).rich(RichContent.parse(block.richContent()));
+                continue;
+            }
+            for (String line : (block.plainText() == null ? "" : block.plainText()).split("\\R"))
+                if (!line.isBlank()) new RichDocxWriter(target, null).plain(line.strip());
+        }
+        document.removeBodyElement(document.getPosOfParagraph(slot));
+    }
+
+    /** 插入到模板正文占位段落之前，复制其段落格式（缩进、行距）与首个文字块的字体格式。 */
+    private static final class SlotTarget implements RichDocxWriter.Target {
+        private final XWPFDocument document;
+        private final XWPFParagraph slot;
+        private final CTPPr paragraphFormat;
+        private final CTRPr runFormat;
+
+        SlotTarget(XWPFDocument document, XWPFParagraph slot) {
+            this.document = document;
+            this.slot = slot;
+            this.paragraphFormat = slot.getCTP().isSetPPr() ? slot.getCTP().getPPr() : null;
+            this.runFormat = slot.getRuns().isEmpty() ? null : slot.getRuns().get(0).getCTR().getRPr();
+        }
+
+        @Override
+        public XWPFParagraph newParagraph() {
+            XmlCursor cursor = slot.getCTP().newCursor();
+            try {
+                return document.insertNewParagraph(cursor);
+            } finally {
+                cursor.dispose();
+            }
+        }
+
+        @Override
+        public XWPFTable newTable() {
+            XmlCursor cursor = slot.getCTP().newCursor();
+            try {
+                return document.insertNewTbl(cursor);
+            } finally {
+                cursor.dispose();
+            }
+        }
+
+        @Override
+        public void style(XWPFParagraph paragraph, int level, boolean cell) {
+            if (cell) {
+                paragraph.setSpacingBetween(1.0);
+                return;
+            }
+            if (paragraphFormat != null) paragraph.getCTP().setPPr((CTPPr) paragraphFormat.copy());
+            if (level > 1) paragraph.setIndentationLeft(420 * (level - 1));
+        }
+
+        @Override
+        public XWPFRun newRun(XWPFParagraph paragraph, boolean cell) {
+            XWPFRun run = paragraph.createRun();
+            if (runFormat != null) run.getCTR().setRPr((CTRPr) runFormat.copy());
+            if (cell) run.setFontSize(14);
+            return run;
+        }
+    }
+
+    private byte[] fill(
+            byte[] template, Consumer<XWPFDocument> prepare, Map<String, String> values, List<String> sections) {
         Inspection inspection = inspect("template.docx", template);
         if (!inspection.errors().isEmpty()) {
             throw BusinessException.unprocessable(String.join("；", inspection.errors()));
         }
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(template));
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            prepare.accept(document);
             for (XWPFParagraph paragraph : allParagraphs(document)) {
                 String text = paragraph.getText();
                 if (text == null || text.isEmpty()) {
@@ -124,6 +227,8 @@ public class DocxTemplateEngine {
                 && values.get("attachment_desc") != null
                 && !values.get("attachment_desc").isBlank();
         rendered = renderConditional(rendered, "has_attachment", hasAttachment);
+        rendered = renderConditional(rendered, "has_copy_to", hasText(values.get("copy_to")));
+        rendered = renderConditional(rendered, "has_signer", hasText(values.get("signer")));
         return rendered;
     }
 
@@ -140,6 +245,10 @@ public class DocxTemplateEngine {
         }
         String content = value.substring(startIndex + start.length(), endIndex);
         return value.substring(0, startIndex) + (visible ? content : "") + value.substring(endIndex + end.length());
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private void replaceParagraphText(XWPFParagraph paragraph, String value) {

@@ -7,6 +7,7 @@ import RichParagraphEditor from '@/components/RichParagraphEditor.vue'
 import SelectionRewriteDialog from '@/components/SelectionRewriteDialog.vue'
 import ParagraphComments from '@/components/ParagraphComments.vue'
 import ParagraphSuggestions from '@/components/ParagraphSuggestions.vue'
+import TypesetDialog from '@/components/TypesetDialog.vue'
 import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
 import type { JSONContent } from '@tiptap/vue-3'
 import { initiateReview } from '@/api/review'
@@ -250,6 +251,7 @@ const editorRefs: Record<string, ParagraphEditor> = {}
 function setEditorRef(paragraphId:string, el:unknown) { if (el) editorRefs[paragraphId] = el as ParagraphEditor; else delete editorRefs[paragraphId] }
 const rewrite = ref<{ paragraph: DocumentParagraph; request: SelectionRewrite; operation: SelectionOperation; candidates: SelectionCandidate[]; loading: boolean }>()
 const rewriteOpen = ref(false)
+const typesetOpen = ref(false)
 let rewriteSeq = 0
 async function loadCandidates(operation:SelectionOperation, instruction?:string) {
   const current = rewrite.value
@@ -382,7 +384,7 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" title="按 GB/T 9704 输出模板排版生成定稿稿" @click="typesetOpen=true">套红排版</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
@@ -455,6 +457,7 @@ onBeforeUnmount(endEditing)
         </article>
       </div>
     </el-dialog>
+    <TypesetDialog v-if="document && task" v-model="typesetOpen" :task-id="taskId" :document-type-code="task.documentTypeCode" :current-version="document.currentVersion" />
     <SelectionRewriteDialog v-if="rewrite" v-model="rewriteOpen" :operation="rewrite.operation" :selected-text="rewrite.request.text" :candidates="rewrite.candidates" :loading="rewrite.loading" @regenerate="loadCandidates" @adopt="adoptCandidate" />
     <el-dialog :model-value="!!commentDraft" :title="commentDraft ? `批注 · 第 ${commentDraft.paragraph.paragraphOrder} 段` : '批注'" width="560px" @close="commentDraft=undefined">
       <form v-if="commentDraft" class="comment-form" @submit.prevent="submitComment">
