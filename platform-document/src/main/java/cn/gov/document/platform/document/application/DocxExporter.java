@@ -50,7 +50,10 @@ public class DocxExporter {
                 BigInteger id = BigInteger.valueOf(commentId);
                 RichDocxWriter body = new RichDocxWriter(
                         new AppendTarget(word),
-                        note == null ? null : first -> first.getCTP().addNewCommentRangeStart().setId(id));
+                        note == null
+                                ? null
+                                : first ->
+                                        first.getCTP().addNewCommentRangeStart().setId(id));
                 if (item.getRichContent() == null) body.plain(item.getPlainText());
                 else body.rich(RichContent.parse(item.getRichContent()));
                 XWPFParagraph paragraph = body.first();

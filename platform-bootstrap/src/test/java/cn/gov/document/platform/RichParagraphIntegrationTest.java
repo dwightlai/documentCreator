@@ -82,18 +82,20 @@ class RichParagraphIntegrationTest {
         }
 
         // 改动无法落回富文本时降级为纯文本段落，避免富文本与纯文本不一致
-        JsonNode plain = data(save(taskId, rebased, "全部改写为纯文本", null)).path("paragraphs").get(0);
+        JsonNode plain =
+                data(save(taskId, rebased, "全部改写为纯文本", null)).path("paragraphs").get(0);
         assertThat(plain.path("plainText").asText()).isEqualTo("全部改写为纯文本");
         assertThat(plain.path("richContent").isMissingNode()).isTrue();
     }
 
     private String createTaskWithOneParagraph() throws Exception {
-        String taskId = data(mockMvc.perform(post("/api/v1/writing-tasks")
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "alice")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
+        String taskId = data(mockMvc.perform(
+                        post("/api/v1/writing-tasks")
+                                .header("X-Tenant-Id", TENANT)
+                                .header("X-User-Id", "alice")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                     {"taskName":"富文本请示","documentTypeCode":"请示","documentCategory":"法定公文",
                      "writingTopic":"申请资金","writingPurpose":"申请批准资金",
                      "expectedLengthMin":800,"expectedLengthMax":1600,"securityLevel":"内部"}
@@ -114,14 +116,16 @@ class RichParagraphIntegrationTest {
                         .header("X-Tenant-Id", TENANT)
                         .header("X-User-Id", "alice")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outlineNodeId\":\"" + outline.path("nodes").get(0).path("id").asText() + "\"}"))
+                        .content("{\"outlineNodeId\":\""
+                                + outline.path("nodes").get(0).path("id").asText() + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.paragraphs[0].richContent").doesNotExist());
         return taskId;
     }
 
     private JsonNode currentParagraph(String taskId) throws Exception {
-        return data(mockMvc.perform(get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)))
+        return data(mockMvc.perform(
+                        get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)))
                 .path("paragraphs")
                 .get(0);
     }

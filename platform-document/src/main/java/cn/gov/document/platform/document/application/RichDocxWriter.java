@@ -97,7 +97,8 @@ public final class RichDocxWriter {
     private void table(JsonNode node) {
         List<JsonNode> rows = new ArrayList<>();
         node.path("content").forEach(rows::add);
-        int columns = rows.stream().mapToInt(row -> row.path("content").size()).max().orElse(0);
+        int columns =
+                rows.stream().mapToInt(row -> row.path("content").size()).max().orElse(0);
         if (rows.isEmpty() || columns == 0) return;
         XWPFTable table = target.newTable();
         resize(table, rows.size(), columns);
@@ -114,9 +115,10 @@ public final class RichDocxWriter {
                 XWPFTableCell cell = table.getRow(r).getCell(c);
                 boolean header = "tableHeader".equals(cells.get(c).path("type").asText());
                 int[] used = {0};
-                Supplier<XWPFParagraph> factory = () -> used[0]++ == 0 && !cell.getParagraphs().isEmpty()
-                        ? cell.getParagraphs().get(0)
-                        : cell.addParagraph();
+                Supplier<XWPFParagraph> factory =
+                        () -> used[0]++ == 0 && !cell.getParagraphs().isEmpty()
+                                ? cell.getParagraphs().get(0)
+                                : cell.addParagraph();
                 for (JsonNode block : cells.get(c).path("content")) block(block, 0, "", factory, true, header);
             }
         }
@@ -128,8 +130,7 @@ public final class RichDocxWriter {
         XWPFTableRow head = table.getRow(0);
         while (head.getTableCells().size() < columns) head.addNewTableCell();
         while (table.getNumberOfRows() < rows) table.createRow();
-        for (XWPFTableRow row : table.getRows())
-            while (row.getTableCells().size() < columns) row.addNewTableCell();
+        for (XWPFTableRow row : table.getRows()) while (row.getTableCells().size() < columns) row.addNewTableCell();
     }
 
     private XWPFParagraph start(XWPFParagraph paragraph, int level, boolean cell) {

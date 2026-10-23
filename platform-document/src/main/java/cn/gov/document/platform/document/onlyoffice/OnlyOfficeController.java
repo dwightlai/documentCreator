@@ -29,7 +29,8 @@ public class OnlyOfficeController {
     }
 
     @GetMapping("/api/v1/writing-tasks/{taskId}/document/typesets/{typesetId}/editor-config")
-    ApiResponse<OnlyOfficeService.EditorConfig> editorConfig(@PathVariable String taskId, @PathVariable String typesetId) {
+    ApiResponse<OnlyOfficeService.EditorConfig> editorConfig(
+            @PathVariable String taskId, @PathVariable String typesetId) {
         return ApiResponse.success(service.editorConfig(taskId, typesetId));
     }
 
@@ -38,7 +39,8 @@ public class OnlyOfficeController {
     ResponseEntity<byte[]> file(@PathVariable String token) {
         byte[] body = service.file(token);
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
                 .contentLength(body.length)
                 .body(body);
     }

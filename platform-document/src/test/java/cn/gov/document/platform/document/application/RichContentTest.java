@@ -46,8 +46,9 @@ class RichContentTest {
                         "{\"type\":\"doc\",\"content\":[{\"type\":\"image\",\"attrs\":{\"src\":\"http://x\"}}]}"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("image");
-        assertThatThrownBy(() -> RichContent.parse(
-                        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"x\",\"marks\":[{\"type\":\"link\"}]}]}]}"))
+        assertThatThrownBy(
+                        () -> RichContent.parse(
+                                "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"x\",\"marks\":[{\"type\":\"link\"}]}]}]}"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("link");
         assertThatThrownBy(() -> RichContent.parse("not json")).isInstanceOf(BusinessException.class);
@@ -86,14 +87,22 @@ class RichContentTest {
 
         try (XWPFDocument word = new XWPFDocument(new ByteArrayInputStream(bytes))) {
             List<XWPFParagraph> body = word.getParagraphs();
-            assertThat(body).extracting(XWPFParagraph::getText)
-                    .contains("一、总体要求必须落实。", "1. 加强组织领导", "2. 强化资金保障");
+            assertThat(body).extracting(XWPFParagraph::getText).contains("一、总体要求必须落实。", "1. 加强组织领导", "2. 强化资金保障");
             List<XWPFRun> runs = body.get(1).getRuns();
             assertThat(runs).anyMatch(run -> "总体要求".equals(run.text()) && run.isBold());
-            assertThat(runs).anyMatch(run -> "必须落实。".equals(run.text()) && run.getUnderline() == UnderlinePatterns.SINGLE);
+            assertThat(runs)
+                    .anyMatch(run -> "必须落实。".equals(run.text()) && run.getUnderline() == UnderlinePatterns.SINGLE);
             assertThat(word.getTables()).hasSize(1);
             assertThat(word.getTables().get(0).getRow(0).getCell(1).getText()).isEqualTo("金额");
-            assertThat(word.getTables().get(0).getRow(0).getCell(0).getParagraphs().get(0).getRuns().get(0).isBold())
+            assertThat(word.getTables()
+                            .get(0)
+                            .getRow(0)
+                            .getCell(0)
+                            .getParagraphs()
+                            .get(0)
+                            .getRuns()
+                            .get(0)
+                            .isBold())
                     .isTrue();
             assertThat(word.getTables().get(0).getRow(1).getCell(0).getText()).isEqualTo("道路改造");
             assertThat(word.getComments()).hasSize(1);

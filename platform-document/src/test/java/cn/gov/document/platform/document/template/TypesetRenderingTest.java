@@ -48,7 +48,9 @@ class TypesetRenderingTest {
                         new DocxTemplateEngine.BodyBlock("一、总体要求\n项目\t金额", RICH)));
 
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(rendered))) {
-            List<String> texts = document.getParagraphs().stream().map(XWPFParagraph::getText).toList();
+            List<String> texts = document.getParagraphs().stream()
+                    .map(XWPFParagraph::getText)
+                    .toList();
             int recipient = texts.indexOf("省人民政府：");
             assertThat(texts.subList(recipient + 1, recipient + 4)).containsExactly("第一段正文。", "第二段正文。", "一、总体要求");
             XWPFParagraph first = document.getParagraphs().get(recipient + 1);
@@ -57,7 +59,8 @@ class TypesetRenderingTest {
             assertThat(document.getParagraphs().get(recipient + 3).getRuns())
                     .anyMatch(run -> "总体要求".equals(run.text()) && run.isBold());
             assertThat(document.getTables()).hasSize(1);
-            assertThat(document.getTables().get(0).getRow(0).getCell(1).getText()).isEqualTo("金额");
+            assertThat(document.getTables().get(0).getRow(0).getCell(1).getText())
+                    .isEqualTo("金额");
             // 表格位于正文位置（版记之前），未填写的抄送与签发人不留残余文字
             String all = String.join("\n", texts);
             assertThat(all).contains("示政〔2026〕18号").doesNotContain("签发人", "抄送", "{");
@@ -76,7 +79,9 @@ class TypesetRenderingTest {
                 Map.of("title", "关于报送材料的报告", "doc_number", "示政〔2026〕19号", "signer", "张某", "copy_to", "市发展改革委"),
                 List.of(new DocxTemplateEngine.BodyBlock("正文。", null)));
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(rendered))) {
-            String all = document.getParagraphs().stream().map(XWPFParagraph::getText).reduce("", (a, b) -> a + "\n" + b);
+            String all = document.getParagraphs().stream()
+                    .map(XWPFParagraph::getText)
+                    .reduce("", (a, b) -> a + "\n" + b);
             assertThat(all).contains("示政〔2026〕19号　　签发人：张某", "抄送：市发展改革委。");
         }
     }

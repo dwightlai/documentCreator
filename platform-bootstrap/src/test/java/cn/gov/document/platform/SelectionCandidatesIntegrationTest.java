@@ -46,7 +46,8 @@ class SelectionCandidatesIntegrationTest {
         JsonNode candidate = result.path("candidates").get(0);
         assertThat(candidate.path("text").asText()).isEqualTo("及时做好");
         assertThat(candidate.path("style").asText()).isEqualTo("规范庄重");
-        assertThat(document(taskId).path("currentVersion").asInt()).isEqualTo(before.path("currentVersion").asInt());
+        assertThat(document(taskId).path("currentVersion").asInt())
+                .isEqualTo(before.path("currentVersion").asInt());
         String generationId = candidate.path("generationId").asText();
 
         // 候选只能用于生成它的段落；不存在的候选同样拒绝
@@ -56,10 +57,12 @@ class SelectionCandidatesIntegrationTest {
                 .andExpect(status().isUnprocessableEntity());
 
         JsonNode saved = data(save(taskId, first, first.path("plainText").asText() + "及时做好", List.of(generationId)));
-        assertThat(saved.path("paragraphs").get(0).path("contentOrigin").asText()).isEqualTo("AI改写");
+        assertThat(saved.path("paragraphs").get(0).path("contentOrigin").asText())
+                .isEqualTo("AI改写");
         // 不采用候选的人工修改仍记为人工录入；页面停留在旧版本时候选按位置映射到最新段落
         JsonNode manual = data(save(taskId, second, second.path("plainText").asText() + "补充", null));
-        assertThat(manual.path("paragraphs").get(1).path("contentOrigin").asText()).isEqualTo("人工录入");
+        assertThat(manual.path("paragraphs").get(1).path("contentOrigin").asText())
+                .isEqualTo("人工录入");
 
         candidates(taskId, first, "翻译", "马上搞好").andExpect(status().is4xxClientError());
         mockMvc.perform(post(
@@ -73,12 +76,13 @@ class SelectionCandidatesIntegrationTest {
     }
 
     private String createTaskWithTwoParagraphs() throws Exception {
-        String taskId = data(mockMvc.perform(post("/api/v1/writing-tasks")
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "alice")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
+        String taskId = data(mockMvc.perform(
+                        post("/api/v1/writing-tasks")
+                                .header("X-Tenant-Id", TENANT)
+                                .header("X-User-Id", "alice")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                     {"taskName":"划词改写请示","documentTypeCode":"请示","documentCategory":"法定公文",
                      "writingTopic":"申请资金","writingPurpose":"申请批准资金",
                      "expectedLengthMin":800,"expectedLengthMax":1600,"securityLevel":"内部"}
@@ -100,14 +104,16 @@ class SelectionCandidatesIntegrationTest {
                             .header("X-Tenant-Id", TENANT)
                             .header("X-User-Id", "alice")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"outlineNodeId\":\"" + outline.path("nodes").get(i).path("id").asText() + "\"}"))
+                            .content("{\"outlineNodeId\":\""
+                                    + outline.path("nodes").get(i).path("id").asText() + "\"}"))
                     .andExpect(status().isOk());
         }
         return taskId;
     }
 
     private JsonNode document(String taskId) throws Exception {
-        return data(mockMvc.perform(get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
+        return data(mockMvc.perform(
+                get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
     }
 
     private ResultActions candidates(String taskId, JsonNode paragraph, String operation, String selected)

@@ -364,7 +364,8 @@ public class DocumentService {
         DocumentParagraphEntity base = resolveEditableParagraph(document, paragraphId, request.lockVersion());
         if (Boolean.TRUE.equals(base.getIsLocked())) throw BusinessException.conflict("段落已锁定，不能提出修订");
         EditedContent edited = editedContent(base, request);
-        if (edited.plainText().equals(base.getPlainText()) && Objects.equals(edited.richContent(), base.getRichContent()))
+        if (edited.plainText().equals(base.getPlainText())
+                && Objects.equals(edited.richContent(), base.getRichContent()))
             throw BusinessException.unprocessable("修订内容与原文相同");
         adoptsSelectionCandidates(document, base, request.adoptedGenerationIds());
         return new ProposedEdit(document, base, edited.plainText(), edited.richContent());
@@ -448,12 +449,14 @@ public class DocumentService {
         List<SelectionCandidate> candidates = new ArrayList<>();
         for (String style : CANDIDATE_STYLES.subList(0, count)) {
             long started = System.nanoTime();
-            Generated generated = selectionText(request.operation(), task, paragraph.getPlainText(), selected, request.instruction(), style);
+            Generated generated = selectionText(
+                    request.operation(), task, paragraph.getPlainText(), selected, request.instruction(), style);
             String output = generated.output() == null ? "" : generated.output().strip();
             // 规则引擎兜底时不同风格可能给出相同结果，与原文相同或重复的候选不返回
             if (output.isEmpty() || !seen.add(output)) continue;
             Generated stripped = generated.withOutput(output);
-            String id = recordGeneration(taskId, document.getId(), paragraph.getId(), type, null, stripped, started, false);
+            String id =
+                    recordGeneration(taskId, document.getId(), paragraph.getId(), type, null, stripped, started, false);
             candidates.add(new SelectionCandidate(id, style, output, generated.modelVersion()));
         }
         return new SelectionCandidatesResponse(paragraph.getId(), request.operation(), selected, candidates);
@@ -739,11 +742,16 @@ public class DocumentService {
 
     /** 划词候选：选中文字为改写对象，所在段落作为上下文，风格提示区分各候选。规则引擎兜底时按操作映射到整段改写规则。 */
     private Generated selectionText(
-            String operation, WritingTaskEntity task, String paragraph, String selected, String instruction, String style) {
+            String operation,
+            WritingTaskEntity task,
+            String paragraph,
+            String selected,
+            String instruction,
+            String style) {
         var materials = materialService.prepareGenerationContext(task.getId());
         String request = (instruction == null ? "" : instruction.strip());
-        String input = "操作：" + operation + "（只改写选中文字，输出可直接替换选中文字的内容，不要输出解释）\n选中文字：" + selected
-                + "\n所在段落：" + paragraph + "\n表达风格：" + style + "\n要求：" + request + "\n\n" + materials.text();
+        String input = "操作：" + operation + "（只改写选中文字，输出可直接替换选中文字的内容，不要输出解释）\n选中文字：" + selected + "\n所在段落：" + paragraph
+                + "\n表达风格：" + style + "\n要求：" + request + "\n\n" + materials.text();
         Map<String, Object> variables = new java.util.LinkedHashMap<>();
         variables.put("topic", task.getWritingTopic());
         variables.put("operation", operation);
@@ -756,14 +764,21 @@ public class DocumentService {
         ModelGenerationPort port = modelPort.getIfAvailable();
         if (port != null) {
             var result = port.generate(
-                    "文本改写", dataLevel(task.getSecurityLevel()), task.getDocumentTypeCode(), input, variables, "写作", task.getId());
+                    "文本改写",
+                    dataLevel(task.getSecurityLevel()),
+                    task.getDocumentTypeCode(),
+                    input,
+                    variables,
+                    "写作",
+                    task.getId());
             if (result.isPresent()) return fromModel(result.get(), materials, input);
         }
-        String ruleType = switch (operation) {
-            case "扩写" -> "扩写";
-            case "缩写" -> "压缩";
-            default -> "改写";
-        };
+        String ruleType =
+                switch (operation) {
+                    case "扩写" -> "扩写";
+                    case "缩写" -> "压缩";
+                    default -> "改写";
+                };
         return fallback(ruleType, generator.transform(ruleType, task, selected, instruction, null), materials, input);
     }
 

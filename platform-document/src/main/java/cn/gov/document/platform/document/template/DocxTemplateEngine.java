@@ -135,7 +135,9 @@ public class DocxTemplateEngine {
             this.document = document;
             this.slot = slot;
             this.paragraphFormat = slot.getCTP().isSetPPr() ? slot.getCTP().getPPr() : null;
-            this.runFormat = slot.getRuns().isEmpty() ? null : slot.getRuns().get(0).getCTR().getRPr();
+            this.runFormat = slot.getRuns().isEmpty()
+                    ? null
+                    : slot.getRuns().get(0).getCTR().getRPr();
         }
 
         @Override

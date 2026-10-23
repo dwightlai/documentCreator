@@ -42,7 +42,8 @@ public class DocumentSuggestionService {
     }
 
     @Transactional
-    public DocumentSuggestionDtos.SuggestionResponse create(String taskId, DocumentSuggestionDtos.CreateRequest request) {
+    public DocumentSuggestionDtos.SuggestionResponse create(
+            String taskId, DocumentSuggestionDtos.CreateRequest request) {
         DocumentService.ProposedEdit proposed = documentService.proposeEdit(
                 taskId,
                 request.paragraphId(),
@@ -104,7 +105,8 @@ public class DocumentSuggestionService {
         DocumentSuggestionEntity suggestion = requirePending(taskId, suggestionId);
         decide(suggestion, REJECTED, request);
         suggestionMapper.updateById(suggestion);
-        return withCurrentParagraphs(documentService.documentOf(taskId), List.of(suggestion)).get(0);
+        return withCurrentParagraphs(documentService.documentOf(taskId), List.of(suggestion))
+                .get(0);
     }
 
     private DocumentSuggestionEntity requirePending(String taskId, String suggestionId) {
@@ -114,7 +116,8 @@ public class DocumentSuggestionService {
                         .eq(DocumentSuggestionEntity::getId, suggestionId)
                         .eq(DocumentSuggestionEntity::getDocumentId, document.getId()));
         if (suggestion == null) throw BusinessException.notFound("修订不存在");
-        if (!PENDING.equals(suggestion.getStatus())) throw BusinessException.conflict("该修订已处理：" + suggestion.getStatus());
+        if (!PENDING.equals(suggestion.getStatus()))
+            throw BusinessException.conflict("该修订已处理：" + suggestion.getStatus());
         return suggestion;
     }
 
@@ -123,9 +126,10 @@ public class DocumentSuggestionService {
         suggestion.setStatus(status);
         suggestion.setDecidedBy(RequestContext.userId());
         suggestion.setDecidedAt(OffsetDateTime.now());
-        suggestion.setDecisionNote(request == null || request.note() == null || request.note().isBlank()
-                ? null
-                : request.note().strip());
+        suggestion.setDecisionNote(
+                request == null || request.note() == null || request.note().isBlank()
+                        ? null
+                        : request.note().strip());
     }
 
     /** 提出修订时的原文：只携带位置和内容，用于定位当前段落并判断是否已被修改。 */
@@ -141,10 +145,12 @@ public class DocumentSuggestionService {
     private List<DocumentSuggestionDtos.SuggestionResponse> withCurrentParagraphs(
             DocumentEntity document, List<DocumentSuggestionEntity> suggestions) {
         Map<String, DocumentParagraphEntity> current = documentService.currentParagraphs(document).stream()
-                .collect(Collectors.toMap(p -> position(p.getOutlineNodeId(), p.getParagraphOrder()), Function.identity(), (a, b) -> a));
+                .collect(Collectors.toMap(
+                        p -> position(p.getOutlineNodeId(), p.getParagraphOrder()), Function.identity(), (a, b) -> a));
         return suggestions.stream()
                 .map(s -> {
-                    DocumentParagraphEntity paragraph = current.get(position(s.getOutlineNodeId(), s.getParagraphOrder()));
+                    DocumentParagraphEntity paragraph =
+                            current.get(position(s.getOutlineNodeId(), s.getParagraphOrder()));
                     boolean stale = PENDING.equals(s.getStatus())
                             && (paragraph == null
                                     || !Objects.equals(paragraph.getPlainText(), s.getBasePlainText())

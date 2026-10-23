@@ -45,9 +45,12 @@ class SuggestionWorkflowIntegrationTest {
         assertThat(bob.path("status").asText()).isEqualTo("待处理");
         assertThat(bob.path("stale").asBoolean()).isFalse();
         assertThat(bob.path("proposedPlainText").asText()).isEqualTo("修订后的第一段");
-        assertThat(bob.path("basePlainText").asText()).isEqualTo(first.path("plainText").asText());
-        assertThat(bob.path("currentParagraphId").asText()).isEqualTo(first.path("id").asText());
-        assertThat(document(taskId).path("currentVersion").asInt()).isEqualTo(before.path("currentVersion").asInt());
+        assertThat(bob.path("basePlainText").asText())
+                .isEqualTo(first.path("plainText").asText());
+        assertThat(bob.path("currentParagraphId").asText())
+                .isEqualTo(first.path("id").asText());
+        assertThat(document(taskId).path("currentVersion").asInt())
+                .isEqualTo(before.path("currentVersion").asInt());
         propose(taskId, "bob", first, first.path("plainText").asText(), null, null)
                 .andExpect(status().isUnprocessableEntity());
         JsonNode carol = data(propose(taskId, "carol", first, "carol 的另一种改法", null, null));
@@ -55,12 +58,13 @@ class SuggestionWorkflowIntegrationTest {
         // 接受 bob 的修订：形成新版本，段落内容和格式来自修订，来源为人工录入
         JsonNode accepted = data(decide(taskId, "alice", bob, "accept"));
         JsonNode firstNow = accepted.path("paragraphs").get(0);
-        assertThat(accepted.path("currentVersion").asInt()).isEqualTo(before.path("currentVersion").asInt() + 1);
+        assertThat(accepted.path("currentVersion").asInt())
+                .isEqualTo(before.path("currentVersion").asInt() + 1);
         assertThat(firstNow.path("plainText").asText()).isEqualTo("修订后的第一段");
         assertThat(firstNow.path("richContent").asText()).contains("bold");
         assertThat(firstNow.path("contentOrigin").asText()).isEqualTo("人工录入");
-        JsonNode versions = data(mockMvc.perform(get("/api/v1/writing-tasks/{taskId}/document/versions", taskId)
-                .header("X-Tenant-Id", TENANT)));
+        JsonNode versions = data(mockMvc.perform(
+                get("/api/v1/writing-tasks/{taskId}/document/versions", taskId).header("X-Tenant-Id", TENANT)));
         assertThat(versions.toString()).contains("修订接受").contains("接受 bob 的修订");
         decide(taskId, "alice", bob, "accept").andExpect(status().isConflict());
 
@@ -69,9 +73,11 @@ class SuggestionWorkflowIntegrationTest {
                 .header("X-Tenant-Id", TENANT)
                 .param("status", "待处理")));
         assertThat(pending).hasSize(1);
-        assertThat(pending.get(0).path("id").asText()).isEqualTo(carol.path("id").asText());
+        assertThat(pending.get(0).path("id").asText())
+                .isEqualTo(carol.path("id").asText());
         assertThat(pending.get(0).path("stale").asBoolean()).isTrue();
-        assertThat(pending.get(0).path("currentParagraphId").asText()).isEqualTo(firstNow.path("id").asText());
+        assertThat(pending.get(0).path("currentParagraphId").asText())
+                .isEqualTo(firstNow.path("id").asText());
         decide(taskId, "alice", carol, "accept").andExpect(status().isConflict());
         JsonNode rejected = data(decide(taskId, "alice", carol, "reject"));
         assertThat(rejected.path("status").asText()).isEqualTo("已拒绝");
@@ -79,22 +85,28 @@ class SuggestionWorkflowIntegrationTest {
         assertThat(rejected.path("stale").asBoolean()).isFalse();
 
         // 修订中采用了划词改写候选：接受后段落标记为 AI 改写
-        JsonNode candidate = data(mockMvc.perform(post("/api/v1/writing-tasks/{taskId}/generate/selection-candidates", taskId)
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "bob")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "paragraphId", second.path("id").asText(),
-                                "operation", "改写",
-                                "selectedText", "马上搞好")))))
+        JsonNode candidate = data(mockMvc.perform(
+                        post("/api/v1/writing-tasks/{taskId}/generate/selection-candidates", taskId)
+                                .header("X-Tenant-Id", TENANT)
+                                .header("X-User-Id", "bob")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "paragraphId", second.path("id").asText(),
+                                        "operation", "改写",
+                                        "selectedText", "马上搞好")))))
                 .path("candidates")
                 .get(0);
         JsonNode aiSuggestion = data(propose(
-                taskId, "bob", second, second.path("plainText").asText() + "及时做好", null,
+                taskId,
+                "bob",
+                second,
+                second.path("plainText").asText() + "及时做好",
+                null,
                 List.of(candidate.path("generationId").asText())));
         assertThat(aiSuggestion.path("aiAssisted").asBoolean()).isTrue();
         JsonNode afterAi = data(decide(taskId, "alice", aiSuggestion, "accept"));
-        assertThat(afterAi.path("paragraphs").get(1).path("contentOrigin").asText()).isEqualTo("AI改写");
+        assertThat(afterAi.path("paragraphs").get(1).path("contentOrigin").asText())
+                .isEqualTo("AI改写");
 
         // 锁定段落不能提出修订
         mockMvc.perform(post(
@@ -134,12 +146,13 @@ class SuggestionWorkflowIntegrationTest {
     }
 
     private String createTaskWithTwoParagraphs() throws Exception {
-        String taskId = data(mockMvc.perform(post("/api/v1/writing-tasks")
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "alice")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
+        String taskId = data(mockMvc.perform(
+                        post("/api/v1/writing-tasks")
+                                .header("X-Tenant-Id", TENANT)
+                                .header("X-User-Id", "alice")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                     {"taskName":"修订模式请示","documentTypeCode":"请示","documentCategory":"法定公文",
                      "writingTopic":"申请资金","writingPurpose":"申请批准资金",
                      "expectedLengthMin":800,"expectedLengthMax":1600,"securityLevel":"内部"}
@@ -161,14 +174,16 @@ class SuggestionWorkflowIntegrationTest {
                             .header("X-Tenant-Id", TENANT)
                             .header("X-User-Id", "alice")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"outlineNodeId\":\"" + outline.path("nodes").get(i).path("id").asText() + "\"}"))
+                            .content("{\"outlineNodeId\":\""
+                                    + outline.path("nodes").get(i).path("id").asText() + "\"}"))
                     .andExpect(status().isOk());
         }
         return taskId;
     }
 
     private JsonNode document(String taskId) throws Exception {
-        return data(mockMvc.perform(get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
+        return data(mockMvc.perform(
+                get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
     }
 
     private JsonNode data(ResultActions actions) throws Exception {

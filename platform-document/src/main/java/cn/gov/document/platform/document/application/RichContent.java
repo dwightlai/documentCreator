@@ -100,7 +100,8 @@ public final class RichContent {
     }
 
     public static boolean hasMark(JsonNode text, String mark) {
-        for (JsonNode item : text.path("marks")) if (mark.equals(item.path("type").asText())) return true;
+        for (JsonNode item : text.path("marks"))
+            if (mark.equals(item.path("type").asText())) return true;
         return false;
     }
 
@@ -136,18 +137,19 @@ public final class RichContent {
     }
 
     private static void htmlNode(JsonNode node, StringBuilder html) {
-        String tag = switch (node.path("type").asText()) {
-            case "paragraph" -> "p";
-            case "bulletList" -> "ul";
-            case "orderedList" -> "ol";
-            case "listItem" -> "li";
-            case "table" -> "table";
-            case "tableRow" -> "tr";
-            case "tableCell" -> "td";
-            case "tableHeader" -> "th";
-            case "hardBreak" -> "br";
-            default -> null;
-        };
+        String tag =
+                switch (node.path("type").asText()) {
+                    case "paragraph" -> "p";
+                    case "bulletList" -> "ul";
+                    case "orderedList" -> "ol";
+                    case "listItem" -> "li";
+                    case "table" -> "table";
+                    case "tableRow" -> "tr";
+                    case "tableCell" -> "td";
+                    case "tableHeader" -> "th";
+                    case "hardBreak" -> "br";
+                    default -> null;
+                };
         if ("text".equals(node.path("type").asText())) {
             String text = HtmlUtils.htmlEscape(node.path("text").asText());
             if (hasMark(node, "bold")) text = "<strong>" + text + "</strong>";
@@ -163,7 +165,8 @@ public final class RichContent {
         }
         html.append('<').append(tag);
         int start = node.path("attrs").path("start").asInt(1);
-        if ("ol".equals(tag) && start != 1) html.append(" start=\"").append(start).append('"');
+        if ("ol".equals(tag) && start != 1)
+            html.append(" start=\"").append(start).append('"');
         html.append('>');
         htmlChildren(node, html);
         html.append("</").append(tag).append('>');

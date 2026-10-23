@@ -48,7 +48,8 @@ class CommentAnchoringIntegrationTest {
                         "commentText", "请补充资金测算依据",
                         "quotedText", "  专项建设资金  ")))));
         assertThat(comment.path("quotedText").asText()).isEqualTo("专项建设资金");
-        assertThat(comment.path("currentParagraphId").asText()).isEqualTo(paragraph.path("id").asText());
+        assertThat(comment.path("currentParagraphId").asText())
+                .isEqualTo(paragraph.path("id").asText());
 
         JsonNode saved = data(mockMvc.perform(put(
                         "/api/v1/writing-tasks/{taskId}/document/paragraphs/{paragraphId}",
@@ -58,8 +59,10 @@ class CommentAnchoringIntegrationTest {
                 .header("X-User-Id", "alice")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of(
-                        "plainText", paragraph.path("plainText").asText() + "资金测算见附件。",
-                        "lockVersion", paragraph.path("lockVersion").asInt())))));
+                        "plainText",
+                        paragraph.path("plainText").asText() + "资金测算见附件。",
+                        "lockVersion",
+                        paragraph.path("lockVersion").asInt())))));
         String newParagraphId = saved.path("paragraphs").get(0).path("id").asText();
         assertThat(newParagraphId).isNotEqualTo(paragraph.path("id").asText());
 
@@ -67,7 +70,8 @@ class CommentAnchoringIntegrationTest {
                 .header("X-Tenant-Id", TENANT)
                 .param("resolved", "false")));
         assertThat(listed).hasSize(1);
-        assertThat(listed.get(0).path("paragraphId").asText()).isEqualTo(paragraph.path("id").asText());
+        assertThat(listed.get(0).path("paragraphId").asText())
+                .isEqualTo(paragraph.path("id").asText());
         assertThat(listed.get(0).path("currentParagraphId").asText()).isEqualTo(newParagraphId);
 
         JsonNode resolved = data(mockMvc.perform(put(
@@ -81,12 +85,13 @@ class CommentAnchoringIntegrationTest {
     }
 
     private String createTaskWithOneParagraph() throws Exception {
-        String taskId = data(mockMvc.perform(post("/api/v1/writing-tasks")
-                        .header("X-Tenant-Id", TENANT)
-                        .header("X-User-Id", "alice")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
+        String taskId = data(mockMvc.perform(
+                        post("/api/v1/writing-tasks")
+                                .header("X-Tenant-Id", TENANT)
+                                .header("X-User-Id", "alice")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
                     {"taskName":"批注定位请示","documentTypeCode":"请示","documentCategory":"法定公文",
                      "writingTopic":"申请资金","writingPurpose":"申请批准资金",
                      "expectedLengthMin":800,"expectedLengthMax":1600,"securityLevel":"内部"}
@@ -107,13 +112,15 @@ class CommentAnchoringIntegrationTest {
                         .header("X-Tenant-Id", TENANT)
                         .header("X-User-Id", "alice")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outlineNodeId\":\"" + outline.path("nodes").get(0).path("id").asText() + "\"}"))
+                        .content("{\"outlineNodeId\":\""
+                                + outline.path("nodes").get(0).path("id").asText() + "\"}"))
                 .andExpect(status().isOk());
         return taskId;
     }
 
     private JsonNode document(String taskId) throws Exception {
-        return data(mockMvc.perform(get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
+        return data(mockMvc.perform(
+                get("/api/v1/writing-tasks/{taskId}/document", taskId).header("X-Tenant-Id", TENANT)));
     }
 
     private JsonNode data(ResultActions actions) throws Exception {

@@ -36,7 +36,8 @@ public class OnlyOfficeService {
     private final DocumentTypesetService typesetService;
     private final HttpClient http;
 
-    public OnlyOfficeService(OnlyOfficeSettings settings, OnlyOfficeTokens tokens, DocumentTypesetService typesetService) {
+    public OnlyOfficeService(
+            OnlyOfficeSettings settings, OnlyOfficeTokens tokens, DocumentTypesetService typesetService) {
         this.settings = settings;
         this.tokens = tokens;
         this.typesetService = typesetService;
@@ -62,12 +63,16 @@ public class OnlyOfficeService {
         document.put("fileType", "docx");
         document.put("key", typeset.getId());
         document.put("title", "定稿稿-V" + typeset.getDocumentVersion() + ".docx");
-        document.put("url", settings.callbackBaseUrl() + "/api/v1/onlyoffice/files/" + accessToken(FILE, taskId, typesetId));
-        document.put("permissions", Map.of("edit", true, "download", true, "print", true, "comment", true, "review", true));
+        document.put(
+                "url", settings.callbackBaseUrl() + "/api/v1/onlyoffice/files/" + accessToken(FILE, taskId, typesetId));
+        document.put(
+                "permissions", Map.of("edit", true, "download", true, "print", true, "comment", true, "review", true));
         Map<String, Object> editor = new LinkedHashMap<>();
         editor.put("mode", "edit");
         editor.put("lang", "zh-CN");
-        editor.put("callbackUrl", settings.callbackBaseUrl() + "/api/v1/onlyoffice/callback/" + accessToken(CALLBACK, taskId, typesetId));
+        editor.put(
+                "callbackUrl",
+                settings.callbackBaseUrl() + "/api/v1/onlyoffice/callback/" + accessToken(CALLBACK, taskId, typesetId));
         editor.put("user", Map.of("id", user, "name", user));
         editor.put("customization", Map.of("forcesave", true, "autosave", true));
         Map<String, Object> config = new LinkedHashMap<>();
@@ -120,10 +125,12 @@ public class OnlyOfficeService {
     private Access access(String token, String purpose) {
         Map<String, Object> claims = tokens.verify(token);
         if (!purpose.equals(claims.get("purpose"))) throw BusinessException.unprocessable("ONLYOFFICE 访问令牌用途不符");
-        if (!(claims.get("tenant") instanceof String tenant) || !(claims.get("task") instanceof String taskId)
+        if (!(claims.get("tenant") instanceof String tenant)
+                || !(claims.get("task") instanceof String taskId)
                 || !(claims.get("typeset") instanceof String typesetId))
             throw BusinessException.unprocessable("ONLYOFFICE 访问令牌缺少身份信息");
-        RequestContext.set(RequestContext.requestId(), tenant, String.valueOf(claims.getOrDefault("user", "onlyoffice")));
+        RequestContext.set(
+                RequestContext.requestId(), tenant, String.valueOf(claims.getOrDefault("user", "onlyoffice")));
         return new Access(taskId, typesetId);
     }
 
@@ -141,14 +148,19 @@ public class OnlyOfficeService {
     private byte[] download(String url) {
         String target;
         if (url.startsWith(settings.internalUrl() + "/")) target = url;
-        else if (url.startsWith(settings.publicUrl() + "/")) target = settings.internalUrl() + url.substring(settings.publicUrl().length());
+        else if (url.startsWith(settings.publicUrl() + "/"))
+            target = settings.internalUrl() + url.substring(settings.publicUrl().length());
         else throw BusinessException.unprocessable("保存文件地址不属于配置的文档服务器");
         try {
             HttpResponse<InputStream> response = http.send(
-                    HttpRequest.newBuilder(URI.create(target)).timeout(Duration.ofSeconds(60)).GET().build(),
+                    HttpRequest.newBuilder(URI.create(target))
+                            .timeout(Duration.ofSeconds(60))
+                            .GET()
+                            .build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             try (InputStream input = response.body()) {
-                if (response.statusCode() != 200) throw BusinessException.unprocessable("下载在线编辑文件失败：HTTP " + response.statusCode());
+                if (response.statusCode() != 200)
+                    throw BusinessException.unprocessable("下载在线编辑文件失败：HTTP " + response.statusCode());
                 byte[] bytes = input.readNBytes(MAX_FILE_BYTES + 1);
                 if (bytes.length > MAX_FILE_BYTES) throw BusinessException.unprocessable("在线编辑文件超过 20MB");
                 return bytes;

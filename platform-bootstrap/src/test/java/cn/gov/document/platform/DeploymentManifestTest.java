@@ -34,7 +34,9 @@ class DeploymentManifestTest {
 
         // 定稿稿在线编辑默认启用：文档服务器固定版本、启用 JWT，后端与前端同源代理均已接线
         Map<String, Object> onlyOffice = (Map<String, Object>) services.get("onlyoffice");
-        assertThat(onlyOffice.get("image").toString()).startsWith("onlyoffice/documentserver:").doesNotContain(":latest");
+        assertThat(onlyOffice.get("image").toString())
+                .startsWith("onlyoffice/documentserver:")
+                .doesNotContain(":latest");
         assertThat((Map<String, Object>) onlyOffice.get("environment")).containsEntry("JWT_ENABLED", "true");
         assertThat(environment)
                 .containsKeys("PLATFORM_ONLYOFFICE_ENABLED", "PLATFORM_ONLYOFFICE_JWT_SECRET")

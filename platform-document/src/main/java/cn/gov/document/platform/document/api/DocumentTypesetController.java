@@ -41,8 +41,8 @@ public class DocumentTypesetController {
         DocumentTypesetEntity typeset = service.require(taskId, typesetId);
         byte[] body = service.file(typeset);
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        headers.setContentType(
+                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename("定稿稿-V" + typeset.getDocumentVersion() + ".docx", StandardCharsets.UTF_8)
                 .build());

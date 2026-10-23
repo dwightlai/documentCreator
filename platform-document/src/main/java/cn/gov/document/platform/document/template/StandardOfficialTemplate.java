@@ -62,7 +62,11 @@ public final class StandardOfficialTemplate {
             run(body(document, TWO_CHARS), "{content}", FANGSONG, BODY_SIZE);
             run(body(document, TWO_CHARS), "{closing}", FANGSONG, BODY_SIZE);
             blank(document);
-            run(body(document, TWO_CHARS), "{#has_attachment}附件：{attachment_desc}{/has_attachment}", FANGSONG, BODY_SIZE);
+            run(
+                    body(document, TWO_CHARS),
+                    "{#has_attachment}附件：{attachment_desc}{/has_attachment}",
+                    FANGSONG,
+                    BODY_SIZE);
             blank(document);
             XWPFParagraph date = body(document, 0);
             date.setAlignment(ParagraphAlignment.RIGHT);
@@ -126,7 +130,9 @@ public final class StandardOfficialTemplate {
     }
 
     private static void border(XWPFParagraph paragraph, boolean top, String color, int size) {
-        var properties = paragraph.getCTP().isSetPPr() ? paragraph.getCTP().getPPr() : paragraph.getCTP().addNewPPr();
+        var properties = paragraph.getCTP().isSetPPr()
+                ? paragraph.getCTP().getPPr()
+                : paragraph.getCTP().addNewPPr();
         CTPBdr borders = properties.isSetPBdr() ? properties.getPBdr() : properties.addNewPBdr();
         CTBorder border = top ? borders.addNewTop() : borders.addNewBottom();
         border.setVal(STBorder.SINGLE);

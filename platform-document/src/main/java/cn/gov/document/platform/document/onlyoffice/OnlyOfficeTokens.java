@@ -37,7 +37,8 @@ public class OnlyOfficeTokens {
     public Map<String, Object> verify(String token) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);
-            if (!JWSAlgorithm.HS256.equals(jwt.getHeader().getAlgorithm()) || !jwt.verify(new MACVerifier(settings.secret())))
+            if (!JWSAlgorithm.HS256.equals(jwt.getHeader().getAlgorithm())
+                    || !jwt.verify(new MACVerifier(settings.secret())))
                 throw BusinessException.unprocessable("ONLYOFFICE 令牌签名无效");
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
             Date expires = claims.getExpirationTime();

@@ -43,7 +43,17 @@ public class DocumentTypesetService {
     static final String EDITED = "在线编辑";
     /** 可由用户填写的版头、版记要素（§6.3.1 统一占位符），标题取自文稿，正文取自段落。 */
     private static final Set<String> FIELDS = Set.of(
-            "sender", "doc_number", "signer", "recipient", "closing", "attachment_desc", "date", "copy_to", "issue_unit", "issue_date");
+            "sender",
+            "doc_number",
+            "signer",
+            "recipient",
+            "closing",
+            "attachment_desc",
+            "date",
+            "copy_to",
+            "issue_unit",
+            "issue_date");
+
     private static final int MAX_FIELD_LENGTH = 200;
     private static final Set<String> UPWARD = Set.of("请示", "报告", "议案");
     private static final DateTimeFormatter CHINESE_DATE = DateTimeFormatter.ofPattern("yyyy年M月d日");
@@ -82,9 +92,14 @@ public class DocumentTypesetService {
         List<DocumentParagraphEntity> paragraphs = documentService.currentParagraphs(document);
         if (paragraphs.isEmpty()) throw BusinessException.unprocessable("正文尚未形成，不能套红排版");
         String templateId = templateFor(task, request.templateId());
-        byte[] template = templateId == null ? StandardOfficialTemplate.build() : templateService.fileContent(templateId);
-        String templateName = templateId == null ? StandardOfficialTemplate.NAME : templateService.get(templateId).templateName();
-        String direction = templateId == null ? defaultDirection(task.getDocumentTypeCode()) : templateService.get(templateId).direction();
+        byte[] template =
+                templateId == null ? StandardOfficialTemplate.build() : templateService.fileContent(templateId);
+        String templateName = templateId == null
+                ? StandardOfficialTemplate.NAME
+                : templateService.get(templateId).templateName();
+        String direction = templateId == null
+                ? defaultDirection(task.getDocumentTypeCode())
+                : templateService.get(templateId).direction();
 
         Map<String, String> values = fieldValues(request.values());
         Map<String, String> rendering = new LinkedHashMap<>(values);
@@ -169,7 +184,8 @@ public class DocumentTypesetService {
     }
 
     private void store(DocumentEntity document, DocumentTypesetEntity entity, byte[] docx) {
-        String key = RequestContext.tenantId() + "/typesets/" + document.getId() + "/" + UUID.randomUUID().toString().replace("-", "") + ".docx";
+        String key = RequestContext.tenantId() + "/typesets/" + document.getId() + "/"
+                + UUID.randomUUID().toString().replace("-", "") + ".docx";
         storage.put(key, docx, DOCX);
         entity.setTenantId(RequestContext.tenantId());
         entity.setDocumentId(document.getId());
@@ -203,7 +219,8 @@ public class DocumentTypesetService {
         Map<String, String> values = new LinkedHashMap<>();
         if (input != null) {
             for (var entry : input.entrySet()) {
-                if (!FIELDS.contains(entry.getKey())) throw BusinessException.unprocessable("不支持的版式要素：" + entry.getKey());
+                if (!FIELDS.contains(entry.getKey()))
+                    throw BusinessException.unprocessable("不支持的版式要素：" + entry.getKey());
                 String value = entry.getValue() == null ? "" : entry.getValue().strip();
                 if (value.length() > MAX_FIELD_LENGTH)
                     throw BusinessException.unprocessable("版式要素过长：" + entry.getKey());
@@ -225,7 +242,10 @@ public class DocumentTypesetService {
                 entity.getTemplateName(),
                 fromJson(entity.getFieldValues(), new TypeReference<Map<String, String>>() {}, Map.of()),
                 entity.getDeviationCount(),
-                fromJson(entity.getDeviations(), new TypeReference<List<DocxFormatReviewService.Deviation>>() {}, List.of()),
+                fromJson(
+                        entity.getDeviations(),
+                        new TypeReference<List<DocxFormatReviewService.Deviation>>() {},
+                        List.of()),
                 entity.getSource(),
                 entity.getFileSize(),
                 entity.getCreatedBy(),
