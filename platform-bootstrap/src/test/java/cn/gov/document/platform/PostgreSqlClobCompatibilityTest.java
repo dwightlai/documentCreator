@@ -29,7 +29,11 @@ class PostgreSqlClobCompatibilityTest {
                 .locations("classpath:db/migration/common", "classpath:db/migration/postgresql")
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(22);
+        // 按实际待执行的迁移数校验，新增迁移不必同步修改本测试；全部执行成功即说明迁移在 PostgreSQL 上可用
+        int pending = flyway.info().pending().length;
+        assertThat(pending).isPositive();
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(pending);
+        assertThat(flyway.info().pending()).isEmpty();
 
         try (Connection connection = POSTGRES.createConnection("")) {
             assertThat(databaseSpecificJsonColumnCount(connection)).isZero();
@@ -46,6 +50,19 @@ class PostgreSqlClobCompatibilityTest {
                     connection,
                     "ai_prompt_template",
                     Set.of("applicable_models", "system_role", "input_fields", "model_parameters"));
+            // 富文本、批注引用、修订快照与定稿稿要素同样按逻辑 CLOB 存为 TEXT
+            assertTextColumns(connection, "ai_document_paragraph", Set.of("plain_text", "rich_content"));
+            assertTextColumns(connection, "ai_document_comment", Set.of("comment_text", "quoted_text"));
+            assertTextColumns(
+                    connection,
+                    "ai_document_suggestion",
+                    Set.of(
+                            "base_plain_text",
+                            "base_rich_content",
+                            "proposed_plain_text",
+                            "proposed_rich_content",
+                            "adopted_generation_ids"));
+            assertTextColumns(connection, "ai_document_typeset", Set.of("field_values", "deviations"));
             verifyLongClobRoundTrip(connection);
         }
     }
