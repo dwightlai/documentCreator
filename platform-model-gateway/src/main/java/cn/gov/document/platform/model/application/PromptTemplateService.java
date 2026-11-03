@@ -53,6 +53,13 @@ public class PromptTemplateService {
     }
 
     @Transactional
+    public void delete(String id) {
+        PromptTemplateEntity entity = require(id);
+        if ("生效".equals(entity.getLifecycleStatus())) throw BusinessException.conflict("请先停用提示词模板再删除");
+        if (mapper.deleteById(entity.getId()) != 1) throw BusinessException.conflict("提示词模板已被其他用户修改");
+    }
+
+    @Transactional
     public PromptTemplateDtos.Response create(PromptTemplateDtos.Request r) {
         validate(r);
         if (mapper.selectCount(new LambdaQueryWrapper<PromptTemplateEntity>()
@@ -74,8 +81,8 @@ public class PromptTemplateService {
     public PromptTemplateDtos.Response update(String id, PromptTemplateDtos.Request r) {
         validate(r);
         PromptTemplateEntity e = require(id);
-        if (!List.of("草稿", "测试").contains(e.getLifecycleStatus()))
-            throw BusinessException.conflict("只有草稿或测试状态的提示词模板可以编辑");
+        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus()))
+            throw BusinessException.conflict("只有草稿、测试或停用状态的提示词模板可以编辑");
         if (r.lockVersion() == null) throw BusinessException.unprocessable("更新提示词模板必须提交 lockVersion");
         PromptTemplateEntity duplicate = mapper.selectOne(new LambdaQueryWrapper<PromptTemplateEntity>()
                 .eq(PromptTemplateEntity::getTemplateCode, r.templateCode().trim()));
@@ -161,10 +168,12 @@ public class PromptTemplateService {
                 .selectList(new LambdaQueryWrapper<PromptTemplateEntity>()
                         .eq(PromptTemplateEntity::getApplicableScene, scene)
                         .eq(PromptTemplateEntity::getLifecycleStatus, "生效")
-                        .and(StringUtils.hasText(documentTypeCode), q -> q.eq(
+                        .and(StringUtils.hasText(documentTypeCode), q -> q.and(w -> w.eq(
                                         PromptTemplateEntity::getDocumentTypeCode, documentTypeCode)
                                 .or()
-                                .isNull(PromptTemplateEntity::getDocumentTypeCode))
+                                .isNull(PromptTemplateEntity::getDocumentTypeCode)
+                                .or()
+                                .eq(PromptTemplateEntity::getDocumentTypeCode, "")))
                         .orderByDesc(PromptTemplateEntity::getDocumentTypeCode))
                 .stream()
                 .filter(e -> readList(e.getApplicableModels()).isEmpty()
@@ -191,7 +200,7 @@ public class PromptTemplateService {
         e.setTemplateCode(r.templateCode().trim());
         e.setTemplateName(r.templateName().trim());
         e.setApplicableScene(r.applicableScene());
-        e.setDocumentTypeCode(r.documentTypeCode());
+        e.setDocumentTypeCode(StringUtils.hasText(r.documentTypeCode()) ? r.documentTypeCode().trim() : null);
         e.setApplicableModels(write(r.applicableModels() == null ? List.of() : r.applicableModels()));
         e.setSystemRole(r.systemRole());
         e.setDocumentTypeMethod(r.documentTypeMethod());

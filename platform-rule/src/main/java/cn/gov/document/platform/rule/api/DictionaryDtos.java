@@ -20,6 +20,14 @@ public final class DictionaryDtos {
             LocalDate effectiveDate,
             LocalDate expiryDate) {}
 
+    public record UpdateDictionaryRequest(
+            @NotBlank @Size(max = 200) String dictName,
+            @NotBlank String dictType,
+            String sourceDescription,
+            LocalDate effectiveDate,
+            LocalDate expiryDate,
+            @NotNull Integer lockVersion) {}
+
     public record DictionaryResponse(
             String id,
             String dictCode,

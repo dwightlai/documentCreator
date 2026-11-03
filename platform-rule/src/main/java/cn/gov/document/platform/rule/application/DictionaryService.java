@@ -5,7 +5,9 @@ import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.rule.api.DictionaryDtos;
 import cn.gov.document.platform.rule.domain.ReviewDictionaryEntity;
 import cn.gov.document.platform.rule.domain.ReviewTermEntity;
+import cn.gov.document.platform.rule.domain.ReviewRuleEntity;
 import cn.gov.document.platform.rule.persistence.ReviewDictionaryMapper;
+import cn.gov.document.platform.rule.persistence.ReviewRuleMapper;
 import cn.gov.document.platform.rule.persistence.ReviewTermMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,12 +31,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class DictionaryService {
     private final ReviewDictionaryMapper dictionaryMapper;
     private final ReviewTermMapper termMapper;
+    private final ReviewRuleMapper ruleMapper;
     private final ObjectMapper objectMapper;
 
     public DictionaryService(
-            ReviewDictionaryMapper dictionaryMapper, ReviewTermMapper termMapper, ObjectMapper objectMapper) {
+            ReviewDictionaryMapper dictionaryMapper, ReviewTermMapper termMapper, ReviewRuleMapper ruleMapper, ObjectMapper objectMapper) {
         this.dictionaryMapper = dictionaryMapper;
         this.termMapper = termMapper;
+        this.ruleMapper = ruleMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -72,6 +76,32 @@ public class DictionaryService {
 
     public DictionaryDtos.DictionaryResponse dictionary(String id) {
         return DictionaryDtos.DictionaryResponse.from(requireDictionary(id));
+    }
+
+    @Transactional
+    public DictionaryDtos.DictionaryResponse updateDictionary(String id, DictionaryDtos.UpdateDictionaryRequest request) {
+        ReviewDictionaryEntity e = requireDictionary(id);
+        validateDates(request.effectiveDate(), request.expiryDate());
+        e.setLockVersion(request.lockVersion());
+        e.setDictName(request.dictName().trim());
+        e.setDictType(request.dictType().trim());
+        e.setSourceDescription(request.sourceDescription());
+        e.setEffectiveDate(request.effectiveDate());
+        e.setExpiryDate(request.expiryDate());
+        e.setCurrentVersion(e.getCurrentVersion() + 1);
+        if (dictionaryMapper.updateById(e) != 1) throw BusinessException.conflict("词库已被其他用户修改");
+        return dictionary(id);
+    }
+
+    @Transactional
+    public void deleteDictionary(String id) {
+        ReviewDictionaryEntity dictionary = requireDictionary(id);
+        if (ruleMapper.selectCount(new LambdaQueryWrapper<ReviewRuleEntity>()
+                .eq(ReviewRuleEntity::getDetectionMethod, "词库")
+                .eq(ReviewRuleEntity::getRuleExpression, dictionary.getDictCode())) > 0)
+            throw BusinessException.conflict("词库已被审校规则引用，请先停用并删除引用规则");
+        termMapper.delete(new LambdaQueryWrapper<ReviewTermEntity>().eq(ReviewTermEntity::getDictionaryId, id));
+        dictionaryMapper.deleteById(id);
     }
 
     public List<DictionaryDtos.TermResponse> terms(String dictionaryId, String keyword, String category) {

@@ -13,6 +13,7 @@ export interface WritingTask {
   allowExternalKnowledge: boolean
   securityLevel: string
   status: string
+  outlineConfirmedVersion?: number
   currentDocumentId?: string
   lockVersion?: number
   createdAt: string
@@ -35,7 +36,7 @@ export interface TitleCandidate {
 export interface QaSource { sourceId:string;sourceName:string;documentId:string;documentTitle:string;chunkId:string;snippet:string;authorityLevel:string;fileHash:string;score:number }
 export interface WritingQa { id:string;taskId:string;question:string;answer:string;sources:QaSource[];answerType:string;inserted:boolean;insertedDocumentId?:string;insertedParagraphId?:string;lockVersion:number;createdAt:string }
 export interface WritingMaterial {
-  id:string;taskId:string;materialName:string;sourceType:string;sourceId?:string;authorityLevel:string;usageMode:string;citationPurpose:string
+  id:string;taskId:string;outlineNodeId?:string;materialName:string;sourceType:string;sourceId?:string;authorityLevel:string;usageMode:string;citationPurpose:string
   effectiveDate?:string;expiryDate?:string;permissionStatus:string;selectedFragment?:string;locked:boolean;fileHash?:string;filePath?:string;lockVersion:number
 }
 export interface OutlineNode {
@@ -46,13 +47,22 @@ export interface WritingOutline {
   id:string;taskId:string;version:number;confirmed:boolean;confirmedBy?:string;confirmedAt?:string;structureCheckResult:string;lockVersion:number;nodes:OutlineNode[]
 }
 export interface DocumentParagraph {
-  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string;richContent?:string
+  id:string;outlineNodeId:string;paragraphOrder:number;contentSourceLevel:string;sourceMaterialIds:string[];sourceKnowledgeIds?:string[];locked:boolean;plainText:string;lockVersion:number;contentOrigin?:string;richContent?:string
   /** 仅前端：本次编辑采用的划词改写候选，随保存提交，服务端据此把段落标记为 AI 改写 */
   adoptedGenerationIds?:string[]
 }
 export interface WritingDocument {
   id:string;taskId:string;title:string;contentType:string;totalWordCount:number;securityLevel:string;currentVersion:number;status:string;paragraphs:DocumentParagraph[];updatedAt:string
 }
+export interface KnowledgeSelection { id:string;taskId:string;outlineNodeId:string;sourceId:string;documentId:string;chunkId:string;documentTitle:string;documentVersion:number;usageType:string;completeness:string;excerpt:string;fileHash:string;selectionReason:string;selectedBy:string;selectedAt:string }
+export interface DocumentCitation { id:string;paragraphId:string;materialId?:string;citationType:string;citedFragment:string;knowledgeDocumentId?:string;knowledgeChunkId?:string;knowledgeDocumentVersion?:number;sourceExcerpt?:string;reviewStatus?:string }
+export const listDocumentCitations=(taskId:string)=>http.get<ApiEnvelope<DocumentCitation[]>>(`/writing-tasks/${taskId}/document/citations`).then(r=>r.data.data)
+export const confirmKnowledgeCitation=(taskId:string,citationId:string,payload:{citedFragment:string;sourceExcerpt:string;positionStart:number;positionEnd:number;confirmed:boolean})=>http.post<ApiEnvelope<DocumentCitation>>(`/writing-tasks/${taskId}/document/citations/${citationId}/confirm-knowledge`,payload).then(r=>r.data.data)
+export const listKnowledgeSelections=(taskId:string,outlineNodeId?:string)=>http.get<ApiEnvelope<KnowledgeSelection[]>>(`/writing-tasks/${taskId}/knowledge-selections`,{params:{outlineNodeId}}).then(r=>r.data.data)
+export const selectKnowledge=(taskId:string,payload:{outlineNodeId:string;sourceId:string;documentId:string;chunkId:string;usageType:string;selectionReason:string;applicabilityConfirmed:boolean})=>http.post<ApiEnvelope<KnowledgeSelection>>(`/writing-tasks/${taskId}/knowledge-selections`,payload).then(r=>r.data.data)
+export const removeKnowledgeSelection=(taskId:string,id:string)=>http.delete(`/writing-tasks/${taskId}/knowledge-selections/${id}`)
+export const draftFromKnowledge=(taskId:string,selectionId:string,instruction:string)=>http.post<ApiEnvelope<{text:string;selectionId:string;status:string}>>(`/writing-tasks/${taskId}/document/knowledge-drafts`,{selectionId,instruction},{timeout:120000}).then(r=>r.data.data)
+export const insertFromKnowledge=(taskId:string,payload:{selectionId:string;mode:string;text:string;afterParagraphId?:string;confirmed:boolean})=>http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/knowledge-insertions`,payload).then(r=>r.data.data)
 
 export type CreateWritingTask = Pick<WritingTask,
   'taskName' | 'documentTypeCode' | 'documentCategory' | 'writingTopic' | 'writingPurpose' |
@@ -65,6 +75,14 @@ export async function listWritingTasks() {
 
 export async function createWritingTask(payload: CreateWritingTask) {
   const response = await http.post<ApiEnvelope<WritingTask>>('/writing-tasks', payload)
+  return response.data.data
+}
+
+export async function deleteWritingTask(id: string) {
+  await http.delete(`/writing-tasks/${id}`)
+}
+export async function updateWritingTask(id: string, payload: CreateWritingTask & { lockVersion: number }) {
+  const response = await http.put<ApiEnvelope<WritingTask>>(`/writing-tasks/${id}`, payload)
   return response.data.data
 }
 
@@ -107,13 +125,19 @@ export async function generateTitleCandidates(id: string) {
   const response = await http.post<ApiEnvelope<TitleCandidate[]>>(`/writing-tasks/${id}/title-candidates`)
   return response.data.data
 }
+export async function renameWritingTitle(id: string, title: string, lockVersion: number) {
+  const response = await http.put<ApiEnvelope<WritingTask>>(`/writing-tasks/${id}/document/title`, { title, lockVersion })
+  return response.data.data
+}
 export async function askWritingQuestion(id:string,question:string){const response=await http.post<ApiEnvelope<WritingQa>>(`/writing-tasks/${id}/qa`,{question});return response.data.data}
 export async function insertWritingAnswer(id:string,qaId:string,afterParagraphId?:string){const response=await http.post<ApiEnvelope<unknown>>(`/writing-tasks/${id}/qa/${qaId}/insert`,{afterParagraphId,confirmed:true});return response.data.data}
 
 const data = async <T>(request: Promise<{ data: ApiEnvelope<T> }>) => (await request).data.data
 export const listWritingMaterials = (taskId:string) => data(http.get<ApiEnvelope<WritingMaterial[]>>(`/writing-tasks/${taskId}/materials`))
-export const createWritingMaterial = (taskId:string,input:{materialName:string;sourceType:string;authorityLevel:string;usageMode:string;citationPurpose:string;permissionStatus:string;selectedFragment:string;locked:boolean}) => data(http.post<ApiEnvelope<WritingMaterial>>(`/writing-tasks/${taskId}/materials`,input))
-export const uploadWritingMaterial = (taskId:string,file:File,input:{authorityLevel:string;usageMode:string;citationPurpose:string;permissionStatus:string}) => {
+export const createWritingMaterial = (taskId:string,input:{materialName:string;sourceType:string;authorityLevel:string;usageMode:string;citationPurpose:string;permissionStatus:string;selectedFragment:string;locked:boolean;sourceId?:string;outlineNodeId?:string}) => data(http.post<ApiEnvelope<WritingMaterial>>(`/writing-tasks/${taskId}/materials`,input))
+export const attachKnowledgeMaterial = (taskId:string,input:{sourceId:string;documentId:string;chunkId?:string;outlineNodeId?:string}) => data(http.post<ApiEnvelope<WritingMaterial>>(`/writing-tasks/${taskId}/materials/from-knowledge`,input))
+export const updateWritingMaterial = (taskId:string,materialId:string,input:Pick<WritingMaterial,'materialName'|'authorityLevel'|'usageMode'|'citationPurpose'|'permissionStatus'|'selectedFragment'|'locked'|'fileHash'|'filePath'|'effectiveDate'|'expiryDate'|'lockVersion'>) => data(http.put<ApiEnvelope<WritingMaterial>>(`/writing-tasks/${taskId}/materials/${materialId}`,input))
+export const uploadWritingMaterial = (taskId:string,file:File,input:{authorityLevel:string;usageMode:string;citationPurpose:string;permissionStatus:string;outlineNodeId?:string}) => {
   const body=new FormData();body.append('file',file)
   return data(http.post<ApiEnvelope<WritingMaterial>>(`/writing-tasks/${taskId}/materials/upload`,body,{params:input}))
 }
@@ -130,7 +154,29 @@ export const addOutlineNode = (taskId:string,version:number,order:number) => dat
 export const deleteOutlineNode = (taskId:string,version:number,nodeId:string) => data(http.delete<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/nodes/${nodeId}`))
 
 export const getWritingDocument = (taskId:string) => data(http.get<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document`))
-export const generateDocumentSection = (taskId:string,nodeId:string,instruction:string) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/generate/section`,{outlineNodeId:nodeId,instruction}))
+export const getLatestSubmission = (taskId:string) => data(http.get<ApiEnvelope<{documentVersion:number;submittedAt:string}|null>>(`/writing-tasks/${taskId}/submissions/latest`))
+async function runGeneration(taskId:string, nodeId?:string, instruction?:string, progress?:(message:string)=>void) {
+  const storageKey = `document-generation:${taskId}:${nodeId || 'all'}`
+  let jobId = sessionStorage.getItem(storageKey)
+  if (!jobId) {
+    const job = await data(http.post<ApiEnvelope<import('./jobs').AsyncJob>>(`/writing-tasks/${taskId}/document/generation-jobs`, { nodeId, instruction, confirmed:true }, { headers:{'Idempotency-Key':`generate-${randomId()}`} }))
+    jobId = job.id
+    sessionStorage.setItem(storageKey,jobId)
+  }
+  for (;;) {
+    const state = await data(http.get<ApiEnvelope<import('./jobs').AsyncJob>>(`/jobs/${jobId}`))
+    if (state.status === 'COMPLETED') { sessionStorage.removeItem(storageKey); return getWritingDocument(taskId) }
+    if (['FAILED','DEAD_LETTER','CANCELLED'].includes(state.status)) { sessionStorage.removeItem(storageKey); throw new Error(state.errorMessage || '生成任务未完成，原正文版本已保留') }
+    const events = await data(http.get<ApiEnvelope<import('./jobs').JobEvent[]>>(`/jobs/${jobId}/events/history`))
+    let detail = '正在等待模型返回，请稍候'
+    try { detail = JSON.parse(events.at(-1)?.data || '{}').message || detail } catch { /* 保留等待提示 */ }
+    progress?.(`${state.progress}% · ${detail}`)
+    await new Promise(resolve=>setTimeout(resolve,800))
+  }
+}
+export const rebuildWritingDocument = (taskId:string, progress?:(message:string)=>void) => runGeneration(taskId,undefined,undefined,progress)
+export const generateDocumentSection = (taskId:string,nodeId:string,instruction:string,progress?:(message:string)=>void) => runGeneration(taskId,nodeId,instruction,progress)
+export const deleteDocumentParagraph = (taskId:string,paragraphId:string) => data(http.delete<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document/paragraphs/${paragraphId}`))
 class StreamServerError extends Error {}
 
 async function recoverPersistedStream(taskId:string,baselineVersion:number,onEvent:(event:string,data:Record<string,unknown>)=>void) {
@@ -202,6 +248,8 @@ export interface DocumentComment { id:string;documentId:string;paragraphId?:stri
 export const listDocumentComments = (documentId:string) => data(http.get<ApiEnvelope<DocumentComment[]>>(`/documents/${documentId}/comments`))
 export const createDocumentComment = (documentId:string,payload:{ paragraphId:string;commentType:CommentType;commentText:string;quotedText?:string }) => data(http.post<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments`,payload))
 export const resolveDocumentComment = (documentId:string,commentId:string) => data(http.put<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments/${commentId}/resolve`))
+export const updateDocumentComment = (documentId:string,commentId:string,commentText:string) => data(http.put<ApiEnvelope<DocumentComment>>(`/documents/${documentId}/comments/${commentId}`,{commentText}))
+export const deleteDocumentComment = (documentId:string,commentId:string) => data(http.delete<ApiEnvelope<void>>(`/documents/${documentId}/comments/${commentId}`))
 /** 修订模式下的段落修订建议；stale 表示原文在提出后已被修改，只能拒绝。 */
 export interface DocumentSuggestion { id:string;documentId:string;baseParagraphId:string;baseVersion:number;currentParagraphId?:string;stale:boolean;status:'待处理'|'已接受'|'已拒绝';proposerId:string;basePlainText:string;proposedPlainText:string;proposedRichContent?:string;aiAssisted:boolean;decidedBy?:string;decidedAt?:string;decisionNote?:string;acceptedVersion?:number;createdAt:string }
 export const listSuggestions = (taskId:string) => data(http.get<ApiEnvelope<DocumentSuggestion[]>>(`/writing-tasks/${taskId}/document/suggestions`))

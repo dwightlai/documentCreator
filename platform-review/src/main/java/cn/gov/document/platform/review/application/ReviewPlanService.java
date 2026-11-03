@@ -4,7 +4,9 @@ import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.review.api.ReviewPlanDtos;
 import cn.gov.document.platform.review.domain.ReviewPlanEntity;
+import cn.gov.document.platform.review.domain.ReviewTaskEntity;
 import cn.gov.document.platform.review.persistence.ReviewPlanMapper;
+import cn.gov.document.platform.review.persistence.ReviewTaskMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,10 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReviewPlanService {
     private final ReviewPlanMapper mapper;
+    private final ReviewTaskMapper taskMapper;
     private final ObjectMapper objectMapper;
 
-    public ReviewPlanService(ReviewPlanMapper mapper, ObjectMapper objectMapper) {
+    public ReviewPlanService(ReviewPlanMapper mapper, ReviewTaskMapper taskMapper, ObjectMapper objectMapper) {
         this.mapper = mapper;
+        this.taskMapper = taskMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -63,6 +67,16 @@ public class ReviewPlanService {
     }
 
     @Transactional
+    public void delete(String id) {
+        ReviewPlanEntity entity = require(id);
+        if (!Boolean.TRUE.equals(entity.getIsCustom())) throw BusinessException.conflict("内置审校方案不可删除");
+        if (taskMapper.selectCount(new LambdaQueryWrapper<ReviewTaskEntity>()
+                        .eq(ReviewTaskEntity::getReviewPlanId, id)) > 0)
+            throw BusinessException.conflict("该审校方案已被审校记录使用，不能删除");
+        mapper.deleteById(id);
+    }
+
+    @Transactional
     public String defaultPlanId() {
         ensureBuiltIns();
         ReviewPlanEntity entity = mapper.selectOne(
@@ -76,17 +90,28 @@ public class ReviewPlanService {
 
     public RuntimePlan runtime(String id) {
         ReviewPlanEntity entity = require(id);
-        return new RuntimePlan(read(entity.getReviewLevels()), entity.getRiskThreshold());
+        List<String> categories = read(entity.getReviewLevels());
+        return new RuntimePlan(List.copyOf(ReviewCategory.levels(categories)), categories, entity.getRiskThreshold());
     }
 
     private void ensureBuiltIns() {
-        if (mapper.selectCount(new LambdaQueryWrapper<ReviewPlanEntity>()
-                        .in(ReviewPlanEntity::getPlanCode, List.of("QUICK", "OFFICIAL", "DEEP", "SECURITY")))
-                == 4) return;
-        insertBuiltIn("QUICK", "快速校对", "日常材料", List.of("L1", "L2"), "一般", false);
-        insertBuiltIn("OFFICIAL", "公文规范审校", "正式公文拟稿", List.of("L1", "L2", "L3", "L4"), "一般", false);
-        insertBuiltIn("DEEP", "深度内容审校", "领导讲话、报告", List.of("L1", "L2", "L3", "L4", "L5", "L6"), "提示", false);
-        insertBuiltIn("SECURITY", "内容安全审校", "对外发布材料", List.of("L1", "L2", "L3", "L4", "L5", "L6", "L7"), "提示", false);
+        for (ReviewPlanEntity existing : mapper.selectList(new LambdaQueryWrapper<ReviewPlanEntity>()
+                .in(ReviewPlanEntity::getPlanCode, List.of("QUICK", "OFFICIAL", "DEEP", "SECURITY")))) {
+            if (!Boolean.TRUE.equals(existing.getIsCustom()) && read(existing.getReviewLevels()).stream().anyMatch(v -> v.startsWith("L"))) {
+                List<String> categories = switch (existing.getPlanCode()) {
+                    case "QUICK" -> List.of(ReviewCategory.LANGUAGE);
+                    case "OFFICIAL" -> List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT);
+                    case "DEEP" -> List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT, ReviewCategory.FACT, ReviewCategory.LOGIC);
+                    default -> ReviewCategory.ALL;
+                };
+                existing.setReviewLevels(write(categories));
+                mapper.updateById(existing);
+            }
+        }
+        insertBuiltIn("QUICK", "快速校对", "日常材料", List.of(ReviewCategory.LANGUAGE), "一般", false);
+        insertBuiltIn("OFFICIAL", "公文规范审校", "正式公文拟稿", List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT), "一般", false);
+        insertBuiltIn("DEEP", "深度内容审校", "领导讲话、报告", List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT, ReviewCategory.FACT, ReviewCategory.LOGIC), "提示", false);
+        insertBuiltIn("SECURITY", "内容安全审校", "对外发布材料", ReviewCategory.ALL, "提示", false);
     }
 
     private void insertBuiltIn(
@@ -150,11 +175,13 @@ public class ReviewPlanService {
 
     private List<String> read(String value) {
         try {
-            return value == null ? List.of() : objectMapper.readValue(value, new TypeReference<>() {});
+            if (value == null) return List.of();
+            List<String> values = objectMapper.readValue(value, new TypeReference<>() {});
+            return values.stream().distinct().toList();
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("审校方案数组数据损坏", e);
         }
     }
 
-    public record RuntimePlan(List<String> levels, String riskThreshold) {}
+    public record RuntimePlan(List<String> levels, List<String> categories, String riskThreshold) {}
 }

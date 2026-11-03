@@ -33,6 +33,19 @@ public class DocumentCommentController {
         return ApiResponse.success(service.resolve(documentId, commentId));
     }
 
+    @PutMapping("/comments/{commentId}")
+    ApiResponse<DocumentCommentDtos.CommentResponse> update(
+            @PathVariable String documentId, @PathVariable String commentId,
+            @Valid @RequestBody DocumentCommentDtos.UpdateRequest request) {
+        return ApiResponse.success(service.update(documentId, commentId, request));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    ApiResponse<Void> delete(@PathVariable String documentId, @PathVariable String commentId) {
+        service.delete(documentId, commentId);
+        return ApiResponse.success(null);
+    }
+
     @GetMapping("/compare")
     ApiResponse<DocumentCommentDtos.CompareResponse> compare(
             @PathVariable String documentId, @RequestParam int fromVersion, @RequestParam int toVersion) {

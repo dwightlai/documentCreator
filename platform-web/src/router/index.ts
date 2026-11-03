@@ -27,6 +27,8 @@ const router = createRouter({
     { path: '/operations', name: 'operations', component: () => import('@/views/TaskCenterView.vue'), meta: { title: '任务与运行中心' } },
     { path: '/templates', name: 'templates', component: () => import('@/views/TemplateCenterView.vue'), meta: { title: '输出模板中心' } },
     { path: '/governance', name: 'governance', component: () => import('@/views/GovernanceConsoleView.vue'), meta: { title: '模型与配置治理' } },
+    { path: '/data-dicts', name: 'data-dicts', component: () => import('@/views/DataDictView.vue'), meta: { title: '数据字典' } },
+    { path: '/identity', name: 'identity', component: () => import('@/views/IdentityDirectoryView.vue'), meta: { title: '用户与权限' } },
   ],
 })
 

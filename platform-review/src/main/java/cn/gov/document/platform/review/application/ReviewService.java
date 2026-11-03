@@ -91,6 +91,93 @@ public class ReviewService {
     }
 
     @Transactional
+    public ReviewDtos.TaskResponse createStandaloneDocx(
+            String documentTypeCode, String reviewPlanId, String outputTemplateId,
+            String originalFileName, byte[] content) {
+        return createStandaloneDocx(documentTypeCode, reviewPlanId, outputTemplateId, originalFileName, content, null);
+    }
+
+    private ReviewDtos.TaskResponse createStandaloneDocx(
+            String documentTypeCode, String reviewPlanId, String outputTemplateId,
+            String originalFileName, byte[] content, String groupId) {
+        if (!StringUtils.hasText(documentTypeCode)) throw BusinessException.unprocessable("请选择文种");
+        if (content == null || content.length == 0) throw BusinessException.unprocessable("待审 DOCX 文件不能为空");
+        if (content.length > 50L * 1024 * 1024) throw BusinessException.unprocessable("待审 DOCX 文件不得超过 50MB");
+        if (!StringUtils.hasText(originalFileName)
+                || !originalFileName.toLowerCase(java.util.Locale.ROOT).endsWith(".docx"))
+            throw BusinessException.unprocessable("当前仅支持 DOCX 文件");
+        DocxSecurityValidator.validate(originalFileName, content, 50L * 1024 * 1024, "待审文稿");
+        String planId = StringUtils.hasText(reviewPlanId) ? reviewPlanId : planService.defaultPlanId();
+        ReviewPlanService.RuntimePlan runtimePlan = planService.runtime(planId);
+        List<DocumentParagraphEntity> imported = extractParagraphs(content);
+        if (imported.isEmpty()) throw BusinessException.unprocessable("DOCX 中未提取到可审校的正文文字");
+        OutputTemplateDtos.Response template = null;
+        if (StringUtils.hasText(outputTemplateId)) {
+            template = outputTemplateService.get(outputTemplateId);
+            if (!"生效".equals(template.lifecycleStatus())) throw BusinessException.unprocessable("所选输出模板尚未生效");
+            if (!documentTypeCode.equals(template.documentTypeCode()))
+                throw BusinessException.unprocessable("输出模板与文种不一致");
+        }
+        List<DocxFormatReviewService.Deviation> formatDeviations = new java.util.ArrayList<>();
+        if (runtimePlan.categories().contains(ReviewCategory.FORMAT)) {
+            if (template != null) formatDeviations.addAll(formatReviewService.compare(outputTemplateId, content).deviations());
+            formatDeviations.addAll(formatReviewService.inspectStructure(content, direction(documentTypeCode)));
+        }
+        ReviewTaskEntity task = new ReviewTaskEntity();
+        task.setTenantId(RequestContext.tenantId());
+        task.setSourceSystem("upload");
+        task.setDocumentTypeCode(documentTypeCode);
+        task.setReviewPlanId(planId);
+        task.setOutputTemplateId(outputTemplateId);
+        String fileName = originalFileName.replace('\\', '/');
+        fileName = fileName.substring(fileName.lastIndexOf('/') + 1);
+        if (fileName.length() > 255) throw BusinessException.unprocessable("文件名过长");
+        task.setSourceFileName(fileName);
+        task.setReviewTitle(imported.get(0).getPlainText());
+        task.setStatus("审校处理中");
+        task.setInitiatorId(RequestContext.userId());
+        taskMapper.insert(task);
+        task.setBusinessId(groupId == null ? task.getId() : groupId);
+        String key = RequestContext.tenantId() + "/review-input/" + task.getId() + ".docx";
+        objectStorage.put(key, content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        task.setDocumentFileId(key);
+        task.setDocumentFileHash(sha256(content));
+        int number = insertInspection(task.getId(), documentTypeCode, imported.get(0).getPlainText(), imported, runtimePlan, "内部");
+        for (DocxFormatReviewService.Deviation deviation : formatDeviations) {
+            if (!atOrAboveThreshold(deviation.riskLevel(), runtimePlan.riskThreshold())) continue;
+            ReviewIssueEntity issue = new ReviewIssueEntity();
+            issue.setTenantId(RequestContext.tenantId());
+            issue.setReviewTaskId(task.getId());
+            issue.setIssueNumber("ISS-%04d".formatted(number++));
+            issue.setIssueCategory(ReviewCategory.FORMAT);
+            issue.setRiskLevel(deviation.riskLevel());
+            issue.setPageNumber(1);
+            issue.setParagraphNumber(1);
+            issue.setCharPositionStart(0);
+            issue.setCharPositionEnd(Math.max(0, deviation.actualValue() == null ? 0 : deviation.actualValue().length()));
+            issue.setOriginalText(deviation.actualValue());
+            issue.setSuggestedFix(null);
+            issue.setIssueExplanation(deviation.description());
+            issue.setRuleBasis(deviation.dimensionCode() + ": " + deviation.expectedValue());
+            issue.setDetectionMethod("格式解析-L4");
+            issue.setConfidenceScore(new java.math.BigDecimal("1.00"));
+            issue.setProcessingStatus("待处理");
+            issueMapper.insert(issue);
+        }
+        task.setStatus("审校完成");
+        taskMapper.updateById(task);
+        return get(task.getId());
+    }
+
+    @Transactional
+    public ReviewDtos.TaskResponse replaceStandaloneDocx(String taskId, String originalFileName, byte[] content) {
+        ReviewTaskEntity previous = requireTask(taskId);
+        if (!"upload".equals(previous.getSourceSystem())) throw BusinessException.unprocessable("该记录不是本地上传文稿");
+        return createStandaloneDocx(previous.getDocumentTypeCode(), previous.getReviewPlanId(),
+                previous.getOutputTemplateId(), originalFileName, content, previous.getBusinessId());
+    }
+
+    @Transactional
     public ReviewDtos.TaskResponse createFromDocx(
             ReviewDtos.CreateRequest request, String outputTemplateId, String originalFileName, byte[] content) {
         if (content == null || content.length == 0) {
@@ -119,7 +206,7 @@ public class ReviewService {
         List<DocumentParagraphEntity> importedParagraphs = extractParagraphs(content);
         // 先完成格式解析，确保无效/恶意 DOCX 不会留下审校任务记录。
         DocxFormatReviewService.Result formatResult =
-                runtimePlan.levels().contains("L4") ? formatReviewService.compare(outputTemplateId, content) : null;
+                runtimePlan.categories().contains(ReviewCategory.FORMAT) ? formatReviewService.compare(outputTemplateId, content) : null;
         List<DocxFormatReviewService.Deviation> formatDeviations = new java.util.ArrayList<>();
         if (formatResult != null) {
             formatDeviations.addAll(formatResult.deviations());
@@ -134,6 +221,7 @@ public class ReviewService {
         task.setReviewPlanId(planId);
         task.setWritingTaskId(writingTask.getId());
         task.setOutputTemplateId(outputTemplateId);
+        task.setSourceFileName(originalFileName);
         task.setStatus("审校处理中");
         task.setInitiatorId(RequestContext.userId());
         taskMapper.insert(task);
@@ -157,7 +245,7 @@ public class ReviewService {
                 issue.setTenantId(RequestContext.tenantId());
                 issue.setReviewTaskId(task.getId());
                 issue.setIssueNumber("ISS-%04d".formatted(number++));
-                issue.setIssueCategory("格式版式");
+                issue.setIssueCategory(ReviewCategory.FORMAT);
                 issue.setRiskLevel(deviation.riskLevel());
                 issue.setPageNumber(1);
                 issue.setParagraphNumber(1);
@@ -194,6 +282,7 @@ public class ReviewService {
         task.setSourceSystem("internal");
         task.setDocumentId(data.document().getId());
         task.setDocumentVersion(data.document().getCurrentVersion());
+        task.setReviewTitle(data.document().getTitle());
         task.setDocumentTypeCode(writingTask.getDocumentTypeCode());
         String planId = request.reviewPlanId();
         if (planService != null) {
@@ -224,13 +313,22 @@ public class ReviewService {
         return ReviewDtos.TaskResponse.from(task, findIssues(taskId, null, null, null));
     }
 
+    public ReviewDtos.TaskResponse findExternal(String sourceSystem, String businessId) {
+        ReviewTaskEntity task = taskMapper.selectOne(new LambdaQueryWrapper<ReviewTaskEntity>()
+                .eq(ReviewTaskEntity::getSourceSystem, sourceSystem)
+                .eq(ReviewTaskEntity::getBusinessId, businessId)
+                .orderByDesc(ReviewTaskEntity::getCreatedAt)
+                .last("LIMIT 1"));
+        return task == null ? null : get(task.getId());
+    }
+
     @Transactional
     public ReviewDtos.TaskResponse annotateExternal(
             String taskId, String sourceSystem, String businessId, String documentFileId, String callbackUrl) {
         ReviewTaskEntity task = requireTask(taskId);
         task.setSourceSystem(sourceSystem);
         task.setBusinessId(businessId);
-        task.setDocumentFileId(documentFileId);
+        if (StringUtils.hasText(documentFileId)) task.setDocumentFileId(documentFileId);
         task.setCallbackUrl(callbackUrl);
         taskMapper.updateById(task);
         return get(taskId);
@@ -354,6 +452,12 @@ public class ReviewService {
     @Transactional
     public ReviewDtos.TaskResponse reReview(String taskId) {
         ReviewTaskEntity previous = requireTask(taskId);
+        if ("upload".equals(previous.getSourceSystem())) {
+            return createStandaloneDocx(previous.getDocumentTypeCode(), previous.getReviewPlanId(),
+                    previous.getOutputTemplateId(), previous.getSourceFileName(),
+                    objectStorage.read(StringUtils.hasText(previous.getEditedFileId())
+                            ? previous.getEditedFileId() : previous.getDocumentFileId()), previous.getBusinessId());
+        }
         ReviewDtos.TaskResponse created = create(new ReviewDtos.CreateRequest(
                 previous.getWritingTaskId(), previous.getReviewPlanId(), previous.getCallbackUrl()));
         if ("OA".equalsIgnoreCase(previous.getSourceSystem())) {
@@ -500,10 +604,13 @@ public class ReviewService {
                 paragraphs,
                 new LinkedHashSet<>(plan.levels()),
                 plan.riskThreshold());
+        candidates = candidates.stream()
+                .filter(candidate -> plan.categories().contains(ReviewCategory.of(candidate.category())))
+                .toList();
         java.util.Map<String, String> groups = mergeGroups(candidates);
         int number = 1;
         for (BuiltInReviewEngine.Candidate candidate : candidates) {
-            insertCandidate(taskId, number++, candidate, "规则-" + candidate.level(), groups.get(mergeKey(candidate)));
+            insertCandidate(taskId, number++, candidate, candidate.source() + "-" + candidate.level(), groups.get(mergeKey(candidate)));
         }
         boolean includesHints = !StringUtils.hasText(plan.riskThreshold()) || "提示".equals(plan.riskThreshold());
         if (modelLogicReviewer != null && plan.levels().contains("L6") && includesHints) {
@@ -583,7 +690,7 @@ public class ReviewService {
         issue.setTenantId(RequestContext.tenantId());
         issue.setReviewTaskId(taskId);
         issue.setIssueNumber("ISS-%04d".formatted(number));
-        issue.setIssueCategory(candidate.category());
+        issue.setIssueCategory(ReviewCategory.of(candidate.category()));
         issue.setRiskLevel(candidate.risk());
         issue.setParagraphId(candidate.paragraphId());
         issue.setParagraphNumber(candidate.paragraphNumber());

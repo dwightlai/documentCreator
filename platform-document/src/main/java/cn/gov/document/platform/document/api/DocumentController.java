@@ -43,6 +43,31 @@ public class DocumentController {
         return ApiResponse.success(service.get(taskId));
     }
 
+    @PostMapping("/knowledge-drafts")
+    ApiResponse<DocumentDtos.KnowledgeDraftResponse> previewKnowledgeDraft(@PathVariable String taskId,
+            @Valid @RequestBody DocumentDtos.KnowledgeDraftRequest request) {
+        return ApiResponse.success(service.previewKnowledgeDraft(taskId, request));
+    }
+
+    @PostMapping("/knowledge-insertions")
+    ApiResponse<DocumentDtos.DocumentResponse> insertKnowledge(@PathVariable String taskId,
+            @Valid @RequestBody DocumentDtos.KnowledgeInsertionRequest request) {
+        return ApiResponse.success(service.insertKnowledge(taskId, request));
+    }
+
+    @PostMapping("/rebuild")
+    ApiResponse<DocumentDtos.DocumentResponse> rebuild(
+            @PathVariable String taskId, @RequestBody DocumentDtos.RebuildRequest request) {
+        return ApiResponse.success(service.rebuild(taskId, request.confirmed()));
+    }
+
+    @PutMapping("/title")
+    ApiResponse<cn.gov.document.platform.writing.api.WritingTaskDtos.Response> rename(
+            @PathVariable String taskId,
+            @Valid @RequestBody cn.gov.document.platform.writing.api.WritingTaskDtos.RenameRequest request) {
+        return ApiResponse.success(service.rename(taskId, request));
+    }
+
     @GetMapping("/versions")
     ApiResponse<List<DocumentDtos.VersionResponse>> versions(@PathVariable String taskId) {
         return ApiResponse.success(service.versions(taskId));
@@ -73,6 +98,11 @@ public class DocumentController {
             @PathVariable String paragraphId,
             @Valid @RequestBody DocumentDtos.UpdateParagraphRequest request) {
         return ApiResponse.success(service.updateParagraph(taskId, paragraphId, request));
+    }
+
+    @DeleteMapping("/paragraphs/{paragraphId}")
+    ApiResponse<DocumentDtos.DocumentResponse> deleteParagraph(@PathVariable String taskId, @PathVariable String paragraphId) {
+        return ApiResponse.success(service.deleteParagraph(taskId, paragraphId));
     }
 
     @PostMapping("/paragraphs/{paragraphId}/lock")

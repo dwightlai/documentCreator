@@ -7,18 +7,24 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.*;
 import org.springframework.http.*;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.*;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.transport.ProxyProvider;
 
 @Component
 public class OpenAiCompatibleModelClient {
     private final WebClient.Builder builder;
     private final ModelEndpointSecurity security;
+    private final ModelGatewayProperties properties;
 
-    public OpenAiCompatibleModelClient(WebClient.Builder builder, ModelEndpointSecurity security) {
+    public OpenAiCompatibleModelClient(
+            WebClient.Builder builder, ModelEndpointSecurity security, ModelGatewayProperties properties) {
         this.builder = builder;
         this.security = security;
+        this.properties = properties;
     }
 
     public Result invoke(
@@ -35,9 +41,22 @@ public class OpenAiCompatibleModelClient {
         copyNumber(parameters, body, "temperature");
         copyNumber(parameters, body, "top_p");
         copyNumber(parameters, body, "max_tokens");
+        // DeepSeek Flash defaults to high-effort thinking. Short document sections
+        // then spend most of their latency and tokens on invisible reasoning.
+        // Keep an explicit template setting authoritative for workflows that need it.
+        if ("api.deepseek.com".equalsIgnoreCase(endpoint.getHost())
+                && "deepseek-flash".equalsIgnoreCase(config.getModelName())) {
+            Object thinking = parameters.get("thinking");
+            if (thinking instanceof Map<?, ?> setting
+                    && ("enabled".equals(setting.get("type")) || "disabled".equals(setting.get("type")))) {
+                body.put("thinking", thinking);
+            } else {
+                body.put("thinking", Map.of("type", "disabled"));
+            }
+        }
         try {
             WebClient.RequestBodySpec request =
-                    builder.build().post().uri(endpoint).contentType(MediaType.APPLICATION_JSON);
+                    webClient(endpoint).post().uri(endpoint).contentType(MediaType.APPLICATION_JSON);
             if (StringUtils.hasText(secret)) request.header(HttpHeaders.AUTHORIZATION, "Bearer " + secret);
             JsonNode json = request.bodyValue(body)
                     .retrieve()
@@ -56,9 +75,47 @@ public class OpenAiCompatibleModelClient {
                     "模型服务返回 HTTP " + e.getStatusCode().value());
         } catch (BusinessException e) {
             throw e;
+        } catch (WebClientRequestException e) {
+            throw BusinessException.unprocessable("模型服务连接失败，请检查模型端点、网络及代理配置");
         } catch (RuntimeException e) {
             throw BusinessException.unprocessable("模型服务调用失败: " + e.getClass().getSimpleName());
         }
+    }
+
+    private WebClient webClient(URI endpoint) {
+        String proxyUrl = properties.getProxyUrl();
+        if (!StringUtils.hasText(proxyUrl) || bypassProxy(endpoint.getHost())) return builder.build();
+        URI proxy;
+        try {
+            proxy = URI.create(proxyUrl.trim());
+        } catch (IllegalArgumentException e) {
+            throw BusinessException.unprocessable("模型代理地址格式不正确");
+        }
+        if (!"http".equalsIgnoreCase(proxy.getScheme())
+                || proxy.getHost() == null
+                || proxy.getPort() < 1
+                || proxy.getUserInfo() != null) {
+            throw BusinessException.unprocessable("模型代理须配置为不含凭据的 HTTP 地址及端口");
+        }
+        HttpClient client = HttpClient.create()
+                .proxy(spec -> spec.type(ProxyProvider.Proxy.HTTP).host(proxy.getHost()).port(proxy.getPort()));
+        return builder.clone().clientConnector(new ReactorClientHttpConnector(client)).build();
+    }
+
+    private boolean bypassProxy(String host) {
+        if (host == null || host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1") || host.equals("::1"))
+            return true;
+        String exclusions = System.getenv("NO_PROXY");
+        if (!StringUtils.hasText(exclusions)) return false;
+        String normalizedHost = host.toLowerCase(Locale.ROOT);
+        for (String entry : exclusions.split(",")) {
+            String excluded = entry.trim().toLowerCase(Locale.ROOT);
+            if (excluded.equals("*")) return true;
+            if (excluded.startsWith("*.")) excluded = excluded.substring(2);
+            else if (excluded.startsWith(".")) excluded = excluded.substring(1);
+            if (normalizedHost.equals(excluded) || normalizedHost.endsWith("." + excluded)) return true;
+        }
+        return false;
     }
 
     private String resolveCredential(String ref) {

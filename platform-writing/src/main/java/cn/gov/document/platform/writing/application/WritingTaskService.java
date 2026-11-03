@@ -58,6 +58,15 @@ public class WritingTaskService {
         return Response.from(require(id));
     }
 
+    @Transactional
+    public Response rename(String id, String title, Integer lockVersion) {
+        WritingTaskEntity entity = require(id);
+        entity.setLockVersion(lockVersion);
+        entity.setTaskName(title.trim());
+        if (mapper.updateById(entity) != 1) throw BusinessException.conflict("写作任务已被其他用户修改，请刷新后重试");
+        return Response.from(require(id));
+    }
+
     public PageResponse<Response> list(long page, long size, String status, String documentType) {
         long safePage = Math.max(1, page);
         long safeSize = Math.min(200, Math.max(1, size));

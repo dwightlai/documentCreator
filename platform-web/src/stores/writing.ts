@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { createWritingTask, listWritingTasks, recommendDocumentType, type CreateWritingTask, type TypeSuggestion, type WritingTask } from '@/api/writing'
+import { createWritingTask, deleteWritingTask, listWritingTasks, recommendDocumentType, renameWritingTitle, updateWritingTask, type CreateWritingTask, type TypeSuggestion, type WritingTask } from '@/api/writing'
 
 export const useWritingStore = defineStore('writing', () => {
   const tasks = ref<WritingTask[]>([])
@@ -16,7 +16,7 @@ export const useWritingStore = defineStore('writing', () => {
     try {
       const page = await listWritingTasks()
       tasks.value = page.items
-      selectedId.value ||= page.items.at(0)?.id
+      if (!page.items.some(item => item.id === selectedId.value)) selectedId.value = page.items.at(0)?.id
     } catch (reason) {
       error.value = reason instanceof Error ? reason.message : '任务加载失败'
     } finally {
@@ -41,5 +41,27 @@ export const useWritingStore = defineStore('writing', () => {
     suggestions.value = await recommendDocumentType(selectedId.value)
   }
 
-  return { tasks, selectedId, selectedTask, suggestions, loading, error, load, create, recommend }
+  async function rename(title: string) {
+    const task = selectedTask.value
+    if (!task || task.lockVersion == null) throw new Error('请刷新任务后重试')
+    const updated = await renameWritingTitle(task.id, title, task.lockVersion)
+    tasks.value = tasks.value.map((item) => item.id === updated.id ? updated : item)
+  }
+
+  async function remove(id: string) {
+    await deleteWritingTask(id)
+    tasks.value = tasks.value.filter(item => item.id !== id)
+    if (selectedId.value === id) selectedId.value = tasks.value.at(0)?.id
+    suggestions.value = []
+  }
+
+  async function update(id: string, payload: CreateWritingTask) {
+    const previous = tasks.value.find(item => item.id === id)
+    if (!previous || previous.lockVersion == null) throw new Error('请刷新任务后重试')
+    const changed = await updateWritingTask(id, { ...payload, lockVersion: previous.lockVersion })
+    tasks.value = tasks.value.map(item => item.id === id ? changed : item)
+    return changed
+  }
+
+  return { tasks, selectedId, selectedTask, suggestions, loading, error, load, create, recommend, rename, remove, update }
 })

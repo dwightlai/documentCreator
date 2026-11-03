@@ -7,6 +7,7 @@ import java.time.LocalDate;
 @TableName("ai_writing_material")
 public class WritingMaterialEntity extends BaseEntity {
     private String taskId;
+    private String outlineNodeId;
     private String materialName;
     private String sourceType;
     private String sourceId;
@@ -27,6 +28,14 @@ public class WritingMaterialEntity extends BaseEntity {
 
     public void setTaskId(String value) {
         this.taskId = value;
+    }
+
+    public String getOutlineNodeId() {
+        return outlineNodeId;
+    }
+
+    public void setOutlineNodeId(String value) {
+        this.outlineNodeId = value;
     }
 
     public String getMaterialName() {

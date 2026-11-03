@@ -6,6 +6,8 @@ import cn.gov.document.platform.rule.api.RuleDtos;
 import cn.gov.document.platform.rule.domain.ReviewRuleEntity;
 import cn.gov.document.platform.rule.domain.RuleVersionEntity;
 import cn.gov.document.platform.rule.persistence.ReviewRuleMapper;
+import cn.gov.document.platform.rule.persistence.ReviewDictionaryMapper;
+import cn.gov.document.platform.rule.domain.ReviewDictionaryEntity;
 import cn.gov.document.platform.rule.persistence.RuleVersionMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,12 +26,15 @@ import org.springframework.util.StringUtils;
 @Service
 public class RuleService {
     private static final List<String> RISKS = List.of("提示", "一般", "重要", "严重");
+    private static final List<String> CATEGORIES = List.of("政治与重要表述", "政策法规与事实依据", "公文业务规范", "内容与逻辑", "语言文字", "格式与版式");
     private final ReviewRuleMapper ruleMapper;
+    private final ReviewDictionaryMapper dictionaryMapper;
     private final RuleVersionMapper versionMapper;
     private final ObjectMapper objectMapper;
 
-    public RuleService(ReviewRuleMapper ruleMapper, RuleVersionMapper versionMapper, ObjectMapper objectMapper) {
+    public RuleService(ReviewRuleMapper ruleMapper, ReviewDictionaryMapper dictionaryMapper, RuleVersionMapper versionMapper, ObjectMapper objectMapper) {
         this.ruleMapper = ruleMapper;
+        this.dictionaryMapper = dictionaryMapper;
         this.versionMapper = versionMapper;
         this.objectMapper = objectMapper;
     }
@@ -38,6 +43,8 @@ public class RuleService {
     public RuleDtos.Response create(RuleDtos.CreateRequest request) {
         validateDates(request.effectiveDate(), request.expiryDate());
         validateRisk(request.riskLevel());
+        validateCategory(request.category());
+        validateDictionaryReference(request.detectionMethod(), request.ruleExpression());
         if (ruleMapper.selectCount(new LambdaQueryWrapper<ReviewRuleEntity>()
                         .eq(ReviewRuleEntity::getRuleCode, request.ruleCode().trim()))
                 > 0) throw BusinessException.conflict("规则代码已存在");
@@ -82,9 +89,11 @@ public class RuleService {
     @Transactional
     public RuleDtos.Response update(String id, RuleDtos.UpdateRequest request) {
         ReviewRuleEntity e = require(id);
-        if (!List.of("草稿", "测试").contains(e.getLifecycleStatus())) throw BusinessException.conflict("只有草稿或测试状态的规则可以编辑");
+        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus())) throw BusinessException.conflict("只有草稿、测试或停用状态的规则可以编辑");
         validateDates(request.effectiveDate(), request.expiryDate());
         validateRisk(request.riskLevel());
+        validateCategory(request.category());
+        validateDictionaryReference(request.detectionMethod(), request.ruleExpression());
         compilePattern(request.detectionMethod(), request.ruleExpression());
         e.setLockVersion(request.lockVersion());
         apply(
@@ -106,8 +115,17 @@ public class RuleService {
     }
 
     @Transactional
+    public void delete(String id) {
+        ReviewRuleEntity e = require(id);
+        if (List.of("生效", "审核").contains(e.getLifecycleStatus())) throw BusinessException.conflict("规则正在生效或审核，请先停用或完成审核");
+        ruleMapper.deleteById(id);
+    }
+
+    @Transactional
     public RuleDtos.TestResponse test(String id, RuleDtos.TestRequest request) {
         ReviewRuleEntity e = require(id);
+        if (List.of("人工核验", "词库").contains(e.getDetectionMethod()))
+            throw BusinessException.unprocessable("该检测方式不支持文本命中测试");
         if (!List.of("草稿", "测试").contains(e.getLifecycleStatus())) throw BusinessException.conflict("当前状态不允许测试");
         Pattern pattern = compilePattern(e.getDetectionMethod(), e.getRuleExpression());
         List<RuleDtos.CaseResult> results = new ArrayList<>();
@@ -142,7 +160,9 @@ public class RuleService {
     @Transactional
     public RuleDtos.Response submit(String id) {
         ReviewRuleEntity e = require(id);
-        if (!"测试".equals(e.getLifecycleStatus())) throw BusinessException.conflict("规则必须通过测试后才能提交审核");
+        if (!"测试".equals(e.getLifecycleStatus())
+                && !(List.of("人工核验", "词库").contains(e.getDetectionMethod()) && "草稿".equals(e.getLifecycleStatus())))
+            throw BusinessException.conflict("自动规则须通过测试；人工核验规则可直接提交审核");
         e.setLifecycleStatus("审核");
         ruleMapper.updateById(e);
         return get(id);
@@ -238,11 +258,23 @@ public class RuleService {
         if (a != null && b != null && b.isBefore(a)) throw BusinessException.unprocessable("失效日期不得早于生效日期");
     }
 
+    private void validateCategory(String category) {
+        if (!CATEGORIES.contains(category)) throw BusinessException.unprocessable("请选择有效的审校业务分类");
+    }
+
+    private void validateDictionaryReference(String method, String expression) {
+        if (!"词库".equals(method)) return;
+        if (expression == null || dictionaryMapper.selectCount(new LambdaQueryWrapper<ReviewDictionaryEntity>()
+                .eq(ReviewDictionaryEntity::getDictCode, expression.trim())) == 0)
+            throw BusinessException.unprocessable("引用的标准词库不存在");
+    }
+
     private void validateRisk(String risk) {
         if (!RISKS.contains(risk)) throw BusinessException.unprocessable("无效风险等级");
     }
 
     private Pattern compilePattern(String method, String expression) {
+        if ("人工核验".equals(method) || "词库".equals(method)) return Pattern.compile("(?!)");
         try {
             String detection =
                     expression.contains("=>") ? expression.substring(0, expression.indexOf("=>")) : expression;

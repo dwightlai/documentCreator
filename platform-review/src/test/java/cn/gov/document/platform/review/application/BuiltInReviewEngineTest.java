@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
 import cn.gov.document.platform.rule.application.EffectiveReviewRuleProvider;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -68,6 +69,31 @@ class BuiltInReviewEngineTest {
             assertThat(issue.original()).isEqualTo("关于开展专项工作的安排");
             assertThat(issue.paragraphNumber()).isEqualTo(1);
             assertThat(issue.basis()).contains("标题");
+        });
+    }
+
+    @Test
+    void distinguishesDictionaryTermsFromConfiguredRules() {
+        DocumentParagraphEntity termParagraph = paragraph("term", 1, "其他");
+        when(provider.inspect("通知", "其他"))
+                .thenReturn(List.of(new EffectiveReviewRuleProvider.Match(
+                        "DICT:term", "常见误用", "一般", 0, 2, "其他", "其它", "用词提示", "词语依据",
+                        "词库", new BigDecimal("0.95"))));
+        var termIssues = engine.inspect("通知", List.of(termParagraph), Set.of("L2"), "一般");
+        assertThat(termIssues).singleElement().satisfies(issue -> {
+            assertThat(issue.level()).isEqualTo("L2");
+            assertThat(issue.source()).isEqualTo("标准词库");
+        });
+
+        DocumentParagraphEntity ruleParagraph = paragraph("rule", 1, "某项");
+        when(provider.inspect("通知", "某项"))
+                .thenReturn(List.of(new EffectiveReviewRuleProvider.Match(
+                        "STD-CUSTOM", "行文规则", "一般", 0, 2, "某项", null, "规则提示", "公文依据",
+                        "规则", new BigDecimal("0.96"))));
+        var ruleIssues = engine.inspect("通知", List.of(ruleParagraph), Set.of("L3"), "一般");
+        assertThat(ruleIssues).singleElement().satisfies(issue -> {
+            assertThat(issue.level()).isEqualTo("L3");
+            assertThat(issue.source()).isEqualTo("配置规则:STD-CUSTOM");
         });
     }
 

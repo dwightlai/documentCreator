@@ -104,11 +104,13 @@ public class OaWritingService {
                                 material.content(),
                                 true,
                                 null,
+                                null,
                                 null));
                 materials++;
             }
         }
-        return new OaIntegrationDtos.CreateWritingResponse(linked, materials, "/api/v1/writing-tasks/" + created.id());
+        return new OaIntegrationDtos.CreateWritingResponse(
+                linked, materials, "/api/v1/integrations/oa/writing-tasks/" + created.id());
     }
 
     /**
@@ -158,10 +160,13 @@ public class OaWritingService {
             body.put("documentVersion", version);
             body.put("reviewTaskId", gate.reviewTaskId());
             body.put("reviewStatus", "提交门禁已通过");
+            String statusBase = "/api/v1/integrations/oa/writing-tasks/" + writingTaskId;
+            String businessQuery = "?businessId=" + java.net.URLEncoder.encode(
+                    task.getBusinessId(), java.nio.charset.StandardCharsets.UTF_8);
             body.put(
                     "reportUrl",
-                    gate.reviewTaskId() == null ? null : "/api/v1/review-tasks/" + gate.reviewTaskId() + "/reports");
-            body.put("documentUrl", "/api/v1/writing-tasks/" + writingTaskId + "/document/versions/" + version);
+                    gate.reviewTaskId() == null ? null : statusBase + "/reviews/" + gate.reviewTaskId() + "/reports" + businessQuery);
+            body.put("documentUrl", statusBase + "/document/versions/" + version + businessQuery);
             body.put("aiGenerated", disclosure.aiGeneratedRatio().signum() > 0);
             body.put("aiGeneratedRatio", disclosure.aiGeneratedRatio());
             String payload = objectMapper.writeValueAsString(Map.of("callbackUrl", callbackUrl, "body", body));
@@ -173,5 +178,41 @@ public class OaWritingService {
         }
         return new OaIntegrationDtos.SubmitResponse(
                 submission.getId(), writingTaskId, version, task.getBusinessId(), callbackJobId, gate);
+    }
+
+    public OaIntegrationDtos.SubmissionProgress latestSubmission(String writingTaskId) {
+        writingTaskService.require(writingTaskId);
+        DocumentSubmissionEntity latest = submissionMapper.selectOne(new LambdaQueryWrapper<DocumentSubmissionEntity>()
+                .eq(DocumentSubmissionEntity::getWritingTaskId, writingTaskId)
+                .orderByDesc(DocumentSubmissionEntity::getSubmittedAt)
+                .last("LIMIT 1"));
+        return latest == null ? null : new OaIntegrationDtos.SubmissionProgress(
+                latest.getDocumentVersion(), latest.getSubmittedAt());
+    }
+
+    public OaIntegrationDtos.WritingStatus status(String writingTaskId, String businessId) {
+        WritingTaskEntity task = writingTaskService.require(writingTaskId);
+        if (!SOURCE_SYSTEM.equals(task.getSourceSystem()) || !businessId.equals(task.getBusinessId()))
+            throw BusinessException.notFound("OA 写作任务不存在");
+        return new OaIntegrationDtos.WritingStatus(
+                writingTaskService.get(writingTaskId), latestSubmission(writingTaskId));
+    }
+
+    public OaIntegrationDtos.WritingStatus findStatus(String businessId) {
+        WritingTaskEntity task = writingTaskMapper.selectOne(new LambdaQueryWrapper<WritingTaskEntity>()
+                .eq(WritingTaskEntity::getSourceSystem, SOURCE_SYSTEM)
+                .eq(WritingTaskEntity::getBusinessId, businessId)
+                .last("LIMIT 1"));
+        if (task == null) throw BusinessException.notFound("OA 写作任务不存在");
+        return status(task.getId(), businessId);
+    }
+
+    public boolean isSubmittedVersion(String writingTaskId, String businessId, int version) {
+        status(writingTaskId, businessId);
+        return submissionMapper.selectCount(new LambdaQueryWrapper<DocumentSubmissionEntity>()
+                .eq(DocumentSubmissionEntity::getWritingTaskId, writingTaskId)
+                .eq(DocumentSubmissionEntity::getBusinessId, businessId)
+                .eq(DocumentSubmissionEntity::getTargetSystem, SOURCE_SYSTEM)
+                .eq(DocumentSubmissionEntity::getDocumentVersion, version)) > 0;
     }
 }

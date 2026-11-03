@@ -34,6 +34,42 @@ class DeepReviewIntegrationTest {
     ObjectMapper objectMapper;
 
     @Test
+    void reviewEditorSavesInternalTitleAndParagraphAsVersions() throws Exception {
+        String taskId = createDocument("截止目前为止，平台建设正在推进。");
+        String reviewId = data(mockMvc.perform(post("/api/v1/review-tasks")
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("writingTaskId", taskId)))))
+                .path("id").asText();
+        JsonNode content = data(mockMvc.perform(get("/api/v1/review-tasks/{id}/content", reviewId)
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")));
+        int version = content.path("currentVersion").asInt();
+        String paragraphAnchor = content.path("blocks").get(1).path("anchor").asText();
+        JsonNode edited = data(mockMvc.perform(put("/api/v1/review-tasks/{id}/content", reviewId)
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("anchor", paragraphAnchor,
+                        "text", "截至目前，平台建设正在推进。", "expectedVersion", version)))));
+        assertThat(edited.path("needsReview").asBoolean()).isTrue();
+        assertThat(edited.path("blocks").get(1).path("originalText").asText()).contains("截止目前为止");
+        assertThat(edited.path("blocks").get(1).path("currentText").asText()).contains("截至目前");
+        JsonNode titled = data(mockMvc.perform(put("/api/v1/review-tasks/{id}/content", reviewId)
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("anchor", "title",
+                        "text", "平台建设情况报告", "expectedVersion", version + 1)))));
+        assertThat(titled.path("currentVersion").asInt()).isEqualTo(version + 2);
+        assertThat(titled.path("blocks").get(0).path("currentText").asText()).isEqualTo("平台建设情况报告");
+        String nextId = data(mockMvc.perform(post("/api/v1/review-tasks/{id}/re-review", reviewId)
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")))
+                .path("id").asText();
+        JsonNode latest = data(mockMvc.perform(get("/api/v1/review-tasks/{id}/content", nextId)
+                .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")));
+        assertThat(latest.path("needsReview").asBoolean()).isFalse();
+        assertThat(latest.path("blocks").get(1).path("originalText").asText()).contains("截至目前");
+    }
+
+    @Test
     void securityPlanReportsFactLogicAndSafetyIssuesThatCannotBeAutoAccepted() throws Exception {
         String taskId = createDocument(
                 "全市共建成服务站28个，其中城区15个、乡镇16个。投诉量由80件下降到96件，下降20%。" + "截止目前为止进展顺利，截止目前为止未发现问题。联系人身份证号11010519491231002X。");
@@ -57,15 +93,15 @@ class DeepReviewIntegrationTest {
 
         List<String> methods = new ArrayList<>();
         issues.forEach(issue -> methods.add(issue.path("detectionMethod").asText()));
-        assertThat(methods).contains("规则-L5", "规则-L6", "规则-L7");
+        assertThat(methods).contains("内置检查-L5", "内置检查-L6", "内置检查-L7");
 
-        JsonNode fact = find(issues, "规则-L5", "共建成服务站28个");
+        JsonNode fact = find(issues, "内置检查-L5", "共建成服务站28个");
         assertThat(fact.path("suggestedFix").isMissingNode()
                         || fact.path("suggestedFix").isNull())
                 .isTrue();
         assertThat(fact.path("autoFixAllowed").asBoolean()).isFalse();
         assertThat(fact.path("issueExplanation").asText()).contains("15 + 16 = 31个");
-        assertThat(find(issues, "规则-L7", "11010519491231002X").path("riskLevel").asText())
+        assertThat(find(issues, "内置检查-L7", "11010519491231002X").path("riskLevel").asText())
                 .isEqualTo("严重");
 
         // 同一错词出现两次，归入同一合并组，且允许一键采纳

@@ -18,6 +18,7 @@ public final class AutoFixPolicy {
 
     public static boolean isManualOnly(String detectionMethod) {
         if (detectionMethod == null) return false;
+        if (detectionMethod.contains("STD-VARIANT-GF1001")) return true;
         return MANUAL_ONLY_LEVELS.stream().anyMatch(detectionMethod::endsWith);
     }
 }

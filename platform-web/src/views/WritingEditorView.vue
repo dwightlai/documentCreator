@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
@@ -8,13 +8,19 @@ import SelectionRewriteDialog from '@/components/SelectionRewriteDialog.vue'
 import ParagraphComments from '@/components/ParagraphComments.vue'
 import ParagraphSuggestions from '@/components/ParagraphSuggestions.vue'
 import TypesetDialog from '@/components/TypesetDialog.vue'
+import { useDict } from '@/composables/useDict'
 import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
+const { options: authorityOptions } = useDict('material_authority', ['正式公文', '权威资料', '内部资料', '参考资料'])
+const { options: usageModeOptions } = useDict('material_usage_mode', ['全文参考', '指定片段', '仅作背景'])
+const { options: citationPurposeOptions } = useDict('material_citation_purpose', ['事实依据', '政策依据', '案例参考', '表达参考'])
 import type { JSONContent } from '@tiptap/vue-3'
 import { initiateReview } from '@/api/review'
+import { searchKnowledge, readKnowledgeDocument, listKnowledgeSources, listKnowledgeDocuments, type KnowledgeSource, type KnowledgeHit, type KnowledgeChunk, type KnowledgeDocument } from '@/api/knowledge'
 import { isConflict } from '@/api/http'
 import {
   acquireEditLease,
   addOutlineNode,
+  attachKnowledgeMaterial,
   checkOutline,
   confirmOutline,
   createWritingMaterial,
@@ -32,13 +38,16 @@ import {
   restoreDocumentVersion,
   type DocumentVersion,
   getWritingDocument,
+  rebuildWritingDocument,
   getWritingTask,
   listWritingMaterials,
   releaseEditLease,
   setParagraphLock,
   snapshotWritingMaterials,
-  streamDocumentSection,
+  generateDocumentSection,
   updateDocumentParagraph,
+  deleteDocumentParagraph,
+  updateWritingMaterial,
   updateOutlineNode,
   uploadWritingMaterial,
   type DocumentParagraph,
@@ -50,6 +59,8 @@ import {
   requestSelectionCandidates,
   listDocumentComments,
   createDocumentComment,
+  updateDocumentComment,
+  deleteDocumentComment,
   resolveDocumentComment,
   type CommentType,
   type DocumentComment,
@@ -60,6 +71,7 @@ import {
   type DocumentSuggestion,
   type SelectionCandidate,
   type SelectionOperation,
+  listKnowledgeSelections, selectKnowledge, removeKnowledgeSelection, draftFromKnowledge, insertFromKnowledge, listDocumentCitations, confirmKnowledgeCitation, type KnowledgeSelection, type DocumentCitation,
 } from '@/api/writing'
 
 const route = useRoute()
@@ -69,13 +81,219 @@ const task = ref<WritingTask>()
 const materials = ref<WritingMaterial[]>([])
 const outline = ref<WritingOutline>()
 const document = ref<WritingDocument>()
+const citations = ref<DocumentCitation[]>([])
+const pendingKnowledgeCitations = computed(() => citations.value.filter(item=>item.knowledgeDocumentId && item.reviewStatus==='待复核'))
+async function locatePendingCitation() {
+  const citation=pendingKnowledgeCitations.value[0]
+  const paragraph=document.value?.paragraphs.find(item=>item.id===citation?.paragraphId)
+  if(!paragraph) return
+  selectedParagraphId.value=paragraph.id; selectedNodeId.value=paragraph.outlineNodeId
+  await nextTick()
+  const column=documentColumnRef.value
+  const target=[...(column?.querySelectorAll<HTMLElement>('[data-paragraph-id]') || [])].find(item=>item.dataset.paragraphId===paragraph.id)
+  if(column&&target) column.scrollTo({top:column.scrollTop+target.getBoundingClientRect().top-column.getBoundingClientRect().top-20,behavior:'smooth'})
+}
+const citationDialog = ref(false)
+const citationCurrent = ref<DocumentCitation>()
+const citationFragment = ref('')
+const citationSourceExcerpt = ref('')
+async function confirmCitation() {
+  if(!citationCurrent.value || !selectedParagraph.value) return
+  const start=selectedParagraph.value.plainText.indexOf(citationFragment.value)
+  if(start<0 || !citationSourceExcerpt.value.trim()) { ElMessage.warning('请填写当前段落中的具体表述和对应的原文摘录'); return }
+  try {
+    await confirmKnowledgeCitation(taskId.value,citationCurrent.value.id,{citedFragment:citationFragment.value,sourceExcerpt:citationSourceExcerpt.value.trim(),positionStart:start,positionEnd:start+citationFragment.value.length,confirmed:true})
+    citations.value=await listDocumentCitations(taskId.value); citationDialog.value=false; ElMessage.success('引用已核对')
+  } catch(error) { ElMessage.error(message(error)) }
+}
+function openCitation(citation:DocumentCitation) {
+  citationCurrent.value=citation; citationFragment.value=citation.citedFragment; citationSourceExcerpt.value=citation.sourceExcerpt || ''; citationDialog.value=true
+}
+watch(() => document.value?.currentVersion, async (version) => {
+  if (!version) { citations.value=[]; return }
+  try { citations.value=await listDocumentCitations(taskId.value) } catch { citations.value=[] }
+})
 const selectedNodeId = ref('')
 const selectedParagraphId = ref('')
+const evidenceQuery = ref('')
+const evidenceHits = ref<KnowledgeHit[]>([])
+const evidenceSources = ref<KnowledgeSource[]>([])
+const evidenceSourceId = ref('')
+const evidenceDocuments = ref<KnowledgeDocument[]>([])
+const evidenceDocument = ref<KnowledgeDocument>()
+const evidenceChunks = ref<KnowledgeChunk[]>([])
+const evidenceLoading = ref(false)
+function evidenceUnavailable(doc:Pick<KnowledgeDocument,'verificationStatus'|'completeness'|'usageType'|'validityStatus'>) { return doc.verificationStatus!=='已核验'||doc.completeness==='来源索引'||doc.usageType==='待分类'||(doc.usageType==='规范依据'&&doc.validityStatus!=='现行') }
+const evidenceFilteredDocuments = computed(() => evidenceDocuments.value.filter(doc => !evidenceQuery.value.trim() || `${doc.documentTitle} ${doc.publisher || ''} ${doc.documentNumber || ''}`.toLowerCase().includes(evidenceQuery.value.trim().toLowerCase())))
+const evidenceSelectableHits = computed(() => evidenceHits.value)
+const canSelectEvidence = computed(() => Boolean(selectedNodeId.value))
+const evidencePendingHits = ref<KnowledgeHit[]>([])
+const evidencePendingPreview = computed(() => {
+  if (!evidencePendingHits.value.length) return ''
+  const text = evidencePendingHits.value.map(hit => hit.snippet).join('\n')
+  return text.slice(0, 300)
+})
+const evidenceReason = ref('')
+const evidenceSelectHint = ref('')
+const evidenceConfirmRef = ref<HTMLElement>()
+const evidenceSelections = ref<KnowledgeSelection[]>([])
+const evidenceCurrent = ref<KnowledgeSelection>()
+const evidenceText = ref('')
+const evidenceInstruction = ref('')
+const evidenceMode = ref<'原文摘录'|'起草表述'>('原文摘录')
+const evidenceBusy = ref(false)
+watch(selectedNodeId, async nodeId => {
+  evidenceCurrent.value=undefined
+  evidenceSelections.value=[]
+  if (!nodeId) return
+  try { evidenceSelections.value=await listKnowledgeSelections(taskId.value,nodeId) } catch { evidenceSelections.value=[] }
+})
+async function openEvidence(scope:'通篇'|'本节' = '本节') {
+  materialScope.value = scope
+  editingMaterial.value = undefined
+  materialFile.value = undefined
+  materialForm.sourceType = '知识库'
+  materialDialog.value = true
+  try {
+    evidenceSelections.value = selectedNodeId.value ? await listKnowledgeSelections(taskId.value, selectedNodeId.value) : []
+    evidenceSources.value = await listKnowledgeSources()
+    if (!evidenceSourceId.value && evidenceSources.value.length) evidenceSourceId.value = evidenceSources.value[0]!.id
+    if (evidenceSourceId.value) await browseEvidenceSource()
+  }
+  catch (error) { ElMessage.error(message(error)) }
+}
+async function browseEvidenceSource() {
+  evidenceDocument.value = undefined; evidenceChunks.value = []
+  if (!evidenceSourceId.value) { evidenceDocuments.value = []; return }
+  evidenceLoading.value = true
+  try { evidenceDocuments.value = await listKnowledgeDocuments(evidenceSourceId.value) }
+  catch (error) { ElMessage.error(message(error)) }
+  finally { evidenceLoading.value = false }
+}
+async function browseEvidenceDocument(doc:KnowledgeDocument) {
+  evidenceLoading.value = true
+  try {
+    const result = await readKnowledgeDocument(doc.sourceId,doc.id)
+    evidenceDocument.value = result.document; evidenceChunks.value = result.chunks
+  } catch (error) { ElMessage.error(message(error)) }
+  finally { evidenceLoading.value = false }
+}
+function evidenceChunkHit(doc:KnowledgeDocument,chunk:KnowledgeChunk):KnowledgeHit {
+  const source = evidenceSources.value.find(item=>item.id===doc.sourceId)
+  return {sourceId:doc.sourceId,sourceName:source?.sourceName || '',documentId:doc.id,documentTitle:doc.documentTitle,chunkId:chunk.id,chunkOrder:chunk.chunkOrder,snippet:chunk.chunkText,authorityLevel:doc.authorityLevel,permissionLevel:doc.permissionLevel,score:1,fileHash:doc.originalFileHash,usageType:doc.usageType,completeness:doc.completeness,verificationStatus:doc.verificationStatus,validityStatus:doc.validityStatus,documentVersion:doc.documentVersion}
+}
+async function findEvidence() {
+  if (evidenceQuery.value.trim().length < 2) { ElMessage.info('搜正文请至少输入 2 个字；按库浏览文档无需输入关键词'); return }
+  try { evidenceHits.value = await searchKnowledge(evidenceQuery.value.trim()) }
+  catch (error) { ElMessage.error(message(error)) }
+}
+async function chooseEvidence(hit:KnowledgeHit) {
+  if (materialScope.value === '本节' && !canSelectEvidence.value) { evidenceSelectHint.value = '请先在左侧提纲中点选一个章节'; return }
+  evidenceSelectHint.value = ''
+  evidencePendingHits.value = [hit]
+  evidenceReason.value = materialScope.value === '通篇' ? '通篇参考' : (selectedNode.value ? `用于「${selectedNode.value.title}」` : '')
+  await nextTick()
+  evidenceConfirmRef.value?.scrollIntoView({behavior:'smooth',block:'nearest'})
+}
+async function chooseEvidenceDocument() {
+  if (!evidenceDocument.value || !evidenceChunks.value.length) return
+  if (materialScope.value === '本节' && !canSelectEvidence.value) { evidenceSelectHint.value = '请先在左侧提纲中点选一个章节'; return }
+  evidenceSelectHint.value = ''
+  evidencePendingHits.value = evidenceChunks.value.map(chunk => evidenceChunkHit(evidenceDocument.value!, chunk))
+  evidenceReason.value = materialScope.value === '通篇' ? '通篇参考' : (selectedNode.value ? `用于「${selectedNode.value.title}」` : '')
+  await nextTick()
+  evidenceConfirmRef.value?.scrollIntoView({behavior:'smooth',block:'nearest'})
+}
+async function attachKnowledgeReference(doc:KnowledgeDocument,chunk?:KnowledgeChunk) {
+  if (materialScope.value === '本节' && !selectedNodeId.value) { evidenceSelectHint.value='请先点选一个章节'; return }
+  try {
+    await attachKnowledgeMaterial(taskId.value,{sourceId:doc.sourceId,documentId:doc.id,chunkId:chunk?.id,outlineNodeId:materialScope.value==='本节'?selectedNodeId.value:undefined})
+    materials.value=await listWritingMaterials(taskId.value)
+    evidenceSelectHint.value=''
+    ElMessage.success(chunk?'已加入片段，待核验资料仅供参考':'已加入整篇，待核验资料仅供参考')
+  } catch(error) { evidenceSelectHint.value=message(error); ElMessage.error(message(error)) }
+}
+async function attachKnowledgeHit(hit:KnowledgeHit) {
+  if (materialScope.value === '本节' && !selectedNodeId.value) { evidenceSelectHint.value='请先点选一个章节'; return }
+  try {
+    await attachKnowledgeMaterial(taskId.value,{sourceId:hit.sourceId,documentId:hit.documentId,chunkId:hit.chunkId,outlineNodeId:materialScope.value==='本节'?selectedNodeId.value:undefined})
+    materials.value=await listWritingMaterials(taskId.value)
+    evidenceSelectHint.value=''
+    ElMessage.success('已加入片段，作为参考资料')
+  } catch(error) { evidenceSelectHint.value=message(error); ElMessage.error(message(error)) }
+}
+async function confirmEvidenceSelection() {
+  const hits = evidencePendingHits.value
+  if (!hits.length) return
+  if (materialScope.value === '本节' && !selectedNodeId.value) { evidenceSelectHint.value = '请先选择章节'; return }
+  if (!evidenceReason.value.trim()) { evidenceSelectHint.value = '请填写选用理由'; return }
+  evidenceSelectHint.value = ''
+  try {
+    if (materialScope.value === '通篇') {
+      await attachKnowledgeMaterial(taskId.value,{sourceId:hits[0]!.sourceId,documentId:hits[0]!.documentId,chunkId:hits.length===1?hits[0]!.chunkId:undefined})
+      materials.value = await listWritingMaterials(taskId.value)
+      evidencePendingHits.value = []
+      ElMessage.success('已加入通篇参考材料；仅供查阅，不参与自动生成')
+      return
+    }
+    let item:KnowledgeSelection | undefined
+    let added = 0
+    for (const hit of hits) {
+      try {
+        item = await selectKnowledge(taskId.value,{outlineNodeId:selectedNodeId.value,sourceId:hit.sourceId,documentId:hit.documentId,chunkId:hit.chunkId,usageType:hit.usageType,selectionReason:evidenceReason.value.trim(),applicabilityConfirmed:true})
+        added += 1
+      } catch (error) { if (!isConflict(error)) throw error }
+    }
+    evidenceSelections.value = await listKnowledgeSelections(taskId.value,selectedNodeId.value)
+    evidencePendingHits.value = []
+    if (item) { evidenceCurrent.value = item; evidenceText.value = item.excerpt; evidenceMode.value=item.completeness==='本地原文可用'&&item.usageType!=='写法参考'?'原文摘录':'起草表述' }
+    ElMessage.success(added ? (hits.length > 1 ? `已选用整篇（新增 ${added} 个片段）` : '已选用本节依据') : '所选片段均已在本节选用')
+  } catch (error) { evidenceSelectHint.value = message(error); ElMessage.error(message(error)) }
+}
+async function readEvidence(hit:KnowledgeHit) {
+  try {
+    const result = await readKnowledgeDocument(hit.sourceId,hit.documentId)
+    evidenceSourceId.value = hit.sourceId
+    evidenceDocuments.value = await listKnowledgeDocuments(hit.sourceId)
+    evidenceDocument.value = result.document
+    evidenceChunks.value = result.chunks
+  }
+  catch(error) { ElMessage.error(message(error)) }
+}
+async function forgetEvidence(item:KnowledgeSelection) {
+  try { await removeKnowledgeSelection(taskId.value,item.id); evidenceSelections.value = await listKnowledgeSelections(taskId.value,selectedNodeId.value); if(evidenceCurrent.value?.id===item.id) evidenceCurrent.value=undefined }
+  catch(error) { ElMessage.error(message(error)) }
+}
+async function draftEvidence() {
+  if(!evidenceCurrent.value) return
+  evidenceBusy.value=true
+  try { const result=await draftFromKnowledge(taskId.value,evidenceCurrent.value.id,evidenceInstruction.value); evidenceText.value=result.text; evidenceMode.value='起草表述' }
+  catch(error) { ElMessage.error(message(error)) }
+  finally { evidenceBusy.value=false }
+}
+async function insertEvidence() {
+  if(!evidenceCurrent.value || !evidenceText.value.trim()) return
+  evidenceBusy.value=true
+  try {
+    document.value=await insertFromKnowledge(taskId.value,{selectionId:evidenceCurrent.value.id,mode:evidenceMode.value,text:evidenceText.value.trim(),afterParagraphId:selectedParagraphId.value || undefined,confirmed:true})
+    materialDialog.value=false; ElMessage.success(evidenceMode.value==='原文摘录'?'原文摘录已插入':'待核表述已插入')
+  } catch(error) { ElMessage.error(message(error)) }
+  finally { evidenceBusy.value=false }
+}
+const documentColumnRef = ref<HTMLElement>()
 const loading = ref(false)
 const generatingId = ref('')
+const rebuilding = ref(false)
+const rebuildResult = ref('')
+const rebuildProgress = ref('')
+const generationError = ref('')
 const materialDialog = ref(false)
+const materialScope = ref<'通篇'|'本节'>('通篇')
+const documentMaterials = computed(() => materials.value.filter(item => !item.outlineNodeId))
+const sectionMaterials = computed(() => materials.value.filter(item => item.outlineNodeId && item.outlineNodeId === selectedNodeId.value))
+const editingMaterial = ref<WritingMaterial>()
 const materialFile = ref<File>()
-const instruction = ref('突出事实依据，避免空泛表述')
+const instruction = ref('')
 const streamText = ref('')
 /** 当前持有的段落编辑租约（§34B.1），编辑期间每 4 分钟续期一次。 */
 const LEASE_RENEW_MS = 4 * 60 * 1000
@@ -131,10 +349,55 @@ const aiPercent = computed(() => disclosure.value ? Math.round(disclosure.value.
 async function refreshDisclosure() { try { disclosure.value = await getAiDisclosure(taskId.value) } catch { disclosure.value = undefined } }
 const conflict = ref<{ mine: string; mineRich?: string; mineAdopted?: string[]; latest: DocumentParagraph; latestDocument: WritingDocument }>()
 const materialForm = reactive({ materialName:'', sourceType:'上传', authorityLevel:'正式公文', usageMode:'全文参考', citationPurpose:'事实依据', permissionStatus:'允许', selectedFragment:'', locked:true })
+const oaMaterials = computed(() => materials.value.filter(item => item.sourceType === 'OA关联' || item.sourceType === 'OA'))
+async function selectMaterialSource(source:'上传'|'知识库'|'OA') {
+  materialForm.sourceType = source
+  materialFile.value = undefined
+  if (source === '知识库') {
+    try {
+      evidenceSources.value = await listKnowledgeSources()
+      if (!evidenceSourceId.value && evidenceSources.value.length) evidenceSourceId.value = evidenceSources.value[0]!.id
+      if (evidenceSourceId.value) await browseEvidenceSource()
+      if (materialScope.value === '本节' && selectedNodeId.value) evidenceSelections.value = await listKnowledgeSelections(taskId.value, selectedNodeId.value)
+    } catch (error) { ElMessage.error(message(error)) }
+  }
+  if (source === 'OA') { try { materials.value = await listWritingMaterials(taskId.value) } catch(error) { ElMessage.error(message(error)) } }
+}
+function openMaterial(item?: WritingMaterial, scope:'通篇'|'本节' = '通篇') {
+  materialScope.value = item?.outlineNodeId ? '本节' : scope
+  editingMaterial.value = item
+  materialFile.value = undefined
+  Object.assign(materialForm, item ? {
+    materialName: item.materialName, sourceType: item.sourceType === 'OA关联' || item.sourceType === 'OA' ? 'OA' : item.sourceType === '知识库' ? '知识库' : '上传', authorityLevel: item.authorityLevel,
+    usageMode: item.usageMode, citationPurpose: item.citationPurpose, permissionStatus: item.permissionStatus,
+    selectedFragment: item.selectedFragment ?? '', locked: item.locked,
+  } : { materialName: '', sourceType: '上传', authorityLevel: '正式公文', usageMode: '全文参考', citationPurpose: '事实依据', permissionStatus: '允许', selectedFragment: '', locked: true })
+  materialDialog.value = true
+  if (!item && materialForm.sourceType === '知识库') void selectMaterialSource('知识库')
+}
 
 const selectedNode = computed(() => outline.value?.nodes.find((item) => item.id === selectedNodeId.value))
 const selectedParagraph = computed(() => document.value?.paragraphs.find((item) => item.id === selectedParagraphId.value))
-const allowedMaterials = computed(() => materials.value.filter((item) => item.permissionStatus === '允许').length)
+async function selectOutlineNode(node: OutlineNode) {
+  selectedNodeId.value = node.id
+  const paragraph = document.value?.paragraphs.find(item => item.outlineNodeId === node.id)
+  selectedParagraphId.value = paragraph?.id ?? ''
+  await nextTick()
+  const column = documentColumnRef.value
+  if (!column) return
+  const target = paragraph && [...column.querySelectorAll<HTMLElement>('[data-paragraph-id]')]
+    .find(item => item.dataset.paragraphId === paragraph.id)
+  if (!target) { column.scrollTo({ top: 0, behavior: 'smooth' }); return }
+  column.scrollTo({
+    top: column.scrollTop + target.getBoundingClientRect().top - column.getBoundingClientRect().top - 20,
+    behavior: 'smooth',
+  })
+}
+function selectParagraph(paragraph: DocumentParagraph) {
+  selectedParagraphId.value = paragraph.id
+  if (paragraph.outlineNodeId) selectedNodeId.value = paragraph.outlineNodeId
+}
+const allowedMaterials = computed(() => documentMaterials.value.filter((item) => item.permissionStatus === '允许').length)
 
 function message(error:unknown) { return error instanceof Error ? error.message : '操作失败，请稍后重试' }
 function isNotFound(error:unknown) { return typeof error === 'object' && error !== null && 'response' in error && (error as {response?:{status?:number}}).response?.status === 404 }
@@ -153,15 +416,29 @@ async function load() {
 }
 
 async function addMaterial() {
+  if (materialScope.value === '本节' && !selectedNodeId.value) { ElMessage.warning('请先选择提纲章节'); return }
   if (!materialFile.value && !materialForm.materialName.trim()) { ElMessage.warning('请选择文件或填写材料名称'); return }
+  const outlineNodeId = materialScope.value === '本节' ? selectedNodeId.value : undefined
   try {
-    if(materialFile.value) await uploadWritingMaterial(taskId.value,materialFile.value,{authorityLevel:materialForm.authorityLevel,usageMode:materialForm.usageMode,citationPurpose:materialForm.citationPurpose,permissionStatus:materialForm.permissionStatus})
-    else await createWritingMaterial(taskId.value,{...materialForm})
-    materialDialog.value=false; materialFile.value=undefined; materials.value=await listWritingMaterials(taskId.value); ElMessage.success('材料已加入清单并完成文本提取')
+    if(editingMaterial.value) await updateWritingMaterial(taskId.value,editingMaterial.value.id,{...editingMaterial.value,...materialForm,lockVersion:editingMaterial.value.lockVersion})
+    else if(materialFile.value) await uploadWritingMaterial(taskId.value,materialFile.value,{authorityLevel:materialForm.authorityLevel,usageMode:materialForm.usageMode,citationPurpose:materialForm.citationPurpose,permissionStatus:materialForm.permissionStatus,outlineNodeId})
+    else await createWritingMaterial(taskId.value,{...materialForm, outlineNodeId})
+    materialDialog.value=false; materialFile.value=undefined; materials.value=await listWritingMaterials(taskId.value); ElMessage.success(editingMaterial.value ? '材料已更新' : (materialScope.value === '本节' ? '已加入本节材料' : '材料已加入通篇清单'))
   }
   catch(error){ElMessage.error(message(error))}
 }
 async function removeMaterial(item:WritingMaterial) { try { await deleteWritingMaterial(taskId.value,item.id); materials.value=await listWritingMaterials(taskId.value) } catch(error){ElMessage.error(message(error))} }
+async function addOaToSection(item:WritingMaterial) {
+  if (!selectedNodeId.value) { ElMessage.warning('请先选择章节'); return }
+  try {
+    await createWritingMaterial(taskId.value,{
+      materialName:item.materialName, sourceType:'OA', authorityLevel:item.authorityLevel, usageMode:item.usageMode,
+      citationPurpose:item.citationPurpose, permissionStatus:item.permissionStatus, selectedFragment:item.selectedFragment||'', locked:false, outlineNodeId:selectedNodeId.value,
+    })
+    materials.value = await listWritingMaterials(taskId.value)
+    ElMessage.success('已加入本节材料')
+  } catch (error) { ElMessage.error(message(error)) }
+}
 async function snapshotMaterials() { try { const result=await snapshotWritingMaterials(taskId.value); ElMessage.success(`材料快照 V${result.snapshotVersion} 已固化：允许 ${result.allowedCount}，拒绝 ${result.deniedCount}`) } catch(error){ElMessage.error(message(error))} }
 
 async function createOutline() {
@@ -175,10 +452,87 @@ async function validateOutline() { if(!outline.value)return; try { outline.value
 async function lockOutline() { if(!outline.value)return; try { outline.value=await confirmOutline(taskId.value,outline.value.version); task.value=await getWritingTask(taskId.value); ElMessage.success('提纲已人工确认，正文生成门禁已开启') } catch(error){ElMessage.error(message(error))} }
 
 async function generate(node:OutlineNode) {
-  generatingId.value=node.id;streamText.value=''
-  try { await streamDocumentSection(taskId.value,node.id,instruction.value,(event,data)=>{if(event==='delta')streamText.value+=String(data.text??'')});document.value=await getWritingDocument(taskId.value); selectedParagraphId.value=document.value.paragraphs.at(-1)?.id??''; task.value=await getWritingTask(taskId.value); ElMessage.success('章节已生成，请人工复核') }
-  catch(error){ElMessage.error(message(error))}
-  finally{generatingId.value=''}
+  if (rebuilding.value || generatingId.value) return
+  const existing = document.value?.paragraphs.filter((paragraph) => paragraph.outlineNodeId === node.id) ?? []
+  if (existing.some((paragraph) => paragraph.locked)) {
+    ElMessage.warning('本节有锁定段落，请先解锁后再重新生成')
+    return
+  }
+  if (existing.length) {
+    const manual = existing.filter((paragraph) => paragraph.contentOrigin && paragraph.contentOrigin !== 'AI生成').length
+    try {
+      await ElMessageBox.confirm(
+        manual
+          ? `「${node.title}」含 ${existing.length} 段（其中 ${manual} 段为人工/改写内容），重新生成将全部替换为新的 AI 段落，并保存为新版本。`
+          : `将替换「${node.title}」现有的 ${existing.length} 段，并保存为新版本。历史版本仍可恢复。`,
+        '重新生成本节',
+        { type: 'warning', confirmButtonText: '确认重新生成' },
+      )
+    } catch { return }
+  }
+  generatingId.value=node.id;streamText.value='';generationError.value='';rebuildResult.value='';rebuildProgress.value=''
+  try {
+    await savePendingEdits()
+    document.value = await generateDocumentSection(taskId.value,node.id,instruction.value, value=>{streamText.value=value})
+    await refreshDocumentView(node.id)
+    const regenerated = document.value?.paragraphs.filter(p=>p.outlineNodeId===node.id).map(p=>p.plainText).join('\n')
+    const unchanged = existing.length > 0 && regenerated === existing.map(p=>p.plainText).join('\n')
+    ElMessage({type:unchanged?'warning':'success',message:unchanged?`本节已保存为 V${document.value?.currentVersion}，但文字与上一版相同，请检查模型和写作要求。`:`「${node.title}」已生成（V${document.value?.currentVersion}），请人工复核`})
+  }
+  catch(error){generationError.value=`本节生成失败：${message(error)}。原正文未被替换。`;ElMessage.error(generationError.value)}
+  finally{generatingId.value='';streamText.value=''}
+}
+async function rebuildDocument() {
+  if (rebuilding.value || generatingId.value) return
+  if (!outline.value?.confirmed) { ElMessage.warning('请先确认提纲'); return }
+  try {
+    await ElMessageBox.confirm(
+      `将按已确认的提纲 V${outline.value.version} 重建整份正文（${outline.value.nodes.length} 个章节）。现有正文 V${document.value?.currentVersion ?? 0} 会保留在版本记录中。${allowedMaterials.value ? '' : '当前没有可用材料；提纲和输入不变时，生成文字可能与上一版相同。'}`,
+      '确认重建正文',
+      { confirmButtonText: '确认重建', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch { return }
+  rebuilding.value = true
+  rebuildResult.value = ''
+  rebuildProgress.value = ''
+  generationError.value = ''
+  const previousText = document.value?.paragraphs.map(item => item.plainText) ?? []
+  try {
+    await savePendingEdits()
+    document.value = await rebuildWritingDocument(taskId.value, value=>{rebuildProgress.value=value})
+    await refreshDocumentView(outline.value.nodes[0]?.id)
+    const sameText = previousText.length === document.value.paragraphs.length
+      && document.value.paragraphs.every((item, index) => item.plainText === previousText[index])
+    rebuildResult.value = sameText
+      ? `已生成 V${document.value.currentVersion}，但正文文字与上一版一致。请检查提纲、材料或模型配置后重试。`
+      : `已按提纲生成正文 V${document.value.currentVersion}，共 ${document.value.paragraphs.length} 段，请逐段核对。`
+    ElMessage({ type: sameText ? 'warning' : 'success', message: rebuildResult.value, duration: 5000 })
+  } catch (error) { generationError.value=`全文重建失败：${message(error)}。原正文未被替换。`; ElMessage.error(generationError.value) }
+  finally { rebuilding.value = false; rebuildProgress.value = '' }
+}
+
+async function refreshDocumentView(focusNodeId?: string) {
+  document.value = await getWritingDocument(taskId.value)
+  task.value = await getWritingTask(taskId.value)
+  try { outline.value = await getCurrentOutline(taskId.value) } catch { /* 提纲可能尚未生成 */ }
+  for (const paragraph of document.value.paragraphs) {
+    editorEpochs[paragraph.id] = (editorEpochs[paragraph.id] ?? 0) + 1
+  }
+  const nodeId = focusNodeId || selectedNodeId.value || outline.value?.nodes[0]?.id || ''
+  if (nodeId) selectedNodeId.value = nodeId
+  const focused = document.value.paragraphs.find((item) => item.outlineNodeId === nodeId)
+    ?? document.value.paragraphs[0]
+  selectedParagraphId.value = focused?.id ?? ''
+  await nextTick()
+  const column = documentColumnRef.value
+  if (!column || !focused) { column?.scrollTo({ top: 0, behavior: 'smooth' }); return }
+  const target = [...column.querySelectorAll<HTMLElement>('[data-paragraph-id]')]
+    .find((item) => item.dataset.paragraphId === focused.id)
+  if (!target) { column.scrollTo({ top: 0, behavior: 'smooth' }); return }
+  column.scrollTo({
+    top: column.scrollTop + target.getBoundingClientRect().top - column.getBoundingClientRect().top - 20,
+    behavior: 'smooth',
+  })
 }
 async function beginEditing(paragraph:DocumentParagraph) {
   if (paragraph.locked || lease.value?.paragraphId === paragraph.id) return
@@ -207,6 +561,7 @@ function samePosition(a:DocumentParagraph, b:DocumentParagraph) { return a.outli
 async function saveParagraph(paragraph:DocumentParagraph) {
   try {
     document.value = await updateDocumentParagraph(taskId.value, paragraph)
+    dirtyParagraphs.delete(`${paragraph.outlineNodeId}:${paragraph.paragraphOrder}`)
     selectedParagraphId.value = document.value.paragraphs.find((item) => samePosition(item, paragraph))?.id ?? ''
     await endEditing()
     ElMessage.success('人工修改已保存为新版本')
@@ -244,6 +599,30 @@ async function discardMine() {
 function onRichUpdate(paragraph:DocumentParagraph, doc:JSONContent, plainText:string) {
   paragraph.richContent = JSON.stringify(doc)
   paragraph.plainText = plainText
+  dirtyParagraphs.add(`${paragraph.outlineNodeId}:${paragraph.paragraphOrder}`)
+}
+const dirtyParagraphs = new Set<string>()
+async function savePendingEdits(nodeId?:string) {
+  const pending = document.value?.paragraphs.filter(p=>(!nodeId || p.outlineNodeId===nodeId) && dirtyParagraphs.has(`${p.outlineNodeId}:${p.paragraphOrder}`)).map(p=>({...p})) ?? []
+  await endEditing()
+  for (const edited of pending) {
+    if (!edited.plainText.trim()) continue
+    const fresh = await getWritingDocument(taskId.value)
+    const current = fresh.paragraphs.find(p=>samePosition(p,edited))
+    if (!current) throw new Error('正文段落已改变，请刷新后重新生成')
+    await updateDocumentParagraph(taskId.value,{...current,plainText:edited.plainText,richContent:edited.richContent})
+    dirtyParagraphs.delete(`${edited.outlineNodeId}:${edited.paragraphOrder}`)
+  }
+}
+async function removeParagraph(paragraph:DocumentParagraph) {
+  try {
+    await ElMessageBox.confirm(`确定删除第 ${paragraph.paragraphOrder} 段整段内容？删除后保存为新版本，可从版本记录恢复。`,'删除段落',{type:'warning',confirmButtonText:'删除整段',cancelButtonText:'取消'})
+    await endEditing()
+    document.value = await deleteDocumentParagraph(taskId.value,paragraph.id)
+    dirtyParagraphs.delete(`${paragraph.outlineNodeId}:${paragraph.paragraphOrder}`)
+    await refreshDocumentView(paragraph.outlineNodeId)
+    ElMessage.success('段落已删除并保存为新版本')
+  } catch(error) { if(error!=='cancel' && error!=='close') ElMessage.error(message(error)) }
 }
 /** A4 划词改写：编辑器实例按段落 ID 登记，采用候选时替换对应编辑器中的原选区。 */
 type ParagraphEditor = InstanceType<typeof RichParagraphEditor>
@@ -316,6 +695,24 @@ async function resolveComment(comment:DocumentComment) {
     comments.value = comments.value.map((item) => item.id === resolved.id ? resolved : item)
   } catch (error) { ElMessage.error(message(error)) }
 }
+async function editComment(comment:DocumentComment) {
+  if (!document.value) return
+  try {
+    const result = await ElMessageBox.prompt('修改批注内容', '编辑批注', { inputValue: comment.commentText, inputValidator: (value) => value.trim() ? true : '请输入批注内容', confirmButtonText: '保存', cancelButtonText: '取消' })
+    const updated = await updateDocumentComment(document.value.id, comment.id, result.value.trim())
+    comments.value = comments.value.map((item) => item.id === updated.id ? updated : item)
+    ElMessage.success('批注已更新')
+  } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(message(error)) }
+}
+async function removeComment(comment:DocumentComment) {
+  if (!document.value) return
+  try {
+    await ElMessageBox.confirm('确定删除这条批注吗？', '删除批注', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
+    await deleteDocumentComment(document.value.id, comment.id)
+    comments.value = comments.value.filter((item) => item.id !== comment.id)
+    ElMessage.success('批注已删除')
+  } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(message(error)) }
+}
 function revealQuote(paragraph:DocumentParagraph, text:string) {
   if (!editorRefs[paragraph.id]?.revealText(text)) ElMessage.info('引用的文字已在后续修改中变化，未能定位')
 }
@@ -384,56 +781,133 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ materials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" title="按 GB/T 9704 输出模板排版生成定稿稿" @click="typesetOpen=true">套红排版</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ documentMaterials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" title="按 GB/T 9704 输出模板排版生成定稿稿" @click="typesetOpen=true">套红排版</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
         <aside class="material-column">
-          <header><div><span class="section-no">01 / EVIDENCE</span><h3>材料依据</h3></div><button type="button" @click="materialDialog=true">＋</button></header>
-          <p class="column-intro">生成前固化权限和版本，正文只可使用“允许”的材料。</p>
-          <article v-for="item in materials" :key="item.id" :data-permission="item.permissionStatus">
-            <header><span>{{ item.sourceType }}</span><b>{{ item.permissionStatus }}</b></header><h4>{{ item.materialName }}</h4><p>{{ item.selectedFragment || '未指定材料片段' }}</p><footer><small>{{ item.authorityLevel }} · {{ item.citationPurpose }}</small><button type="button" @click="removeMaterial(item)">移除</button></footer>
-          </article>
-          <div v-if="!materials.length" class="editor-empty">尚无材料。可先形成提纲，但生成正文前建议加入可靠依据。</div>
-          <button v-if="materials.length" class="snapshot-button" type="button" @click="snapshotMaterials">固化材料权限快照</button>
+          <section class="material-block">
+            <header class="column-head">
+              <div><h3>通篇材料</h3><p class="column-sub">上传 / 知识库 / OA · 各节都会带上</p></div>
+              <button class="column-action icon" type="button" title="加入通篇材料" @click="openMaterial(undefined,'通篇')">＋</button>
+            </header>
+            <article v-for="item in documentMaterials" :key="item.id" :data-permission="item.permissionStatus">
+              <header><span>{{ item.sourceType }}</span><b>{{ item.permissionStatus }}</b></header><h4>{{ item.materialName }}</h4><p>{{ item.selectedFragment || '未指定材料片段' }}</p><footer><small>{{ item.authorityLevel }} · {{ item.citationPurpose }}</small><div><button type="button" @click="openMaterial(item)">编辑</button><button type="button" @click="removeMaterial(item)">移除</button></div></footer>
+            </article>
+            <div v-if="!documentMaterials.length" class="editor-empty">尚无通篇材料。</div>
+            <button v-if="documentMaterials.length" class="snapshot-button" type="button" @click="snapshotMaterials">固化材料权限快照</button>
+          </section>
+          <section class="material-block knowledge-block">
+            <header class="column-head">
+              <div><h3>本节材料</h3><p class="column-sub">{{ selectedNode?.title || '未选章节' }} · 上传 / 知识库 / OA</p></div>
+              <button class="column-action icon" type="button" title="加入本节材料" @click="openMaterial(undefined,'本节')">＋</button>
+            </header>
+            <article v-for="item in sectionMaterials" :key="item.id" :data-permission="item.permissionStatus">
+              <header><span>{{ item.sourceType }}</span><b>{{ item.permissionStatus }}</b></header><h4>{{ item.materialName }}</h4><p>{{ item.selectedFragment || '未指定材料片段' }}</p><footer><small>{{ item.authorityLevel }} · {{ item.citationPurpose }}</small><div><button type="button" @click="openMaterial(item)">编辑</button><button type="button" @click="removeMaterial(item)">移除</button></div></footer>
+            </article>
+            <article v-for="item in evidenceSelections" :key="item.id" class="knowledge-card">
+              <header><span>知识库 · {{ item.usageType }}</span><b>V{{ item.documentVersion }}</b></header><h4>{{ item.documentTitle }}</h4><p>{{ item.excerpt }}</p><footer><small>{{ item.selectionReason }}</small><div><button type="button" @click="openEvidence('本节')">查看</button><button type="button" @click="forgetEvidence(item)">移除</button></div></footer>
+            </article>
+            <div v-if="!selectedNodeId" class="editor-empty">先在提纲中点选章节。</div>
+            <div v-else-if="!sectionMaterials.length && !evidenceSelections.length" class="editor-empty">本节尚未加入材料。</div>
+          </section>
         </aside>
 
         <aside class="outline-column">
-          <header><div><span class="section-no">02 / STRUCTURE</span><h3>写作提纲</h3></div><button type="button" @click="createOutline">{{ outline ? '新版本' : '生成' }}</button></header>
-          <p class="column-intro">章节可编辑；确认后锁定当前版本并开放正文生成。</p>
+          <header class="column-head">
+            <div>
+              <h3>写作提纲</h3>
+              <p v-if="outline" class="column-sub">V{{ outline.version }} · <b :class="{confirmed:outline.confirmed}">{{ outline.confirmed?'已确认':'编辑中' }}</b></p>
+              <p v-else class="column-sub">确认后开放正文生成</p>
+            </div>
+            <button class="column-action" type="button" @click="createOutline">{{ outline ? '新版本' : '生成提纲' }}</button>
+          </header>
           <template v-if="outline">
-            <div class="outline-meta"><span>V{{ outline.version }}</span><b :class="{confirmed:outline.confirmed}">{{ outline.confirmed?'已确认':'编辑中' }}</b></div>
-            <article v-for="node in outline.nodes" :key="node.id" :class="{active:selectedNodeId===node.id}" @click="selectedNodeId=node.id">
-              <span class="node-order">{{ String(node.order).padStart(2,'0') }}</span><div><input v-model="node.title" :disabled="outline.confirmed" @click.stop><textarea v-model="node.purpose" :disabled="outline.confirmed" rows="2" @click.stop /></div><button v-if="!outline.confirmed" type="button" @click.stop="saveNode(node)">存</button><button v-if="!outline.confirmed" type="button" @click.stop="removeNode(node)">×</button>
+            <article v-for="node in outline.nodes" :key="node.id" class="outline-node" :class="{active:selectedNodeId===node.id,'confirmed-node':outline.confirmed}" role="button" tabindex="0" :aria-label="`定位到${node.title}章节`" @click="selectOutlineNode(node)" @keydown.enter.self.prevent="selectOutlineNode(node)" @keydown.space.self.prevent="selectOutlineNode(node)">
+              <span class="node-order">{{ String(node.order).padStart(2,'0') }}</span>
+              <div v-if="outline.confirmed" class="outline-node-summary"><strong>{{ node.title }}</strong><p>{{ node.purpose }}</p></div>
+              <div v-else class="outline-node-edit"><input v-model="node.title" @click.stop="selectOutlineNode(node)"><textarea v-model="node.purpose" rows="2" @click.stop="selectOutlineNode(node)" /></div>
+              <div v-if="!outline.confirmed" class="outline-node-actions"><button type="button" @click.stop="saveNode(node)">存</button><button type="button" @click.stop="removeNode(node)">×</button></div>
             </article>
             <button v-if="!outline.confirmed" class="append-node" type="button" @click="appendNode">＋ 添加章节</button>
-            <footer class="outline-actions"><button v-if="!outline.confirmed" type="button" @click="validateOutline">结构检查</button><button v-if="!outline.confirmed" class="confirm" type="button" @click="lockOutline">确认提纲</button></footer>
+            <footer v-if="!outline.confirmed" class="outline-actions"><button type="button" @click="validateOutline">结构检查</button><button class="confirm" type="button" @click="lockOutline">确认提纲</button></footer>
           </template>
           <div v-else class="editor-empty">生成提纲后可逐节调整写作目的、顺序和篇幅。</div>
         </aside>
 
         <main class="document-column">
-          <header><div><span class="section-no">03 / MANUSCRIPT</span><h3>正文纸面</h3></div><span v-if="document" class="manuscript-meta"><label class="resolved-toggle"><input v-model="showResolved" type="checkbox"> 显示已处理的批注和修订</label><span v-if="pendingSuggestions" class="pending-suggestions">待处理修订 {{ pendingSuggestions }}</span>{{ document.totalWordCount }} 字 · V{{ document.currentVersion }}</span></header>
-          <div v-if="selectedNode" class="generation-bar"><div><strong>{{ selectedNode.title }}</strong><input v-model="instruction" aria-label="生成要求"></div><button type="button" :disabled="!outline?.confirmed||generatingId===selectedNode.id" @click="generate(selectedNode)">{{ !outline?.confirmed?'请先确认提纲':generatingId===selectedNode.id?'生成中…':'生成本节' }}</button></div>
-          <div v-if="generatingId && streamText" class="stream-preview"><span>LIVE / 流式草稿</span><p>{{ streamText }}</p></div>
-          <section v-if="document?.paragraphs.length" class="paper-sheet">
-            <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
-            <article v-for="paragraph in document.paragraphs" :key="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,dimmed:selectedNodeId&&paragraph.outlineNodeId!==selectedNodeId}" @click="selectedParagraphId=paragraph.id">
-              <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :key="`${paragraph.id}:${editorEpochs[paragraph.id] ?? 0}`" :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id]" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraph.paragraphOrder }} 段 · {{ paragraph.plainText.length }} 字</span><div><button type="button" title="选中文字后添加批注，可引用该文字" @click.stop="openComment(paragraph)">批注{{ openCount(paragraph) ? `（${openCount(paragraph)}）` : '' }}</button><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked && trackChanges" type="button" class="propose" title="修订模式：提交后由他人或本人接受才会形成新版本" @click.stop="proposeParagraph(paragraph)">提交修订</button><button v-else-if="!paragraph.locked" type="button" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
-              <ParagraphSuggestions :suggestions="suggestionsFor(paragraph.id)" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" />
-              <ParagraphComments :comments="commentsFor(paragraph.id)" @resolve="resolveComment" @reveal="(text) => revealQuote(paragraph, text)" />
-            </article>
-            <section v-if="orphanComments.length || orphanSuggestions.length" class="orphan-comments"><h4>原段落已删除的修订和批注</h4><ParagraphSuggestions :suggestions="orphanSuggestions" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" /><ParagraphComments :comments="orphanComments" @resolve="resolveComment" /></section>
-          </section>
-          <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
-          <aside v-if="selectedParagraph" class="paragraph-inspector"><span>当前段落</span><b>{{ selectedParagraph.contentSourceLevel }}</b><small>{{ selectedParagraph.sourceMaterialIds.length }} 项来源 · lock {{ selectedParagraph.lockVersion }}</small></aside>
+          <div class="document-ops">
+            <div class="ops-title-row">
+              <div>
+                <h3>正文纸面</h3>
+                <p v-if="document" class="ops-meta">{{ document.totalWordCount }} 字 · V{{ document.currentVersion }}<span v-if="pendingSuggestions" class="pending-suggestions">待处理修订 {{ pendingSuggestions }}</span></p>
+              </div>
+              <div class="ops-actions">
+                <label v-if="document" class="resolved-toggle"><input v-model="showResolved" type="checkbox"> 显示已处理</label>
+                <button class="ops-secondary" type="button" :disabled="!document || rebuilding || Boolean(generatingId)" @click="rebuildDocument">{{ rebuilding ? '重建中…' : '按提纲重建全文' }}</button>
+              </div>
+            </div>
+            <p v-if="rebuilding && rebuildProgress" class="rebuild-result" role="status">{{ rebuildProgress }}</p>
+            <p v-if="!rebuilding && rebuildResult" class="rebuild-result" role="status">{{ rebuildResult }}</p>
+            <p v-if="generationError" class="rebuild-result" role="alert">{{ generationError }}</p>
+            <button v-if="pendingKnowledgeCitations.length" class="rebuild-result" type="button" @click="locatePendingCitation">{{ pendingKnowledgeCitations.length }} 处知识引用待复核，点击定位</button>
+            <div v-if="selectedNode" class="generation-bar">
+              <span v-if="evidenceSelections.filter(item=>item.outlineNodeId===selectedNodeId).length" class="ops-meta">本节已选 {{ evidenceSelections.filter(item=>item.outlineNodeId===selectedNodeId).length }} 处依据；重新生成时读取</span>
+              <div class="generation-fields">
+                <span class="generation-label">当前章节</span>
+                <strong>{{ selectedNode.title }}</strong>
+                <label class="generation-instruction">生成要求<input v-model="instruction" placeholder="可选：补充本节写作要求"></label>
+              </div>
+              <button class="ops-primary" type="button" :disabled="!outline?.confirmed || rebuilding || Boolean(generatingId)" @click="generate(selectedNode)">{{ !outline?.confirmed?'请先确认提纲':generatingId===selectedNode.id?'生成中…':document?.paragraphs.some((paragraph) => paragraph.outlineNodeId === selectedNode?.id)?'重新生成本节':'生成本节' }}</button>
+            </div>
+            <p v-else-if="outline?.confirmed" class="ops-hint">在左侧提纲中选择章节，再生成或重写本节正文。</p>
+            <div v-if="generatingId && streamText" class="stream-preview"><span>生成中</span><p>{{ streamText }}</p></div>
+          </div>
+          <div ref="documentColumnRef" class="document-scroll">
+            <section v-if="document?.paragraphs.length" class="paper-sheet">
+              <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
+              <article v-for="(paragraph, paragraphIndex) in document.paragraphs" :key="paragraph.id" :data-paragraph-id="paragraph.id" :class="{active:selectedParagraphId===paragraph.id}" @click="selectParagraph(paragraph)">
+                <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :key="`${paragraph.id}:${editorEpochs[paragraph.id] ?? 0}`" :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id] && !rebuilding && !generatingId" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraphIndex + 1 }} 段 · {{ paragraph.plainText.length }} 字</span><div><button v-if="!paragraph.locked" type="button" :disabled="rebuilding || Boolean(generatingId)" @click.stop="removeParagraph(paragraph)">删除整段</button><button type="button" title="选中文字后添加批注，可引用该文字" @click.stop="openComment(paragraph)">批注{{ openCount(paragraph) ? `（${openCount(paragraph)}）` : '' }}</button><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked && trackChanges" type="button" class="propose" title="修订模式：提交后由他人或本人接受才会形成新版本" @click.stop="proposeParagraph(paragraph)">提交修订</button><button v-else-if="!paragraph.locked" type="button" :disabled="rebuilding || Boolean(generatingId)" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
+                <ParagraphSuggestions :suggestions="suggestionsFor(paragraph.id)" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" />
+                <ParagraphComments :comments="commentsFor(paragraph.id)" @resolve="resolveComment" @edit="editComment" @delete="removeComment" @reveal="(text) => revealQuote(paragraph, text)" />
+              </article>
+              <section v-if="orphanComments.length || orphanSuggestions.length" class="orphan-comments"><h4>原段落已删除的修订和批注</h4><ParagraphSuggestions :suggestions="orphanSuggestions" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" /><ParagraphComments :comments="orphanComments" @resolve="resolveComment" @edit="editComment" @delete="removeComment" /></section>
+            </section>
+            <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
+            <aside v-if="selectedParagraph" class="paragraph-inspector"><span>当前段落</span><b>{{ selectedParagraph.contentSourceLevel }}</b><small>{{ selectedParagraph.sourceMaterialIds.length }} 项任务材料 · {{ selectedParagraph.sourceKnowledgeIds?.length || 0 }} 项知识依据</small><div v-for="citation in citations.filter(item=>item.paragraphId===selectedParagraph?.id)" :key="citation.id" class="citation-audit"><strong>{{ citation.citationType }} · {{ citation.reviewStatus || '历史引用' }}</strong><small>来源版本 V{{ citation.knowledgeDocumentVersion || '—' }}</small><p>{{ citation.sourceExcerpt?.slice(0,160) || citation.citedFragment }}</p><button v-if="citation.knowledgeDocumentId && citation.reviewStatus!=='已引用'" type="button" @click="openCitation(citation)">核对引用</button></div></aside>
+          </div>
         </main>
       </div>
     </section>
 
-    <el-dialog v-model="materialDialog" title="加入写作材料" width="620px">
-      <div class="material-form"><label class="file-drop">上传文件（DOCX / PDF / TXT，最大 20MB）<input type="file" accept=".docx,.pdf,.txt" @change="chooseMaterialFile"><span>{{ materialFile?.name || '选择本地文件，系统将提取文本并保存原文件哈希' }}</span></label><div class="manual-divider">或录入经核准的材料片段</div><label>材料名称<input v-model="materialForm.materialName" :disabled="Boolean(materialFile)" placeholder="例如：项目论证报告"></label><div><label>来源<select v-model="materialForm.sourceType" :disabled="Boolean(materialFile)"><option>上传</option><option>知识库</option><option>OA</option></select></label><label>权威级别<select v-model="materialForm.authorityLevel"><option>正式公文</option><option>权威资料</option><option>内部资料</option><option>参考资料</option></select></label></div><div><label>使用方式<select v-model="materialForm.usageMode"><option>全文参考</option><option>指定片段</option><option>仅作背景</option></select></label><label>引用目的<select v-model="materialForm.citationPurpose"><option>事实依据</option><option>政策依据</option><option>案例参考</option><option>表达参考</option></select></label></div><label>选用片段<textarea v-model="materialForm.selectedFragment" :disabled="Boolean(materialFile)" rows="5" placeholder="粘贴经核准、可供生成使用的材料片段" /></label></div>
-      <template #footer><button class="secondary-button" type="button" @click="materialDialog=false">取消</button><button class="primary-button" type="button" @click="addMaterial">加入清单</button></template>
+    <el-dialog v-model="materialDialog" :title="editingMaterial ? '编辑材料' : (materialScope==='通篇' ? '加入通篇材料' : '加入本节材料')" :width="materialForm.sourceType==='知识库' && !editingMaterial ? '920px' : '620px'" class="task-dialog">
+      <div v-if="!editingMaterial" class="material-source-tabs"><button v-for="source in (['上传','知识库','OA'] as const)" :key="source" type="button" :class="{active:materialForm.sourceType===source}" @click="selectMaterialSource(source)">{{ source==='上传'?'本地上传':source==='知识库'?'知识库选取':'OA 选取' }}</button></div>
+      <div v-if="materialForm.sourceType==='上传' || editingMaterial" class="material-form">
+        <label v-if="!editingMaterial" class="file-drop">上传文件（DOCX / PDF / TXT，最大 20MB）<input type="file" accept=".docx,.pdf,.txt" @change="chooseMaterialFile"><span>{{ materialFile?.name || '选择本地文件，系统将提取文本并保存原文件哈希' }}</span></label>
+        <div v-if="!editingMaterial" class="manual-divider">或录入经核准的材料片段</div>
+        <label>材料名称<input v-model="materialForm.materialName" :disabled="Boolean(materialFile)" placeholder="例如：项目论证报告"></label>
+        <div><label>权威级别<select v-model="materialForm.authorityLevel"><option v-for="item in authorityOptions" :key="item" :value="item">{{ item }}</option></select></label><label>使用方式<select v-model="materialForm.usageMode"><option v-for="item in usageModeOptions" :key="item" :value="item">{{ item }}</option></select></label></div>
+        <label>引用目的<select v-model="materialForm.citationPurpose"><option v-for="item in citationPurposeOptions" :key="item" :value="item">{{ item }}</option></select></label><label>选用片段<textarea v-model="materialForm.selectedFragment" :disabled="Boolean(materialFile)" rows="5" placeholder="粘贴经核准、可供生成使用的材料片段" /></label>
+      </div>
+      <div v-else-if="materialForm.sourceType==='知识库'" class="material-knowledge-pane">
+        <p>{{ materialScope==='通篇' ? '加入通篇参考资料。' : `当前章节：${selectedNode?.title || '未选择'}。` }}可将整篇或单个片段加入材料清单；只有已核验且明确选用的本节片段才参与生成。</p>
+        <p v-if="materialScope==='本节' && !canSelectEvidence" class="evidence-readonly-note">请先在提纲中点选章节，再选用依据。</p>
+        <p v-if="evidenceSelectHint" class="evidence-readonly-note">{{ evidenceSelectHint }}</p>
+        <div v-if="evidencePendingHits.length" ref="evidenceConfirmRef" class="evidence-preview"><h4>确认选用：{{ evidencePendingHits[0]?.documentTitle }}{{ evidencePendingHits.length > 1 ? `（整篇 ${evidencePendingHits.length} 个片段）` : '' }}</h4><p>请核对资料时效、适用地区、对象和事项范围。</p><p>{{ evidencePendingPreview }}</p><el-input v-model="evidenceReason" maxlength="500" show-word-limit placeholder="填写选用理由" /><div class="evidence-confirm-actions"><button class="secondary-button" type="button" @click="evidencePendingHits=[]">取消选用</button><button class="primary-button" type="button" @click="confirmEvidenceSelection">{{ materialScope==='通篇' ? '已核对，加入通篇' : '已核对，选用本节' }}</button></div></div>
+        <div class="evidence-search"><el-input v-model="evidenceQuery" clearable placeholder="输入标题片段、发布机关、文号或正文关键词" @keyup.enter="findEvidence" /><button class="secondary-button" type="button" @click="findEvidence">搜正文</button></div>
+        <div class="evidence-browser" v-loading="evidenceLoading">
+          <aside class="evidence-browser-sources"><strong>知识库</strong><button v-for="source in evidenceSources" :key="source.id" type="button" :class="{active:evidenceSourceId===source.id}" @click="evidenceSourceId=source.id;browseEvidenceSource()">{{ source.sourceName }} <small>{{ source.entryCount }} 份</small></button></aside>
+          <section class="evidence-browser-documents"><strong>文档 <small>{{ evidenceFilteredDocuments.length }} 份</small></strong><button v-for="doc in evidenceFilteredDocuments" :key="doc.id" type="button" :class="{active:evidenceDocument?.id===doc.id}" @click="browseEvidenceDocument(doc)">{{ doc.documentTitle }}<small>{{ doc.usageType }} · {{ doc.completeness }} · {{ doc.verificationStatus }}</small></button><p v-if="!evidenceFilteredDocuments.length">当前知识库没有匹配的文档。可清空关键词或换一个知识库。</p></section>
+          <section class="evidence-browser-chunks"><strong>{{ evidenceDocument?.documentTitle || '选择文档查看内容' }}</strong><p v-if="evidenceDocument" class="ops-hint">{{ evidenceDocument.publisher || '发布机关未填写' }} · V{{ evidenceDocument.documentVersion }} · {{ evidenceDocument.validityStatus }}</p><div v-if="evidenceDocument && evidenceChunks.length" class="evidence-confirm-actions"><button class="primary-button" type="button" @click="attachKnowledgeReference(evidenceDocument)">加入整篇材料</button><button v-if="materialScope==='本节' && !evidenceUnavailable(evidenceDocument) && outline?.confirmed" class="secondary-button" type="button" @click="chooseEvidenceDocument">整篇用于本节生成</button></div><article v-for="chunk in evidenceChunks" :key="chunk.id" class="evidence-item"><small>切片 {{ chunk.chunkOrder }}</small><p>{{ chunk.chunkText }}</p><button type="button" @click="attachKnowledgeReference(evidenceDocument!,chunk)">加入此片段</button><button v-if="materialScope==='本节' && evidenceDocument && !evidenceUnavailable(evidenceDocument) && outline?.confirmed" type="button" @click="chooseEvidence(evidenceChunkHit(evidenceDocument!,chunk))">用于本节生成</button></article><p v-if="evidenceDocument && !evidenceChunks.length" class="ops-hint">尚无可查看的切片，请到知识库解析或补充本地原文。</p><p v-if="evidenceDocument && evidenceUnavailable(evidenceDocument)" class="ops-hint">当前资料尚不能参与生成，仍可加入材料清单供人工参考。</p></section>
+        </div>
+        <h4 v-if="evidenceSelectableHits.length">正文搜索结果</h4><div v-for="hit in evidenceSelectableHits" :key="hit.chunkId" class="evidence-item"><strong>{{ hit.documentTitle }} · {{ hit.usageType }} · {{ hit.completeness }}</strong><p>{{ hit.snippet }}</p><button type="button" @click="readEvidence(hit)">查看本地内容</button><button type="button" @click="attachKnowledgeHit(hit)">加入此片段</button><button v-if="materialScope==='本节' && !evidenceUnavailable(hit) && outline?.confirmed" type="button" @click="chooseEvidence(hit)">用于本节生成</button></div>
+        <template v-if="materialScope==='本节'">
+          <h4>本节已选知识依据</h4><div v-if="!evidenceSelections.length" class="ops-hint">尚未选用任何片段。</div><div v-for="item in evidenceSelections" :key="item.id" class="evidence-item"><strong>{{ item.documentTitle }} · V{{ item.documentVersion }} · {{ item.usageType }}</strong><small>选用理由：{{ item.selectionReason }}</small><p>{{ item.excerpt.slice(0,240) }}</p><button type="button" @click="evidenceCurrent=item;evidenceText=item.excerpt;evidenceMode=item.completeness==='本地原文可用'&&item.usageType!=='写法参考'?'原文摘录':'起草表述'">查看与插入</button><button type="button" @click="forgetEvidence(item)">移除选用</button></div>
+          <div v-if="evidenceCurrent" class="evidence-preview"><h4>插入正文预览：{{ evidenceCurrent.documentTitle }}</h4><p>原文摘录须与选中切片完全一致；起草表述插入后标记待核。</p><el-input v-model="evidenceInstruction" placeholder="可选：起草要求" /><button class="secondary-button" type="button" :disabled="evidenceBusy" @click="draftEvidence">{{ evidenceBusy?'处理中…':'根据选用依据起草' }}</button><el-radio-group v-model="evidenceMode"><el-radio value="原文摘录" :disabled="evidenceCurrent.completeness!=='本地原文可用'||evidenceCurrent.usageType==='写法参考'">插入原文摘录</el-radio><el-radio value="起草表述">插入起草表述</el-radio></el-radio-group><el-input v-model="evidenceText" type="textarea" :rows="6" /><button class="primary-button" type="button" :disabled="evidenceBusy||!evidenceText.trim()" @click="insertEvidence">确认插入新版本</button></div>
+        </template>
+      </div>
+      <div v-else class="material-oa-pane"><p>此处显示当前任务由 OA 已同步的材料。{{ materialScope==='本节' ? '可加入本节。' : '已在通篇材料清单中。' }}</p><article v-for="item in oaMaterials" :key="item.id" class="evidence-item"><strong>{{ item.materialName }}</strong><small>{{ item.authorityLevel }} · {{ item.permissionStatus }}</small><p>{{ item.selectedFragment || '已同步文档内容' }}</p><button v-if="materialScope==='本节'" type="button" @click="addOaToSection(item)">加入本节</button></article><p v-if="!oaMaterials.length" class="evidence-readonly-note">当前任务没有 OA 已同步文档。</p><button class="secondary-button" type="button" @click="selectMaterialSource('OA')">刷新已同步材料</button></div>
+      <template #footer><button class="secondary-button" type="button" @click="materialDialog=false">{{ materialForm.sourceType==='上传' || editingMaterial ? '取消' : '完成' }}</button><button v-if="materialForm.sourceType==='上传' || editingMaterial" class="primary-button" type="button" @click="addMaterial">{{ editingMaterial ? '保存修改' : '加入清单' }}</button></template>
     </el-dialog>
     <el-dialog v-model="submitDialog" title="提交前检查" width="620px">
       <p class="conflict-intro">按单位配置的提交门禁逐项检查。全部通过后才能提交；提交后该版本受保护，不会被版本保留策略清理。</p>
@@ -458,6 +932,9 @@ onBeforeUnmount(endEditing)
       </div>
     </el-dialog>
     <TypesetDialog v-if="document && task" v-model="typesetOpen" :task-id="taskId" :document-type-code="task.documentTypeCode" :current-version="document.currentVersion" />
+
+
+    <el-dialog v-model="citationDialog" title="核对知识引用" width="620px" class="task-dialog"><p>请把当前段落中的具体表述与本地原文的连续摘录逐一核对。确认后才标为“已引用”。</p><el-form label-position="top"><el-form-item label="当前段落中的具体表述"><el-input v-model="citationFragment" type="textarea" :rows="3" /></el-form-item><el-form-item label="对应的本地原文摘录"><el-input v-model="citationSourceExcerpt" type="textarea" :rows="5" /></el-form-item></el-form><template #footer><button class="secondary-button" type="button" @click="citationDialog=false">取消</button><button class="primary-button" type="button" @click="confirmCitation">核对并确认引用</button></template></el-dialog>
     <SelectionRewriteDialog v-if="rewrite" v-model="rewriteOpen" :operation="rewrite.operation" :selected-text="rewrite.request.text" :candidates="rewrite.candidates" :loading="rewrite.loading" @regenerate="loadCandidates" @adopt="adoptCandidate" />
     <el-dialog :model-value="!!commentDraft" :title="commentDraft ? `批注 · 第 ${commentDraft.paragraph.paragraphOrder} 段` : '批注'" width="560px" @close="commentDraft=undefined">
       <form v-if="commentDraft" class="comment-form" @submit.prevent="submitComment">
@@ -480,10 +957,9 @@ onBeforeUnmount(endEditing)
 </template>
 
 <style scoped>
-.manuscript-meta{display:flex;align-items:center;gap:14px}
-.pending-suggestions{padding:1px 8px;border-radius:999px;background:#e8f0fe;color:#1a56db}
+.pending-suggestions{margin-left:8px;padding:1px 8px;border-radius:999px;background:#e8f0fe;color:#1a56db;font-size:12px}
 .paper-sheet article footer button.propose{color:#1a56db}
-.resolved-toggle{display:flex;align-items:center;gap:4px;cursor:pointer}
+.resolved-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:#6b6860;white-space:nowrap}
 .orphan-comments{margin-top:24px;padding-top:16px;border-top:1px dashed #d8d3c8}
 .orphan-comments h4{margin:0;font-size:13px;color:#5f5b54}
 .comment-form{display:grid;gap:12px}
@@ -526,7 +1002,106 @@ onBeforeUnmount(endEditing)
 .conflict-intro{margin:0 0 14px;color:#646a73;font-size:14px;line-height:1.7}
 .conflict-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .conflict-compare section{padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#f8f9fb}
+.evidence-search{display:flex;gap:8px;margin:14px 0}.evidence-item{padding:12px 0;border-bottom:1px solid #e5e7eb}.evidence-item p{margin:6px 0;color:#555;white-space:pre-wrap;max-height:90px;overflow:auto}.evidence-item button{margin-right:10px;color:#b72b26}.evidence-item small{display:block;color:#9a6a37}.evidence-preview{margin-top:18px;padding:14px;border:1px solid #e5d6ce;background:#fffaf7}.evidence-preview>*{margin-bottom:10px}
+.knowledge-material-guide{padding:12px 14px;border:1px solid #e5d6ce;border-radius:6px;background:#fffaf7;color:#555;line-height:1.6}
+.material-source-tabs{display:flex;gap:8px;margin-bottom:16px}.material-source-tabs button{flex:1;padding:10px;border:1px solid #ddd2cd;border-radius:6px;background:#fff;color:#333;cursor:pointer}.material-source-tabs button.active{border-color:#c8322c;background:#fff3f1;color:#b52c27;font-weight:600}.material-knowledge-pane{max-height:62vh;overflow:auto}.material-oa-pane{min-height:160px;line-height:1.6}.evidence-confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.evidence-readonly-note{padding:9px 12px;border:1px solid #e5d6ce;border-radius:6px;background:#fffaf7;color:#8b4a33}
+.evidence-browser{display:grid;grid-template-columns:180px 250px minmax(0,1fr);height:350px;border:1px solid #e4e0dc;border-radius:8px;overflow:hidden;background:#fff}
+.evidence-browser>aside,.evidence-browser>section{min-width:0;overflow:auto;padding:12px;border-right:1px solid #e4e0dc}.evidence-browser>section:last-child{border-right:0}
+.evidence-browser strong{display:block;margin-bottom:8px}.evidence-browser button{display:block;width:100%;margin:0 0 4px;padding:9px;text-align:left;border:1px solid transparent;border-radius:5px;background:transparent;color:#333;cursor:pointer;line-height:1.4}.evidence-browser button:hover,.evidence-browser button.active{border-color:#e6bbb5;background:#fff5f3}.evidence-browser button small{display:block;color:#777}.evidence-browser .evidence-item button{width:auto;color:#b72b26;border-color:#e5b8b1}.evidence-browser .evidence-item button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:760px){.evidence-browser{grid-template-columns:1fr;height:auto}.evidence-browser>aside,.evidence-browser>section{max-height:220px;border-right:0;border-bottom:1px solid #e4e0dc}}
 .conflict-compare h4{margin:0 0 8px;font-size:14px}
 .conflict-compare p{margin:0;white-space:pre-wrap;font-size:14px;line-height:1.8;max-height:320px;overflow:auto}
-.editor-workspace{padding:24px 28px 60px}.editor-command{background:#17231e;color:#f3efe7;padding:20px 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.editor-command a{color:#9fb0a7;font-size:13px;margin-right:14px}.editor-command h2{font:500 25px/1.2 "Noto Sans SC",sans-serif;margin:10px 0 5px}.editor-command p{margin:0;color:#aebbb5;font-size:14px}.editor-status{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px}.editor-status span{display:grid;white-space:nowrap;padding:0 14px;border-right:1px solid #4b5751;color:#9fb0a7;font-size:13px}.editor-status b{color:#fff;margin-top:4px;font-size:14px}.editor-status button{white-space:nowrap;border:1px solid #728078;background:transparent;color:#fff;padding:9px 12px;cursor:pointer}.editor-columns{display:grid;grid-template-columns:280px 340px minmax(500px,1fr);min-height:720px;border:1px solid #d8d3c8;border-top:0;background:#f1eee7}.material-column,.outline-column{border-right:1px solid #d8d3c8;padding:22px 18px;overflow:auto;max-height:calc(100vh - 190px)}.material-column>header,.outline-column>header,.document-column>header{display:flex;justify-content:space-between;align-items:center}.material-column h3,.outline-column h3,.document-column h3{font:600 20px/1 "Noto Sans SC",sans-serif;margin:7px 0}.material-column>header button,.outline-column>header button{width:34px;height:34px;border:1px solid #aaa397;background:transparent;cursor:pointer}.column-intro{color:#858078;font-size:13px;line-height:1.65;border-bottom:1px solid #d8d3c8;padding-bottom:16px}.material-column>article{background:#fff;border-left:3px solid #567363;padding:14px;margin-bottom:10px}.material-column>article[data-permission=拒绝]{border-color:#a33c32}.material-column article header{display:flex;justify-content:space-between;font-size:13px;color:#89837a}.material-column article h4{font-size:14px;margin:9px 0}.material-column article p{font-size:13px;color:#706c65;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.material-column article footer{display:flex;justify-content:space-between;align-items:end}.material-column article footer small{font-size:12px;color:#999}.material-column article button{border:0;background:none;color:#a33c32;cursor:pointer;font-size:13px}.snapshot-button,.append-node{width:100%;border:1px dashed #9c9589;background:transparent;padding:11px;cursor:pointer;color:#59564f}.outline-meta{display:flex;justify-content:space-between;margin:13px 0;font-size:13px}.outline-meta b{color:#a33c32}.outline-meta b.confirmed{color:#48705a}.outline-column>article{display:grid;grid-template-columns:30px 1fr 25px 20px;gap:6px;padding:12px 8px;border-top:1px solid #ddd8cf;cursor:pointer}.outline-column>article.active{background:#fff;border-left:2px solid #a33c32}.node-order{font:500 15px sans-serif;color:#a8a197}.outline-column article input,.outline-column article textarea{width:100%;box-sizing:border-box;border:0;background:transparent;resize:none;font:inherit}.outline-column article input{font-weight:700;color:#272d29}.outline-column article textarea{font-size:13px;color:#77736b;margin-top:7px;line-height:1.5}.outline-column article button{border:0;background:none;color:#8e877d;cursor:pointer}.outline-actions{display:flex;gap:8px;padding-top:16px}.outline-actions button{flex:1;border:1px solid #aaa397;background:#fff;padding:10px;cursor:pointer}.outline-actions button.confirm{background:#17231e;color:#fff;border-color:#17231e}.document-column{padding:22px 28px;position:relative;overflow:auto;max-height:calc(100vh - 190px)}.document-column>header>span{font-size:13px;color:#77736b}.generation-bar{display:flex;align-items:end;justify-content:space-between;gap:16px;background:#e5e0d6;padding:12px 16px;margin:18px 0}.generation-bar div{display:grid;gap:5px;flex:1}.generation-bar strong{font-size:14px}.generation-bar input{border:0;border-bottom:1px solid #aaa397;background:transparent;padding:5px 0}.generation-bar button{background:#a33c32;color:#fff;border:0;padding:11px 16px;cursor:pointer}.generation-bar button:disabled{background:#aaa69f}.paper-sheet{background:#fff;max-width:760px;margin:0 auto;padding:58px 72px;box-shadow:0 8px 24px rgba(55,50,40,.08)}.paper-sheet>header{text-align:center;border-bottom:1px solid #eee9df;padding-bottom:30px}.paper-sheet>header span,.paper-sheet>header small{font-size:13px;color:#999}.paper-sheet h1{font:600 26px/1.45 "Noto Sans SC",sans-serif}.paper-sheet>article{padding:24px 0;border-bottom:1px solid #eee9df}.paper-sheet>article.dimmed{opacity:.32}.paper-sheet>article.active{box-shadow:-3px 0 #a33c32;padding-left:18px}.paragraph-meta{display:flex;justify-content:space-between;font-size:12px;color:#999}.paper-sheet textarea{border:0;width:100%;box-sizing:border-box;resize:vertical;font:16px/2 "Noto Sans SC",sans-serif;color:#292d2a;margin-top:8px}.paper-sheet article footer{display:flex;justify-content:space-between;color:#999;font-size:12px}.paper-sheet article footer button{border:0;background:none;color:#6d6962;cursor:pointer;margin-left:10px}.document-empty{text-align:center;padding:130px 30px;color:#817c73}.document-empty>span{display:inline-grid;place-items:center;width:70px;height:70px;border:1px solid #aaa397;font:32px sans-serif}.document-empty h3{font:500 22px sans-serif}.paragraph-inspector{position:sticky;bottom:0;margin:20px 0 0 auto;background:#17231e;color:#fff;padding:10px 16px;width:max-content;display:flex;gap:12px;font-size:13px}.paragraph-inspector small{color:#9fb0a7}.editor-empty{padding:35px 12px;text-align:center;color:#918b82;font-size:13px;line-height:1.7}.material-form{display:grid;gap:15px}.material-form>div{display:grid;grid-template-columns:1fr 1fr;gap:14px}.material-form label{display:grid;gap:6px;color:#6c6861;font-size:14px}.material-form input,.material-form select,.material-form textarea{border:1px solid #c9c3b7;background:#fbfaf7;padding:10px;font:inherit;resize:vertical}.file-drop{border:1px dashed #9b9488;padding:18px;background:#f4f1ea;cursor:pointer}.file-drop span{color:#8a847b}.manual-divider{text-align:center!important;display:block!important;color:#aaa39a;font-size:13px}.manual-divider:before,.manual-divider:after{content:"";display:inline-block;width:32%;border-top:1px solid #ddd7cc;vertical-align:middle;margin:0 10px}@media(max-width:1200px){.editor-columns{grid-template-columns:240px 290px minmax(430px,1fr)}}
-.stream-preview{max-width:760px;margin:0 auto 14px;background:#17231e;color:#f5f0e7;padding:18px 24px}.stream-preview span{font-size:12px;letter-spacing:1.5px;color:#d8b36a}.stream-preview p{font:14px/1.9 "Noto Sans SC",sans-serif;white-space:pre-wrap;margin:10px 0 0}</style>
+.editor-workspace{padding:16px 28px 20px;display:flex;flex-direction:column;height:calc(100vh - 56px);box-sizing:border-box;overflow:hidden}
+.editor-command{flex-shrink:0;background:#fff;color:var(--ink);padding:14px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border:1px solid var(--line);border-top:3px solid var(--red);border-radius:10px 10px 0 0}
+.editor-command a{color:var(--muted);font-size:13px;margin-right:14px}
+.editor-command h2{font:500 22px/1.25 "Noto Sans SC",sans-serif;margin:8px 0 4px}
+.editor-command p{margin:0;color:var(--muted);font-size:13px}
+.editor-status{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px}
+.editor-status span{display:grid;white-space:nowrap;padding:0 12px;border-right:1px solid var(--line);color:var(--muted);font-size:12px}
+.editor-status b{color:var(--ink);margin-top:2px;font-size:13px}
+.editor-status button{white-space:nowrap;border:1px solid #cbd1db;border-radius:6px;background:#fff;color:var(--ink);padding:7px 11px;cursor:pointer;font-size:13px}
+.editor-status button:hover{color:var(--red);border-color:#e8aaa6;background:var(--red-soft)}
+.editor-columns{flex:1;min-height:0;display:grid;grid-template-columns:260px 300px minmax(480px,1fr);border:1px solid #d8d3c8;border-top:0;background:#f1eee7}
+.material-column,.outline-column{border-right:1px solid #d8d3c8;padding:16px 14px;overflow:auto;min-height:0}
+.column-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.column-head h3,.ops-title-row h3{font:600 17px/1.2 "Noto Sans SC",sans-serif;margin:0}
+.column-sub,.ops-meta{margin:6px 0 0;color:#858078;font-size:12px;line-height:1.5}
+.column-sub b{font-weight:600;color:#a33c32}
+.column-sub b.confirmed{color:#48705a}
+.column-action{flex-shrink:0;border:1px solid #c9c3b7;border-radius:6px;background:#fff;color:var(--ink);padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1.2}
+.column-action.icon{width:32px;height:32px;padding:0;font-size:18px}
+.column-action:hover{border-color:#e8aaa6;color:var(--red)}
+.material-block+.material-block{margin-top:18px;padding-top:16px;border-top:1px solid #e4dfd6}
+.material-column article{background:#fff;border-left:3px solid #567363;padding:12px;margin-bottom:10px}
+.material-column article[data-permission=拒绝]{border-color:#a33c32}
+.material-column article.knowledge-card{border-left-color:#8a5a44}
+.material-column article header{display:flex;justify-content:space-between;font-size:12px;color:#89837a}
+.material-column article h4{font-size:14px;margin:8px 0}
+.material-column article p{font-size:12px;color:#706c65;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.material-column article footer{display:flex;justify-content:space-between;align-items:end;gap:8px}
+.material-column article footer small{font-size:12px;color:#999}
+.material-column article button{border:0;background:none;color:#a33c32;cursor:pointer;font-size:12px}
+.snapshot-button,.append-node{width:100%;border:1px dashed #9c9589;border-radius:6px;background:transparent;padding:10px;cursor:pointer;color:#59564f;margin-top:8px}
+.outline-node{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;padding:10px 8px;border-top:1px solid #ddd8cf;cursor:pointer;align-items:start}
+.outline-node:not(.confirmed-node){grid-template-columns:28px minmax(0,1fr) auto}
+.outline-node.active{background:#fff;border-left:2px solid #a33c32;padding-left:6px}
+.node-order{font:600 13px/1.4 sans-serif;color:#a8a197;padding-top:2px}
+.outline-node-summary,.outline-node-edit{min-width:0}
+.outline-node-summary strong{display:block;color:var(--ink);font-size:13px;line-height:1.4}
+.outline-node-summary p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.outline-node-edit input,.outline-node-edit textarea{width:100%;box-sizing:border-box;border:0;background:transparent;resize:none;font:inherit}
+.outline-node-edit input{font-weight:700;color:#272d29;font-size:13px}
+.outline-node-edit textarea{font-size:12px;color:#77736b;margin-top:4px;line-height:1.45}
+.outline-node-actions{display:flex;flex-direction:column;gap:2px}
+.outline-node-actions button{border:0;background:none;color:#8e877d;cursor:pointer;padding:2px 4px;font-size:12px}
+.outline-actions{display:flex;gap:8px;padding-top:12px}
+.outline-actions button{flex:1;border:1px solid #aaa397;border-radius:6px;background:#fff;padding:9px;cursor:pointer;font-size:13px}
+.outline-actions button.confirm{background:var(--red);color:#fff;border-color:var(--red)}
+.document-column{display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative;background:#ebe7df}
+.document-ops{flex-shrink:0;padding:14px 20px 12px;background:#f7f4ee;border-bottom:1px solid #e2ddd3;z-index:2;display:grid;gap:10px}
+.ops-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ops-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.ops-secondary,.ops-primary{border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap;line-height:1.2}
+.ops-secondary{border:1px solid #c9b2ad;background:#fff;color:#b8322b}
+.ops-secondary:disabled,.ops-primary:disabled{opacity:.55;cursor:not-allowed}
+.ops-primary{border:0;background:#a33c32;color:#fff;min-width:112px}
+.ops-hint{margin:0;color:#858078;font-size:12px}
+.rebuild-result{margin:0;padding:8px 12px;border:1px solid #e6d4b7;border-radius:6px;background:#fffaf0;color:#765a2d;font-size:12px;line-height:1.5}
+.generation-bar{display:flex;align-items:stretch;justify-content:space-between;gap:14px;background:#fff;border:1px solid #ddd7cc;border-radius:8px;padding:12px 14px}
+.generation-fields{display:grid;gap:4px;flex:1;min-width:0}
+.generation-label{font-size:11px;color:#8a847b;letter-spacing:.04em}
+.generation-fields strong{font-size:14px;color:var(--ink)}
+.generation-instruction{display:grid;gap:4px;margin-top:6px;font-size:12px;color:#6b6860}
+.generation-instruction input{border:1px solid #ddd7cc;border-radius:6px;background:#fbfaf7;padding:7px 10px;font:inherit;color:var(--ink)}
+.document-scroll{flex:1;min-height:0;overflow:auto;padding:12px 20px 22px}
+.paper-sheet{background:#fff;max-width:760px;margin:0 auto;padding:58px 72px;box-shadow:0 8px 24px rgba(55,50,40,.08)}
+.paper-sheet>header{text-align:center;border-bottom:1px solid #eee9df;padding-bottom:30px}
+.paper-sheet>header span,.paper-sheet>header small{font-size:13px;color:#999}
+.paper-sheet h1{font:600 26px/1.45 "Noto Sans SC",sans-serif}
+.paper-sheet>article{padding:24px 0;border-bottom:1px solid #eee9df}
+.paper-sheet>article.dimmed{opacity:.32}
+.paper-sheet>article.active{box-shadow:-3px 0 #a33c32;padding-left:18px}
+.paragraph-meta{display:flex;justify-content:space-between;font-size:12px;color:#999}
+.paper-sheet textarea{border:0;width:100%;box-sizing:border-box;resize:vertical;font:16px/2 "Noto Sans SC",sans-serif;color:#292d2a;margin-top:8px}
+.paper-sheet article footer{display:flex;justify-content:space-between;color:#999;font-size:12px}
+.paper-sheet article footer button{border:0;background:none;color:#6d6962;cursor:pointer;margin-left:10px}
+.document-empty{text-align:center;padding:130px 30px;color:#817c73}
+.document-empty>span{display:inline-grid;place-items:center;width:70px;height:70px;border:1px solid #aaa397;font:32px sans-serif}
+.document-empty h3{font:500 22px sans-serif}
+.paragraph-inspector{position:sticky;bottom:0;margin:20px 0 0 auto;background:#fff;color:var(--ink);padding:10px 16px;width:max-content;display:flex;gap:12px;font-size:13px;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+.paragraph-inspector small{color:var(--muted)}
+.editor-empty{padding:28px 8px;text-align:center;color:#918b82;font-size:12px;line-height:1.7}
+.material-form{display:grid;gap:15px}
+.material-form>div{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.material-form label{display:grid;gap:6px;color:#6c6861;font-size:14px}
+.material-form input,.material-form select,.material-form textarea{border:1px solid #c9c3b7;background:#fbfaf7;padding:10px;font:inherit;resize:vertical}
+.file-drop{border:1px dashed #9b9488;padding:18px;background:#f4f1ea;cursor:pointer}
+.file-drop span{color:#8a847b}
+.manual-divider{text-align:center!important;display:block!important;color:#aaa39a;font-size:13px}
+.manual-divider:before,.manual-divider:after{content:"";display:inline-block;width:32%;border-top:1px solid #ddd7cc;vertical-align:middle;margin:0 10px}
+.stream-preview{background:#f8f9fb;border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;padding:12px 14px;color:var(--ink)}
+.stream-preview span{font-size:12px;color:var(--red)}
+.stream-preview p{font:13px/1.8 "Noto Sans SC",sans-serif;white-space:pre-wrap;margin:8px 0 0}
+@media(max-width:1200px){.editor-columns{grid-template-columns:220px 260px minmax(400px,1fr)}}
+</style>

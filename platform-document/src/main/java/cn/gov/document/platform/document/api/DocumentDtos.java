@@ -18,6 +18,12 @@ public final class DocumentDtos {
     private DocumentDtos() {}
 
     public record GenerateSectionRequest(@NotBlank String outlineNodeId, @Size(max = 1000) String instruction) {}
+    public record RebuildRequest(boolean confirmed) {}
+
+    public record KnowledgeDraftRequest(@NotBlank String selectionId, @Size(max = 1000) String instruction) {}
+    public record KnowledgeDraftResponse(String text, String selectionId, String status) {}
+    public record KnowledgeInsertionRequest(@NotBlank String selectionId, @NotBlank String mode,
+            @NotBlank @Size(max = 10000) String text, String afterParagraphId, boolean confirmed) {}
 
     public record TransformRequest(
             @NotBlank String paragraphId,
@@ -76,6 +82,7 @@ public final class DocumentDtos {
             int paragraphOrder,
             String contentSourceLevel,
             List<String> sourceMaterialIds,
+            List<String> sourceKnowledgeIds,
             boolean locked,
             String plainText,
             int lockVersion,
@@ -88,6 +95,7 @@ public final class DocumentDtos {
                     entity.getParagraphOrder(),
                     entity.getContentSourceLevel(),
                     parseIds(entity.getSourceMaterialIds()),
+                    parseIds(entity.getSourceKnowledgeIds()),
                     Boolean.TRUE.equals(entity.getIsLocked()),
                     entity.getPlainText(),
                     entity.getLockVersion(),

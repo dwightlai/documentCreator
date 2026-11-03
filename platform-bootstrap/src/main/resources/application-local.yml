@@ -15,6 +15,12 @@ spring:
 platform:
   security:
     local-header-enabled: true
+    local-directory-roles: true
+  model:
+    # 本地开发允许登记 DeepSeek；模型路由默认保持停用，密钥由后端环境变量提供。
+    allowed-endpoints: ${MODEL_ALLOWED_ENDPOINTS:https://api.deepseek.com/chat/completions}
+    # 仅模型请求使用本机代理；可用 MODEL_PROXY_URL 覆盖 HTTPS_PROXY。
+    proxy-url: ${MODEL_PROXY_URL:${HTTPS_PROXY:}}
 
 logging:
   level:

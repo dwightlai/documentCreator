@@ -1,0 +1,2058 @@
+{
+  "standard": "GF 1001—2001",
+  "source": "https://www.moe.gov.cn/jyb_sjzl/ziliao/A19/201001/t20100115_75687.html",
+  "groups": [
+    {
+      "preferred": "按捺",
+      "variants": [
+        "按纳"
+      ]
+    },
+    {
+      "preferred": "按语",
+      "variants": [
+        "案语"
+      ]
+    },
+    {
+      "preferred": "百废俱兴",
+      "variants": [
+        "百废具兴"
+      ]
+    },
+    {
+      "preferred": "百叶窗",
+      "variants": [
+        "百页窗"
+      ]
+    },
+    {
+      "preferred": "斑白",
+      "variants": [
+        "班白",
+        "颁白"
+      ]
+    },
+    {
+      "preferred": "斑驳",
+      "variants": [
+        "班驳"
+      ]
+    },
+    {
+      "preferred": "孢子",
+      "variants": [
+        "胞子"
+      ]
+    },
+    {
+      "preferred": "保镖",
+      "variants": [
+        "保镳"
+      ]
+    },
+    {
+      "preferred": "保姆",
+      "variants": [
+        "保母",
+        "褓姆"
+      ]
+    },
+    {
+      "preferred": "辈分",
+      "variants": [
+        "辈份"
+      ]
+    },
+    {
+      "preferred": "本分",
+      "variants": [
+        "本份"
+      ]
+    },
+    {
+      "preferred": "笔画",
+      "variants": [
+        "笔划"
+      ]
+    },
+    {
+      "preferred": "毕恭毕敬",
+      "variants": [
+        "必恭必敬"
+      ]
+    },
+    {
+      "preferred": "编者按",
+      "variants": [
+        "编者案"
+      ]
+    },
+    {
+      "preferred": "扁豆",
+      "variants": [
+        "萹豆",
+        "稨豆",
+        "藊豆"
+      ]
+    },
+    {
+      "preferred": "标志",
+      "variants": [
+        "标识"
+      ]
+    },
+    {
+      "preferred": "鬓角",
+      "variants": [
+        "鬓脚"
+      ]
+    },
+    {
+      "preferred": "秉承",
+      "variants": [
+        "禀承"
+      ]
+    },
+    {
+      "preferred": "补丁",
+      "variants": [
+        "补靪",
+        "补钉"
+      ]
+    },
+    {
+      "preferred": "参与",
+      "variants": [
+        "参预"
+      ]
+    },
+    {
+      "preferred": "惨淡",
+      "variants": [
+        "惨澹"
+      ]
+    },
+    {
+      "preferred": "差池",
+      "variants": [
+        "差迟"
+      ]
+    },
+    {
+      "preferred": "掺和",
+      "variants": [
+        "搀和"
+      ]
+    },
+    {
+      "preferred": "掺假",
+      "variants": [
+        "搀假"
+      ]
+    },
+    {
+      "preferred": "掺杂",
+      "variants": [
+        "搀杂"
+      ]
+    },
+    {
+      "preferred": "铲除",
+      "variants": [
+        "刬除"
+      ]
+    },
+    {
+      "preferred": "徜徉",
+      "variants": [
+        "倘佯"
+      ]
+    },
+    {
+      "preferred": "车厢",
+      "variants": [
+        "车箱"
+      ]
+    },
+    {
+      "preferred": "彻底",
+      "variants": [
+        "澈底"
+      ]
+    },
+    {
+      "preferred": "沉思",
+      "variants": [
+        "沈思"
+      ]
+    },
+    {
+      "preferred": "称心",
+      "variants": [
+        "趁心"
+      ]
+    },
+    {
+      "preferred": "成分",
+      "variants": [
+        "成份"
+      ]
+    },
+    {
+      "preferred": "澄澈",
+      "variants": [
+        "澄彻"
+      ]
+    },
+    {
+      "preferred": "侈靡",
+      "variants": [
+        "侈糜"
+      ]
+    },
+    {
+      "preferred": "筹划",
+      "variants": [
+        "筹画"
+      ]
+    },
+    {
+      "preferred": "筹码",
+      "variants": [
+        "筹马"
+      ]
+    },
+    {
+      "preferred": "踌躇",
+      "variants": [
+        "踌蹰"
+      ]
+    },
+    {
+      "preferred": "出谋划策",
+      "variants": [
+        "出谋画策"
+      ]
+    },
+    {
+      "preferred": "喘吁吁",
+      "variants": [
+        "喘嘘嘘"
+      ]
+    },
+    {
+      "preferred": "瓷器",
+      "variants": [
+        "磁器"
+      ]
+    },
+    {
+      "preferred": "赐予",
+      "variants": [
+        "赐与"
+      ]
+    },
+    {
+      "preferred": "粗鲁",
+      "variants": [
+        "粗卤"
+      ]
+    },
+    {
+      "preferred": "搭档",
+      "variants": [
+        "搭当",
+        "搭挡"
+      ]
+    },
+    {
+      "preferred": "搭讪",
+      "variants": [
+        "搭赸",
+        "答讪"
+      ]
+    },
+    {
+      "preferred": "答复",
+      "variants": [
+        "答覆"
+      ]
+    },
+    {
+      "preferred": "戴孝",
+      "variants": [
+        "带孝"
+      ]
+    },
+    {
+      "preferred": "担心",
+      "variants": [
+        "耽心"
+      ]
+    },
+    {
+      "preferred": "担忧",
+      "variants": [
+        "耽忧"
+      ]
+    },
+    {
+      "preferred": "耽搁",
+      "variants": [
+        "担搁"
+      ]
+    },
+    {
+      "preferred": "淡泊",
+      "variants": [
+        "澹泊"
+      ]
+    },
+    {
+      "preferred": "淡然",
+      "variants": [
+        "澹然"
+      ]
+    },
+    {
+      "preferred": "倒霉",
+      "variants": [
+        "倒楣"
+      ]
+    },
+    {
+      "preferred": "低回",
+      "variants": [
+        "低徊"
+      ]
+    },
+    {
+      "preferred": "凋敝",
+      "variants": [
+        "雕敝",
+        "雕弊"
+      ]
+    },
+    {
+      "preferred": "凋零",
+      "variants": [
+        "雕零"
+      ]
+    },
+    {
+      "preferred": "疯癫",
+      "variants": [
+        "疯颠"
+      ]
+    },
+    {
+      "preferred": "凋落",
+      "variants": [
+        "雕落"
+      ]
+    },
+    {
+      "preferred": "锋芒",
+      "variants": [
+        "锋铓"
+      ]
+    },
+    {
+      "preferred": "凋谢",
+      "variants": [
+        "雕谢"
+      ]
+    },
+    {
+      "preferred": "服侍",
+      "variants": [
+        "伏侍",
+        "服事"
+      ]
+    },
+    {
+      "preferred": "跌宕",
+      "variants": [
+        "跌荡"
+      ]
+    },
+    {
+      "preferred": "服输",
+      "variants": [
+        "伏输"
+      ]
+    },
+    {
+      "preferred": "跌跤",
+      "variants": [
+        "跌交"
+      ]
+    },
+    {
+      "preferred": "服罪",
+      "variants": [
+        "伏罪"
+      ]
+    },
+    {
+      "preferred": "喋血",
+      "variants": [
+        "蹀血"
+      ]
+    },
+    {
+      "preferred": "负隅顽抗",
+      "variants": [
+        "负嵎顽抗"
+      ]
+    },
+    {
+      "preferred": "叮咛",
+      "variants": [
+        "丁宁"
+      ]
+    },
+    {
+      "preferred": "附会",
+      "variants": [
+        "傅会"
+      ]
+    },
+    {
+      "preferred": "订单",
+      "variants": [
+        "定单"
+      ]
+    },
+    {
+      "preferred": "复信",
+      "variants": [
+        "覆信"
+      ]
+    },
+    {
+      "preferred": "订户",
+      "variants": [
+        "定户"
+      ]
+    },
+    {
+      "preferred": "覆辙",
+      "variants": [
+        "复辙"
+      ]
+    },
+    {
+      "preferred": "订婚",
+      "variants": [
+        "定婚"
+      ]
+    },
+    {
+      "preferred": "订货",
+      "variants": [
+        "定货"
+      ]
+    },
+    {
+      "preferred": "干预",
+      "variants": [
+        "干与"
+      ]
+    },
+    {
+      "preferred": "订阅",
+      "variants": [
+        "定阅"
+      ]
+    },
+    {
+      "preferred": "告诫",
+      "variants": [
+        "告戒"
+      ]
+    },
+    {
+      "preferred": "斗拱",
+      "variants": [
+        "枓拱",
+        "枓栱"
+      ]
+    },
+    {
+      "preferred": "耿直",
+      "variants": [
+        "梗直",
+        "鲠直"
+      ]
+    },
+    {
+      "preferred": "逗留",
+      "variants": [
+        "逗遛"
+      ]
+    },
+    {
+      "preferred": "恭维",
+      "variants": [
+        "恭惟"
+      ]
+    },
+    {
+      "preferred": "逗趣儿",
+      "variants": [
+        "斗趣儿"
+      ]
+    },
+    {
+      "preferred": "勾画",
+      "variants": [
+        "勾划"
+      ]
+    },
+    {
+      "preferred": "独角戏",
+      "variants": [
+        "独脚戏"
+      ]
+    },
+    {
+      "preferred": "勾连",
+      "variants": [
+        "勾联"
+      ]
+    },
+    {
+      "preferred": "端午",
+      "variants": [
+        "端五"
+      ]
+    },
+    {
+      "preferred": "孤苦伶仃",
+      "variants": [
+        "孤苦零丁"
+      ]
+    },
+    {
+      "preferred": "辜负",
+      "variants": [
+        "孤负"
+      ]
+    },
+    {
+      "preferred": "二黄",
+      "variants": [
+        "二簧"
+      ]
+    },
+    {
+      "preferred": "古董",
+      "variants": [
+        "骨董"
+      ]
+    },
+    {
+      "preferred": "二心",
+      "variants": [
+        "贰心"
+      ]
+    },
+    {
+      "preferred": "股份",
+      "variants": [
+        "股分"
+      ]
+    },
+    {
+      "preferred": "骨瘦如柴",
+      "variants": [
+        "骨瘦如豺"
+      ]
+    },
+    {
+      "preferred": "发酵",
+      "variants": [
+        "酦酵"
+      ]
+    },
+    {
+      "preferred": "关联",
+      "variants": [
+        "关连"
+      ]
+    },
+    {
+      "preferred": "发人深省",
+      "variants": [
+        "发人深醒"
+      ]
+    },
+    {
+      "preferred": "光彩",
+      "variants": [
+        "光采"
+      ]
+    },
+    {
+      "preferred": "繁衍",
+      "variants": [
+        "蕃衍"
+      ]
+    },
+    {
+      "preferred": "归根结底",
+      "variants": [
+        "归根结柢"
+      ]
+    },
+    {
+      "preferred": "吩咐",
+      "variants": [
+        "分付"
+      ]
+    },
+    {
+      "preferred": "规诫",
+      "variants": [
+        "规戒"
+      ]
+    },
+    {
+      "preferred": "分量",
+      "variants": [
+        "份量"
+      ]
+    },
+    {
+      "preferred": "鬼哭狼嚎",
+      "variants": [
+        "鬼哭狼嗥"
+      ]
+    },
+    {
+      "preferred": "分内",
+      "variants": [
+        "份内"
+      ]
+    },
+    {
+      "preferred": "过分",
+      "variants": [
+        "过份"
+      ]
+    },
+    {
+      "preferred": "分外",
+      "variants": [
+        "份外"
+      ]
+    },
+    {
+      "preferred": "分子",
+      "variants": [
+        "份子"
+      ]
+    },
+    {
+      "preferred": "蛤蟆",
+      "variants": [
+        "虾蟆"
+      ]
+    },
+    {
+      "preferred": "愤愤",
+      "variants": [
+        "忿忿"
+      ]
+    },
+    {
+      "preferred": "含糊",
+      "variants": [
+        "含胡"
+      ]
+    },
+    {
+      "preferred": "丰富多彩",
+      "variants": [
+        "丰富多采"
+      ]
+    },
+    {
+      "preferred": "含蓄",
+      "variants": [
+        "涵蓄"
+      ]
+    },
+    {
+      "preferred": "风瘫",
+      "variants": [
+        "疯瘫"
+      ]
+    },
+    {
+      "preferred": "寒碜",
+      "variants": [
+        "寒伧"
+      ]
+    },
+    {
+      "preferred": "喝彩",
+      "variants": [
+        "喝采"
+      ]
+    },
+    {
+      "preferred": "喝倒彩",
+      "variants": [
+        "喝倒采"
+      ]
+    },
+    {
+      "preferred": "轰动",
+      "variants": [
+        "哄动"
+      ]
+    },
+    {
+      "preferred": "弘扬",
+      "variants": [
+        "宏扬"
+      ]
+    },
+    {
+      "preferred": "红彤彤",
+      "variants": [
+        "红通通"
+      ]
+    },
+    {
+      "preferred": "宏论",
+      "variants": [
+        "弘论"
+      ]
+    },
+    {
+      "preferred": "宏图",
+      "variants": [
+        "弘图",
+        "鸿图"
+      ]
+    },
+    {
+      "preferred": "宏愿",
+      "variants": [
+        "弘愿"
+      ]
+    },
+    {
+      "preferred": "宏旨",
+      "variants": [
+        "弘旨"
+      ]
+    },
+    {
+      "preferred": "洪福",
+      "variants": [
+        "鸿福"
+      ]
+    },
+    {
+      "preferred": "狐臭",
+      "variants": [
+        "胡臭"
+      ]
+    },
+    {
+      "preferred": "蝴蝶",
+      "variants": [
+        "胡蝶"
+      ]
+    },
+    {
+      "preferred": "糊涂",
+      "variants": [
+        "胡涂"
+      ]
+    },
+    {
+      "preferred": "琥珀",
+      "variants": [
+        "虎魄"
+      ]
+    },
+    {
+      "preferred": "花招",
+      "variants": [
+        "花着"
+      ]
+    },
+    {
+      "preferred": "划拳",
+      "variants": [
+        "豁拳",
+        "搳拳"
+      ]
+    },
+    {
+      "preferred": "恍惚",
+      "variants": [
+        "恍忽"
+      ]
+    },
+    {
+      "preferred": "辉映",
+      "variants": [
+        "晖映"
+      ]
+    },
+    {
+      "preferred": "溃脓",
+      "variants": [
+        "殨脓"
+      ]
+    },
+    {
+      "preferred": "浑水摸鱼",
+      "variants": [
+        "混水摸鱼"
+      ]
+    },
+    {
+      "preferred": "伙伴",
+      "variants": [
+        "火伴"
+      ]
+    },
+    {
+      "preferred": "机灵",
+      "variants": [
+        "机伶"
+      ]
+    },
+    {
+      "preferred": "激愤",
+      "variants": [
+        "激忿"
+      ]
+    },
+    {
+      "preferred": "计划",
+      "variants": [
+        "计画"
+      ]
+    },
+    {
+      "preferred": "纪念",
+      "variants": [
+        "记念"
+      ]
+    },
+    {
+      "preferred": "寄予",
+      "variants": [
+        "寄与"
+      ]
+    },
+    {
+      "preferred": "夹克",
+      "variants": [
+        "茄克"
+      ]
+    },
+    {
+      "preferred": "嘉宾",
+      "variants": [
+        "佳宾"
+      ]
+    },
+    {
+      "preferred": "驾驭",
+      "variants": [
+        "驾御"
+      ]
+    },
+    {
+      "preferred": "架势",
+      "variants": [
+        "架式"
+      ]
+    },
+    {
+      "preferred": "嫁妆",
+      "variants": [
+        "嫁装"
+      ]
+    },
+    {
+      "preferred": "简练",
+      "variants": [
+        "简炼"
+      ]
+    },
+    {
+      "preferred": "骄奢淫逸",
+      "variants": [
+        "骄奢淫佚"
+      ]
+    },
+    {
+      "preferred": "角门",
+      "variants": [
+        "脚门"
+      ]
+    },
+    {
+      "preferred": "狡猾",
+      "variants": [
+        "狡滑"
+      ]
+    },
+    {
+      "preferred": "脚跟",
+      "variants": [
+        "脚根"
+      ]
+    },
+    {
+      "preferred": "叫花子",
+      "variants": [
+        "叫化子"
+      ]
+    },
+    {
+      "preferred": "精彩",
+      "variants": [
+        "精采"
+      ]
+    },
+    {
+      "preferred": "纠合",
+      "variants": [
+        "鸠合"
+      ]
+    },
+    {
+      "preferred": "纠集",
+      "variants": [
+        "鸠集"
+      ]
+    },
+    {
+      "preferred": "就座",
+      "variants": [
+        "就坐"
+      ]
+    },
+    {
+      "preferred": "角色",
+      "variants": [
+        "脚色"
+      ]
+    },
+    {
+      "preferred": "克期",
+      "variants": [
+        "刻期"
+      ]
+    },
+    {
+      "preferred": "克日",
+      "variants": [
+        "刻日"
+      ]
+    },
+    {
+      "preferred": "刻画",
+      "variants": [
+        "刻划"
+      ]
+    },
+    {
+      "preferred": "阔佬",
+      "variants": [
+        "阔老"
+      ]
+    },
+    {
+      "preferred": "褴褛",
+      "variants": [
+        "蓝缕"
+      ]
+    },
+    {
+      "preferred": "烂漫",
+      "variants": [
+        "烂缦",
+        "烂熳"
+      ]
+    },
+    {
+      "preferred": "狼藉",
+      "variants": [
+        "狼籍"
+      ]
+    },
+    {
+      "preferred": "榔头",
+      "variants": [
+        "狼头",
+        "𨱍头"
+      ]
+    },
+    {
+      "preferred": "累赘",
+      "variants": [
+        "累坠"
+      ]
+    },
+    {
+      "preferred": "黧黑",
+      "variants": [
+        "黎黑"
+      ]
+    },
+    {
+      "preferred": "连贯",
+      "variants": [
+        "联贯"
+      ]
+    },
+    {
+      "preferred": "连接",
+      "variants": [
+        "联接"
+      ]
+    },
+    {
+      "preferred": "连绵",
+      "variants": [
+        "联绵"
+      ]
+    },
+    {
+      "preferred": "连缀",
+      "variants": [
+        "联缀"
+      ]
+    },
+    {
+      "preferred": "联结",
+      "variants": [
+        "连结"
+      ]
+    },
+    {
+      "preferred": "联袂",
+      "variants": [
+        "连袂"
+      ]
+    },
+    {
+      "preferred": "联翩",
+      "variants": [
+        "连翩"
+      ]
+    },
+    {
+      "preferred": "踉跄",
+      "variants": [
+        "踉蹡"
+      ]
+    },
+    {
+      "preferred": "嘹亮",
+      "variants": [
+        "嘹喨"
+      ]
+    },
+    {
+      "preferred": "缭乱",
+      "variants": [
+        "撩乱"
+      ]
+    },
+    {
+      "preferred": "伶仃",
+      "variants": [
+        "零丁"
+      ]
+    },
+    {
+      "preferred": "内讧",
+      "variants": [
+        "内哄"
+      ]
+    },
+    {
+      "preferred": "凝练",
+      "variants": [
+        "凝炼"
+      ]
+    },
+    {
+      "preferred": "囹圄",
+      "variants": [
+        "囹圉"
+      ]
+    },
+    {
+      "preferred": "牛仔裤",
+      "variants": [
+        "牛崽裤"
+      ]
+    },
+    {
+      "preferred": "溜达",
+      "variants": [
+        "蹓跶"
+      ]
+    },
+    {
+      "preferred": "纽扣",
+      "variants": [
+        "钮扣"
+      ]
+    },
+    {
+      "preferred": "流连",
+      "variants": [
+        "留连"
+      ]
+    },
+    {
+      "preferred": "喽啰",
+      "variants": [
+        "喽罗",
+        "偻㑩"
+      ]
+    },
+    {
+      "preferred": "扒手",
+      "variants": [
+        "掱手"
+      ]
+    },
+    {
+      "preferred": "鲁莽",
+      "variants": [
+        "卤莽"
+      ]
+    },
+    {
+      "preferred": "盘根错节",
+      "variants": [
+        "蟠根错节"
+      ]
+    },
+    {
+      "preferred": "录像",
+      "variants": [
+        "录象",
+        "录相"
+      ]
+    },
+    {
+      "preferred": "盘踞",
+      "variants": [
+        "盘据",
+        "蟠踞",
+        "蟠据"
+      ]
+    },
+    {
+      "preferred": "络腮胡子",
+      "variants": [
+        "落腮胡子"
+      ]
+    },
+    {
+      "preferred": "盘曲",
+      "variants": [
+        "蟠曲"
+      ]
+    },
+    {
+      "preferred": "落寞",
+      "variants": [
+        "落漠",
+        "落莫"
+      ]
+    },
+    {
+      "preferred": "盘陀",
+      "variants": [
+        "盘陁"
+      ]
+    },
+    {
+      "preferred": "磐石",
+      "variants": [
+        "盘石",
+        "蟠石"
+      ]
+    },
+    {
+      "preferred": "蹒跚",
+      "variants": [
+        "盘跚"
+      ]
+    },
+    {
+      "preferred": "彷徨",
+      "variants": [
+        "旁皇"
+      ]
+    },
+    {
+      "preferred": "披星戴月",
+      "variants": [
+        "披星带月"
+      ]
+    },
+    {
+      "preferred": "麻痹",
+      "variants": [
+        "痲痹"
+      ]
+    },
+    {
+      "preferred": "麻风",
+      "variants": [
+        "痲风"
+      ]
+    },
+    {
+      "preferred": "麻疹",
+      "variants": [
+        "痲疹"
+      ]
+    },
+    {
+      "preferred": "马蜂",
+      "variants": [
+        "蚂蜂"
+      ]
+    },
+    {
+      "preferred": "疲沓",
+      "variants": [
+        "疲塌"
+      ]
+    },
+    {
+      "preferred": "马虎",
+      "variants": [
+        "马糊"
+      ]
+    },
+    {
+      "preferred": "漂泊",
+      "variants": [
+        "飘泊"
+      ]
+    },
+    {
+      "preferred": "门槛",
+      "variants": [
+        "门坎"
+      ]
+    },
+    {
+      "preferred": "靡费",
+      "variants": [
+        "糜费"
+      ]
+    },
+    {
+      "preferred": "漂流",
+      "variants": [
+        "飘流"
+      ]
+    },
+    {
+      "preferred": "飘零",
+      "variants": [
+        "漂零"
+      ]
+    },
+    {
+      "preferred": "飘摇",
+      "variants": [
+        "飘飖"
+      ]
+    },
+    {
+      "preferred": "凭空",
+      "variants": [
+        "平空"
+      ]
+    },
+    {
+      "preferred": "绵连",
+      "variants": [
+        "绵联"
+      ]
+    },
+    {
+      "preferred": "腼腆",
+      "variants": [
+        "䩄觍"
+      ]
+    },
+    {
+      "preferred": "模仿",
+      "variants": [
+        "摹仿"
+      ]
+    },
+    {
+      "preferred": "模糊",
+      "variants": [
+        "模胡"
+      ]
+    },
+    {
+      "preferred": "模拟",
+      "variants": [
+        "摹拟"
+      ]
+    },
+    {
+      "preferred": "摹写",
+      "variants": [
+        "模写"
+      ]
+    },
+    {
+      "preferred": "牵连",
+      "variants": [
+        "牵联"
+      ]
+    },
+    {
+      "preferred": "憔悴",
+      "variants": [
+        "蕉萃"
+      ]
+    },
+    {
+      "preferred": "清澈",
+      "variants": [
+        "清彻"
+      ]
+    },
+    {
+      "preferred": "情愫",
+      "variants": [
+        "情素"
+      ]
+    },
+    {
+      "preferred": "拳拳",
+      "variants": [
+        "惓惓"
+      ]
+    },
+    {
+      "preferred": "摩擦",
+      "variants": [
+        "磨擦"
+      ]
+    },
+    {
+      "preferred": "摩拳擦掌",
+      "variants": [
+        "磨拳擦掌"
+      ]
+    },
+    {
+      "preferred": "劝诫",
+      "variants": [
+        "劝戒"
+      ]
+    },
+    {
+      "preferred": "磨难",
+      "variants": [
+        "魔难"
+      ]
+    },
+    {
+      "preferred": "热乎乎",
+      "variants": [
+        "热呼呼"
+      ]
+    },
+    {
+      "preferred": "热乎",
+      "variants": [
+        "热呼"
+      ]
+    },
+    {
+      "preferred": "热衷",
+      "variants": [
+        "热中"
+      ]
+    },
+    {
+      "preferred": "人才",
+      "variants": [
+        "人材"
+      ]
+    },
+    {
+      "preferred": "脉脉",
+      "variants": [
+        "眽眽"
+      ]
+    },
+    {
+      "preferred": "谋划",
+      "variants": [
+        "谋画"
+      ]
+    },
+    {
+      "preferred": "那么",
+      "variants": [
+        "那末"
+      ]
+    },
+    {
+      "preferred": "日食",
+      "variants": [
+        "日蚀"
+      ]
+    },
+    {
+      "preferred": "入座",
+      "variants": [
+        "入坐"
+      ]
+    },
+    {
+      "preferred": "色彩",
+      "variants": [
+        "色采"
+      ]
+    },
+    {
+      "preferred": "杀一儆百",
+      "variants": [
+        "杀一警百"
+      ]
+    },
+    {
+      "preferred": "鲨鱼",
+      "variants": [
+        "沙鱼"
+      ]
+    },
+    {
+      "preferred": "山楂",
+      "variants": [
+        "山查"
+      ]
+    },
+    {
+      "preferred": "舢板",
+      "variants": [
+        "舢舨"
+      ]
+    },
+    {
+      "preferred": "艄公",
+      "variants": [
+        "梢公"
+      ]
+    },
+    {
+      "preferred": "奢靡",
+      "variants": [
+        "奢糜"
+      ]
+    },
+    {
+      "preferred": "申雪",
+      "variants": [
+        "伸雪"
+      ]
+    },
+    {
+      "preferred": "神采",
+      "variants": [
+        "神彩"
+      ]
+    },
+    {
+      "preferred": "湿漉漉",
+      "variants": [
+        "湿渌渌"
+      ]
+    },
+    {
+      "preferred": "什锦",
+      "variants": [
+        "十锦"
+      ]
+    },
+    {
+      "preferred": "收服",
+      "variants": [
+        "收伏"
+      ]
+    },
+    {
+      "preferred": "首座",
+      "variants": [
+        "首坐"
+      ]
+    },
+    {
+      "preferred": "书简",
+      "variants": [
+        "书柬"
+      ]
+    },
+    {
+      "preferred": "双簧",
+      "variants": [
+        "双𨱑"
+      ]
+    },
+    {
+      "preferred": "思维",
+      "variants": [
+        "思惟"
+      ]
+    },
+    {
+      "preferred": "死心塌地",
+      "variants": [
+        "死心踏地"
+      ]
+    },
+    {
+      "preferred": "踏实",
+      "variants": [
+        "塌实"
+      ]
+    },
+    {
+      "preferred": "甜菜",
+      "variants": [
+        "菾菜"
+      ]
+    },
+    {
+      "preferred": "铤而走险",
+      "variants": [
+        "挺而走险"
+      ]
+    },
+    {
+      "preferred": "透彻",
+      "variants": [
+        "透澈"
+      ]
+    },
+    {
+      "preferred": "图像",
+      "variants": [
+        "图象"
+      ]
+    },
+    {
+      "preferred": "推诿",
+      "variants": [
+        "推委"
+      ]
+    },
+    {
+      "preferred": "玩意儿",
+      "variants": [
+        "玩艺儿"
+      ]
+    },
+    {
+      "preferred": "魍魉",
+      "variants": [
+        "蝄蜽"
+      ]
+    },
+    {
+      "preferred": "诿过",
+      "variants": [
+        "委过"
+      ]
+    },
+    {
+      "preferred": "乌七八糟",
+      "variants": [
+        "污七八糟"
+      ]
+    },
+    {
+      "preferred": "无动于衷",
+      "variants": [
+        "无动于中"
+      ]
+    },
+    {
+      "preferred": "毋宁",
+      "variants": [
+        "无宁"
+      ]
+    },
+    {
+      "preferred": "毋庸",
+      "variants": [
+        "无庸"
+      ]
+    },
+    {
+      "preferred": "五彩缤纷",
+      "variants": [
+        "五采缤纷"
+      ]
+    },
+    {
+      "preferred": "五劳七伤",
+      "variants": [
+        "五痨七伤"
+      ]
+    },
+    {
+      "preferred": "息肉",
+      "variants": [
+        "瘜肉"
+      ]
+    },
+    {
+      "preferred": "稀罕",
+      "variants": [
+        "希罕"
+      ]
+    },
+    {
+      "preferred": "稀奇",
+      "variants": [
+        "希奇"
+      ]
+    },
+    {
+      "preferred": "稀少",
+      "variants": [
+        "希少"
+      ]
+    },
+    {
+      "preferred": "稀世",
+      "variants": [
+        "希世"
+      ]
+    },
+    {
+      "preferred": "稀有",
+      "variants": [
+        "希有"
+      ]
+    },
+    {
+      "preferred": "翕动",
+      "variants": [
+        "噏动"
+      ]
+    },
+    {
+      "preferred": "洗练",
+      "variants": [
+        "洗炼"
+      ]
+    },
+    {
+      "preferred": "贤惠",
+      "variants": [
+        "贤慧"
+      ]
+    },
+    {
+      "preferred": "香醇",
+      "variants": [
+        "香纯"
+      ]
+    },
+    {
+      "preferred": "香菇",
+      "variants": [
+        "香菰"
+      ]
+    },
+    {
+      "preferred": "相貌",
+      "variants": [
+        "像貌"
+      ]
+    },
+    {
+      "preferred": "潇洒",
+      "variants": [
+        "萧洒"
+      ]
+    },
+    {
+      "preferred": "小题大做",
+      "variants": [
+        "小题大作"
+      ]
+    },
+    {
+      "preferred": "卸载",
+      "variants": [
+        "卸傤"
+      ]
+    },
+    {
+      "preferred": "信口开河",
+      "variants": [
+        "信口开合"
+      ]
+    },
+    {
+      "preferred": "惺忪",
+      "variants": [
+        "惺松"
+      ]
+    },
+    {
+      "preferred": "秀外慧中",
+      "variants": [
+        "秀外惠中"
+      ]
+    },
+    {
+      "preferred": "序文",
+      "variants": [
+        "叙文"
+      ]
+    },
+    {
+      "preferred": "序言",
+      "variants": [
+        "叙言"
+      ]
+    },
+    {
+      "preferred": "训诫",
+      "variants": [
+        "训戒"
+      ]
+    },
+    {
+      "preferred": "压服",
+      "variants": [
+        "压伏"
+      ]
+    },
+    {
+      "preferred": "押韵",
+      "variants": [
+        "压韵"
+      ]
+    },
+    {
+      "preferred": "鸦片",
+      "variants": [
+        "雅片"
+      ]
+    },
+    {
+      "preferred": "扬琴",
+      "variants": [
+        "洋琴"
+      ]
+    },
+    {
+      "preferred": "要么",
+      "variants": [
+        "要末"
+      ]
+    },
+    {
+      "preferred": "夜宵",
+      "variants": [
+        "夜消"
+      ]
+    },
+    {
+      "preferred": "一锤定音",
+      "variants": [
+        "一槌定音"
+      ]
+    },
+    {
+      "preferred": "一股脑儿",
+      "variants": [
+        "一古脑儿"
+      ]
+    },
+    {
+      "preferred": "衣襟",
+      "variants": [
+        "衣衿"
+      ]
+    },
+    {
+      "preferred": "衣着",
+      "variants": [
+        "衣著"
+      ]
+    },
+    {
+      "preferred": "义无反顾",
+      "variants": [
+        "义无返顾"
+      ]
+    },
+    {
+      "preferred": "淫雨",
+      "variants": [
+        "霪雨"
+      ]
+    },
+    {
+      "preferred": "盈余",
+      "variants": [
+        "赢余"
+      ]
+    },
+    {
+      "preferred": "影像",
+      "variants": [
+        "影象"
+      ]
+    },
+    {
+      "preferred": "余晖",
+      "variants": [
+        "余辉"
+      ]
+    },
+    {
+      "preferred": "渔具",
+      "variants": [
+        "鱼具"
+      ]
+    },
+    {
+      "preferred": "渔网",
+      "variants": [
+        "鱼网"
+      ]
+    },
+    {
+      "preferred": "与会",
+      "variants": [
+        "预会"
+      ]
+    },
+    {
+      "preferred": "与闻",
+      "variants": [
+        "预闻"
+      ]
+    },
+    {
+      "preferred": "驭手",
+      "variants": [
+        "御手"
+      ]
+    },
+    {
+      "preferred": "预备",
+      "variants": [
+        "豫备"
+      ]
+    },
+    {
+      "preferred": "原来",
+      "variants": [
+        "元来"
+      ]
+    },
+    {
+      "preferred": "原煤",
+      "variants": [
+        "元煤"
+      ]
+    },
+    {
+      "preferred": "原原本本",
+      "variants": [
+        "源源本本",
+        "元元本本"
+      ]
+    },
+    {
+      "preferred": "缘故",
+      "variants": [
+        "原故"
+      ]
+    },
+    {
+      "preferred": "缘由",
+      "variants": [
+        "原由"
+      ]
+    },
+    {
+      "preferred": "月食",
+      "variants": [
+        "月蚀"
+      ]
+    },
+    {
+      "preferred": "月牙",
+      "variants": [
+        "月芽"
+      ]
+    },
+    {
+      "preferred": "芸豆",
+      "variants": [
+        "云豆"
+      ]
+    },
+    {
+      "preferred": "杂沓",
+      "variants": [
+        "杂遝"
+      ]
+    },
+    {
+      "preferred": "再接再厉",
+      "variants": [
+        "再接再砺"
+      ]
+    },
+    {
+      "preferred": "崭新",
+      "variants": [
+        "斩新"
+      ]
+    },
+    {
+      "preferred": "辗转",
+      "variants": [
+        "展转"
+      ]
+    },
+    {
+      "preferred": "战栗",
+      "variants": [
+        "颤栗"
+      ]
+    },
+    {
+      "preferred": "账本",
+      "variants": [
+        "帐本"
+      ]
+    },
+    {
+      "preferred": "折中",
+      "variants": [
+        "折衷"
+      ]
+    },
+    {
+      "preferred": "这么",
+      "variants": [
+        "这末"
+      ]
+    },
+    {
+      "preferred": "正经八百",
+      "variants": [
+        "正经八摆"
+      ]
+    },
+    {
+      "preferred": "芝麻",
+      "variants": [
+        "脂麻"
+      ]
+    },
+    {
+      "preferred": "肢解",
+      "variants": [
+        "支解",
+        "枝解"
+      ]
+    },
+    {
+      "preferred": "直截了当",
+      "variants": [
+        "直捷了当",
+        "直接了当"
+      ]
+    },
+    {
+      "preferred": "指手画脚",
+      "variants": [
+        "指手划脚"
+      ]
+    },
+    {
+      "preferred": "周济",
+      "variants": [
+        "赒济"
+      ]
+    },
+    {
+      "preferred": "转悠",
+      "variants": [
+        "转游"
+      ]
+    },
+    {
+      "preferred": "装潢",
+      "variants": [
+        "装璜"
+      ]
+    },
+    {
+      "preferred": "孜孜",
+      "variants": [
+        "孳孳"
+      ]
+    },
+    {
+      "preferred": "姿势",
+      "variants": [
+        "姿式"
+      ]
+    },
+    {
+      "preferred": "仔细",
+      "variants": [
+        "子细"
+      ]
+    },
+    {
+      "preferred": "自个儿",
+      "variants": [
+        "自各儿"
+      ]
+    },
+    {
+      "preferred": "佐证",
+      "variants": [
+        "左证"
+      ]
+    }
+  ]
+}

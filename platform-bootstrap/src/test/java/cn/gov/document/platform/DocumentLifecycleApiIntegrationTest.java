@@ -522,9 +522,7 @@ class DocumentLifecycleApiIntegrationTest {
                         .header("X-User-Id", "editor-1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"confirmed\":true}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.currentVersion").value(8))
-                .andExpect(jsonPath("$.data.paragraphs[2].contentSourceLevel").value("无来源"));
+                .andExpect(status().isUnprocessableEntity());
         String oaRequest = "{\"businessId\":\"OA-2026-001\",\"writingTaskId\":\"" + taskId
                 + "\",\"documentFileId\":\"FILE-10001\"}";
         mockMvc.perform(post("/api/v1/integrations/oa/review-tasks")

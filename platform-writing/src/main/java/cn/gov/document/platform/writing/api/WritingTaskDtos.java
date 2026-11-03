@@ -60,6 +60,8 @@ public final class WritingTaskDtos {
 
     public record StatusRequest(@NotBlank String status, @NotNull Integer lockVersion, String reason) {}
 
+    public record RenameRequest(@NotBlank @Size(max = 200) String title, @NotNull Integer lockVersion) {}
+
     public record Response(
             String id,
             String taskName,

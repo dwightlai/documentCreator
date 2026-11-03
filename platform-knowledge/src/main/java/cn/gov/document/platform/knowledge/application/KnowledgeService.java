@@ -6,6 +6,7 @@ import cn.gov.document.platform.common.file.DocxSecurityValidator;
 import cn.gov.document.platform.knowledge.api.KnowledgeDtos;
 import cn.gov.document.platform.knowledge.domain.*;
 import cn.gov.document.platform.knowledge.persistence.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +18,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.springframework.security.core.Authentication;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,8 @@ public class KnowledgeService {
     private final KnowledgeSourceMapper sourceMapper;
     private final KnowledgeDocumentMapper documentMapper;
     private final KnowledgeChunkMapper chunkMapper;
+    private final JdbcTemplate jdbc;
+    private final ObjectMapper json;
     private final KnowledgeFileStore fileStore;
     private final cn.gov.document.platform.common.ocr.OcrPort ocr;
     private final cn.gov.document.platform.knowledge.vector.EmbeddingClient embeddings;
@@ -44,6 +48,8 @@ public class KnowledgeService {
             KnowledgeSourceMapper sourceMapper,
             KnowledgeDocumentMapper documentMapper,
             KnowledgeChunkMapper chunkMapper,
+            JdbcTemplate jdbc,
+            ObjectMapper json,
             KnowledgeFileStore fileStore,
             cn.gov.document.platform.common.ocr.OcrPort ocr,
             cn.gov.document.platform.knowledge.vector.EmbeddingClient embeddings,
@@ -51,6 +57,8 @@ public class KnowledgeService {
         this.sourceMapper = sourceMapper;
         this.documentMapper = documentMapper;
         this.chunkMapper = chunkMapper;
+        this.jdbc = jdbc;
+        this.json = json;
         this.fileStore = fileStore;
         this.ocr = ocr;
         this.embeddings = embeddings;
@@ -71,7 +79,7 @@ public class KnowledgeService {
         e.setTenantId(RequestContext.tenantId());
         e.setSourceCode(request.sourceCode().trim());
         e.setSourceName(request.sourceName().trim());
-        e.setCategory(request.category());
+        e.setCategory(category(request.category()));
         e.setStorageType(request.storageType());
         e.setVectorModel(request.vectorModel());
         e.setVectorDimensions(request.vectorDimensions());
@@ -91,6 +99,38 @@ public class KnowledgeService {
                 .toList();
     }
 
+    @Transactional
+    public KnowledgeDtos.SourceResponse updateSource(String id, KnowledgeDtos.UpdateSourceRequest request) {
+        KnowledgeSourceEntity source = requireSource(id);
+        if (!source.getStorageType().equals(request.storageType())
+                && documentMapper.selectCount(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
+                        .eq(KnowledgeDocumentEntity::getSourceId, id)) > 0)
+            throw BusinessException.conflict("知识库已有文档，不能更改存储类型");
+        if (request.storageType().contains("向量")
+                && (!StringUtils.hasText(request.vectorModel()) || request.vectorDimensions() == null))
+            throw BusinessException.unprocessable("向量或混合知识库必须配置向量模型和维度");
+        source.setLockVersion(request.lockVersion());
+        source.setSourceName(request.sourceName().trim());
+        if (!source.getCategory().equals(category(request.category())))
+            throw BusinessException.conflict("知识库分类在创建后固定，请使用单独的调整分类操作");
+        source.setStorageType(request.storageType());
+        source.setVectorModel(request.vectorModel());
+        source.setVectorDimensions(request.vectorDimensions());
+        source.setPermissionScope(request.permissionScope());
+        if (sourceMapper.updateById(source) != 1) throw BusinessException.conflict("知识库已被其他用户修改");
+        return KnowledgeDtos.SourceResponse.from(requireSource(id));
+    }
+
+    @Transactional
+    public void deleteSource(String id) {
+        requireSource(id);
+        List<String> documentIds = documentMapper.selectList(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
+                        .eq(KnowledgeDocumentEntity::getSourceId, id))
+                .stream().map(KnowledgeDocumentEntity::getId).toList();
+        for (String documentId : documentIds) deleteDocument(id, documentId);
+        sourceMapper.deleteById(id);
+    }
+
     public List<KnowledgeDtos.DocumentResponse> documents(String sourceId) {
         requireSource(sourceId);
         return documentMapper
@@ -100,6 +140,183 @@ public class KnowledgeService {
                 .stream()
                 .map(KnowledgeDtos.DocumentResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public KnowledgeDtos.SourceResponse reclassifySource(String id, String category, int lockVersion) {
+        KnowledgeSourceEntity source = requireSource(id);
+        source.setLockVersion(lockVersion);
+        source.setCategory(category(category));
+        if (sourceMapper.updateById(source) != 1) throw BusinessException.conflict("知识库已被其他用户修改");
+        return KnowledgeDtos.SourceResponse.from(requireSource(id));
+    }
+
+    @Transactional
+    public KnowledgeDtos.DocumentResponse updateDocument(
+            String sourceId, String documentId, KnowledgeDtos.UpdateDocumentRequest request) {
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        snapshotRevision(sourceId, document);
+        if (request.effectiveDate() != null && request.expiryDate() != null
+                && request.expiryDate().isBefore(request.effectiveDate()))
+            throw BusinessException.unprocessable("失效日期不得早于生效日期");
+        if (!List.of("公开", "内部", "秘密", "机密").contains(request.permissionLevel()))
+            throw BusinessException.unprocessable("无效的数据权限");
+        document.setLockVersion(request.lockVersion());
+        document.setDocumentTitle(request.documentTitle().trim());
+        document.setMetadata(StringUtils.hasText(request.metadata()) ? request.metadata() : "{}");
+        document.setAuthorityLevel(request.authorityLevel().trim());
+        document.setEffectiveDate(request.effectiveDate());
+        document.setExpiryDate(request.expiryDate());
+        document.setPermissionLevel(request.permissionLevel());
+        if (request.usageType() != null) {
+            if (!List.of("规范依据", "事实依据", "写法参考", "待分类").contains(request.usageType()))
+                throw BusinessException.unprocessable("无效的写作用途");
+            document.setUsageType(request.usageType());
+        }
+        if (request.completeness() != null) {
+            if (!List.of("本地原文可用", "原文摘录", "来源索引").contains(request.completeness()))
+                throw BusinessException.unprocessable("无效的原文完整性状态");
+            if ("本地原文可用".equals(request.completeness())
+                    && !StringUtils.hasText(document.getOriginalFilePath())
+                    && !isPackagedOfflineOriginal(document))
+                throw BusinessException.unprocessable("缺少本地原文文件，不能标记为本地原文可用");
+            document.setCompleteness(request.completeness());
+        }
+        if (request.verificationStatus() != null) {
+            if (!List.of("待整理", "待审核", "待核验", "已核验", "退回").contains(request.verificationStatus()))
+                throw BusinessException.unprocessable("无效的核验状态");
+            document.setVerificationStatus(request.verificationStatus());
+            if ("已核验".equals(request.verificationStatus())) {
+                document.setReviewedBy(RequestContext.userId());
+                document.setReviewedAt(OffsetDateTime.now());
+            } else { document.setReviewedBy(null); document.setReviewedAt(null); }
+        }
+        if (request.validityStatus() != null) {
+            if (!List.of("待核验", "现行", "尚未施行", "已失效", "已废止", "被替代", "不适用").contains(request.validityStatus()))
+                throw BusinessException.unprocessable("无效的效力状态");
+            document.setValidityStatus(request.validityStatus());
+        }
+        if (request.publisher() != null) document.setPublisher(request.publisher());
+        if (request.documentNumber() != null) document.setDocumentNumber(request.documentNumber());
+        if (request.issuedDate() != null) document.setIssuedDate(request.issuedDate());
+        if (request.applicableRegion() != null) document.setApplicableRegion(request.applicableRegion());
+        if (request.applicableAudience() != null) document.setApplicableAudience(request.applicableAudience());
+        if (request.applicableScope() != null) document.setApplicableScope(request.applicableScope());
+        document.setDocumentVersion(document.getDocumentVersion() + 1);
+        if (documentMapper.updateById(document) != 1) throw BusinessException.conflict("文档已被其他用户修改");
+        return KnowledgeDtos.DocumentResponse.from(requireDocument(sourceId, documentId));
+    }
+
+    @Transactional
+    public void deleteDocument(String sourceId, String documentId) {
+        KnowledgeSourceEntity source = requireSource(sourceId);
+        requireDocument(sourceId, documentId);
+        Integer selections = jdbc.queryForObject("SELECT COUNT(*) FROM ai_writing_knowledge_selection WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false", Integer.class, RequestContext.tenantId(), documentId);
+        Integer citations = jdbc.queryForObject("SELECT COUNT(*) FROM ai_document_citation WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false", Integer.class, RequestContext.tenantId(), documentId);
+        if ((selections != null && selections > 0) || (citations != null && citations > 0))
+            throw BusinessException.conflict("该原文已被写作任务选用或引用，请先移除选用；历史引用须保留原文");
+        if (vectorEnabled(source)) vectorStore.deleteByDocument(RequestContext.tenantId(), documentId);
+        chunkMapper.delete(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+                .eq(KnowledgeChunkEntity::getDocumentId, documentId));
+        documentMapper.deleteById(documentId);
+        source.setEntryCount(Math.toIntExact(documentMapper.selectCount(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
+                .eq(KnowledgeDocumentEntity::getSourceId, sourceId))));
+        source.setLastSyncTime(OffsetDateTime.now());
+        sourceMapper.updateById(source);
+    }
+
+    public List<KnowledgeDtos.ChunkResponse> chunks(String sourceId, String documentId) {
+        requireDocument(sourceId, documentId);
+        return chunkMapper.selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+                        .eq(KnowledgeChunkEntity::getDocumentId, documentId)
+                        .orderByAsc(KnowledgeChunkEntity::getChunkOrder))
+                .stream().map(KnowledgeDtos.ChunkResponse::from).toList();
+    }
+
+    public KnowledgeDtos.ReadResponse readDocument(String sourceId, String documentId) {
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        if (rank(document.getPermissionLevel()) > clearance())
+            throw BusinessException.unprocessable("无权查看该知识文档");
+        return new KnowledgeDtos.ReadResponse(KnowledgeDtos.DocumentResponse.from(document), chunks(sourceId, documentId));
+    }
+
+    public String sourceIdForDocument(String documentId) {
+        KnowledgeDocumentEntity document = documentMapper.selectById(documentId);
+        if (document == null) throw BusinessException.notFound("知识文档不存在");
+        return document.getSourceId();
+    }
+
+    public boolean isCitationCurrent(String documentId, String chunkId, Integer version,
+            String fileHash, String sourceExcerpt) {
+        KnowledgeDocumentEntity document = documentMapper.selectById(documentId);
+        if (document == null || !"已核验".equals(document.getVerificationStatus())
+                || "来源索引".equals(document.getCompleteness())
+                || !Objects.equals(document.getDocumentVersion(), version)
+                || !Objects.equals(document.getOriginalFileHash(), fileHash)
+                || rank(document.getPermissionLevel()) > clearance()) return false;
+        KnowledgeSourceEntity source = sourceMapper.selectById(document.getSourceId());
+        if (source == null || !Boolean.TRUE.equals(source.getIsActive())) return false;
+        if (List.of("已失效", "已废止", "被替代").contains(document.getValidityStatus())
+                || "规范依据".equals(document.getUsageType())
+                        && !"现行".equals(document.getValidityStatus())) return false;
+        LocalDate today = LocalDate.now();
+        if (document.getEffectiveDate() != null && document.getEffectiveDate().isAfter(today)
+                || document.getExpiryDate() != null && document.getExpiryDate().isBefore(today)) return false;
+        KnowledgeChunkEntity chunk = chunkMapper.selectById(chunkId);
+        return chunk != null && documentId.equals(chunk.getDocumentId())
+                && StringUtils.hasText(sourceExcerpt) && chunk.getChunkText().contains(sourceExcerpt);
+    }
+
+    public List<KnowledgeDtos.RevisionResponse> revisions(String sourceId, String documentId) {
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        if (rank(document.getPermissionLevel()) > clearance())
+            throw BusinessException.unprocessable("无权查看该知识文档历史");
+        return jdbc.query("SELECT document_version,snapshot_json,captured_by,captured_at FROM ai_knowledge_document_revision WHERE tenant_id=? AND document_id=? ORDER BY document_version DESC",
+                (rs, row) -> new KnowledgeDtos.RevisionResponse(rs.getInt(1), rs.getString(2), rs.getString(3),
+                        rs.getObject(4, OffsetDateTime.class)), RequestContext.tenantId(), documentId);
+    }
+
+    private void snapshotRevision(String sourceId, KnowledgeDocumentEntity document) {
+        try {
+            String snapshot = json.writeValueAsString(Map.of(
+                    "document", KnowledgeDtos.DocumentResponse.from(document),
+                    "chunks", chunks(sourceId, document.getId())));
+            jdbc.update("INSERT INTO ai_knowledge_document_revision (id,tenant_id,document_id,document_version,snapshot_json,captured_by,captured_at) VALUES (?,?,?,?,?,?,?)",
+                    UUID.randomUUID().toString().replace("-", ""), RequestContext.tenantId(), document.getId(),
+                    document.getDocumentVersion(), snapshot, RequestContext.userId(), OffsetDateTime.now());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException error) {
+            throw new IllegalStateException("知识文档历史版本保存失败", error);
+        }
+    }
+
+    private boolean isPackagedOfflineOriginal(KnowledgeDocumentEntity document) {
+        if (!StringUtils.hasText(document.getExtractedText())) return false;
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public_source_pack_entry WHERE tenant_id=? AND document_id=? AND entry_code LIKE 'OFFLINE-%'",
+                Integer.class, RequestContext.tenantId(), document.getId());
+        return count != null && count > 0;
+    }
+
+    @Transactional
+    public KnowledgeDtos.ChunkResponse updateChunk(
+            String sourceId, String documentId, String chunkId, KnowledgeDtos.UpdateChunkRequest request) {
+        KnowledgeSourceEntity source = requireSource(sourceId);
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        snapshotRevision(sourceId, document);
+        if (!"已完成".equals(document.getParsedStatus())) throw BusinessException.conflict("文档尚未完成解析");
+        KnowledgeChunkEntity chunk = chunkMapper.selectById(chunkId);
+        if (chunk == null || !documentId.equals(chunk.getDocumentId())) throw BusinessException.notFound("切片不存在");
+        String text = request.chunkText().trim();
+        chunk.setLockVersion(request.lockVersion());
+        chunk.setChunkText(text);
+        chunk.setChunkTextHash(sha256(text.getBytes(StandardCharsets.UTF_8)));
+        if (chunkMapper.updateById(chunk) != 1) throw BusinessException.conflict("切片已被其他用户修改");
+        document.setDocumentVersion(document.getDocumentVersion() + 1);
+        document.setVerificationStatus("待核验");
+        document.setReviewedBy(null);
+        document.setReviewedAt(null);
+        documentMapper.updateById(document);
+        if (vectorEnabled(source)) index(source, documentId, List.of(chunk));
+        return KnowledgeDtos.ChunkResponse.from(chunkMapper.selectById(chunkId));
     }
 
     @Transactional
@@ -150,6 +367,10 @@ public class KnowledgeService {
         e.setChunkCount(0);
         e.setDocumentVersion(1);
         e.setExtractedText(extracted);
+        e.setUsageType("待分类");
+        e.setCompleteness("本地原文可用");
+        e.setVerificationStatus("待核验");
+        e.setValidityStatus("待核验");
         documentMapper.insert(e);
         source.setEntryCount(source.getEntryCount() + 1);
         source.setLastSyncTime(OffsetDateTime.now());
@@ -369,7 +590,8 @@ public class KnowledgeService {
                             d.getPermissionLevel(),
                             Math.round(Math.min(1.0, e.getValue() / best) * 1000) / 1000.0,
                             d.getOriginalFileHash(),
-                            matchType.get(e.getKey()));
+                            matchType.get(e.getKey()), d.getUsageType(), d.getCompleteness(),
+                            d.getVerificationStatus(), d.getValidityStatus(), d.getDocumentVersion());
                 })
                 .toList();
     }
@@ -442,6 +664,53 @@ public class KnowledgeService {
         if (e == null || !sourceId.equals(e.getSourceId())) throw BusinessException.notFound("知识文档不存在");
         return e;
     }
+
+    private String category(String value) {
+        if (!StringUtils.hasText(value) || value.trim().length() > 100)
+            throw BusinessException.unprocessable("知识库分类必须填写，且不超过 100 字");
+        return value.trim();
+    }
+
+    /** 在显式选用时核查权限、原文和效力；检索命中本身不构成依据。 */
+    public WritingExcerpt requireWritingExcerpt(String sourceId, String documentId, String chunkId, String usageType) {
+        return writingExcerpt(sourceId, documentId, chunkId, usageType, true);
+    }
+
+    /** 已选用内容的后台生成重核；异步任务保留用户 ID，但没有 HTTP SecurityContext。 */
+    public WritingExcerpt requireWritingExcerptForGeneration(String sourceId, String documentId, String chunkId,
+            String usageType) {
+        return writingExcerpt(sourceId, documentId, chunkId, usageType, false);
+    }
+
+    private WritingExcerpt writingExcerpt(String sourceId, String documentId, String chunkId,
+            String usageType, boolean checkClearance) {
+        KnowledgeSourceEntity source = requireSource(sourceId);
+        KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
+        if (!Boolean.TRUE.equals(source.getIsActive()) || !"已完成".equals(document.getParsedStatus()))
+            throw BusinessException.unprocessable("知识文档不可用或尚未解析");
+        if (checkClearance && rank(document.getPermissionLevel()) > clearance())
+            throw BusinessException.unprocessable("无权使用该知识文档");
+        if (!"已核验".equals(document.getVerificationStatus()) || "来源索引".equals(document.getCompleteness()))
+            throw BusinessException.unprocessable("请先核验本地原文，来源索引不能进入生成");
+        LocalDate today = LocalDate.now();
+        if (document.getEffectiveDate() != null && document.getEffectiveDate().isAfter(today)
+                || document.getExpiryDate() != null && document.getExpiryDate().isBefore(today))
+            throw BusinessException.unprocessable("知识文档不在有效日期内");
+        if (!List.of("规范依据", "事实依据", "写法参考").contains(usageType)
+                || !usageType.equals(document.getUsageType()))
+            throw BusinessException.unprocessable("请先核对文档写作用途");
+        if ("规范依据".equals(usageType) && !"现行".equals(document.getValidityStatus()))
+            throw BusinessException.unprocessable("规范依据尚未核验为现行有效");
+        KnowledgeChunkEntity chunk = chunkMapper.selectById(chunkId);
+        if (chunk == null || !documentId.equals(chunk.getDocumentId())) throw BusinessException.notFound("原文切片不存在");
+        return new WritingExcerpt(sourceId, source.getSourceName(), documentId, document.getDocumentTitle(),
+                document.getDocumentVersion(), chunkId, chunk.getChunkText(), document.getOriginalFileHash(),
+                usageType, document.getCompleteness(), document.getVerificationStatus(), document.getValidityStatus());
+    }
+
+    public record WritingExcerpt(String sourceId, String sourceName, String documentId, String documentTitle,
+            int documentVersion, String chunkId, String text, String fileHash, String usageType,
+            String completeness, String verificationStatus, String validityStatus) {}
 
     private String sha256(byte[] value) {
         try {

@@ -89,6 +89,17 @@ class OaWritingSubmissionIntegrationTest {
         int version = submitted.path("documentVersion").asInt();
         assertThat(submitted.path("businessId").asText()).isEqualTo("DOC-2026-00128");
         assertThat(submitted.path("gate").path("passed").asBoolean()).isTrue();
+        JsonNode oaStatus = data(mockMvc.perform(get("/api/v1/integrations/oa/writing-tasks/{id}", taskId)
+                .param("businessId", "DOC-2026-00128").header("X-Tenant-Id", TENANT)));
+        assertThat(oaStatus.path("latestSubmission").path("documentVersion").asInt()).isEqualTo(version);
+        JsonNode foundByBusinessId = data(mockMvc.perform(get("/api/v1/integrations/oa/writing-tasks")
+                .param("businessId", "DOC-2026-00128").header("X-Tenant-Id", TENANT)));
+        assertThat(foundByBusinessId.path("writingTask").path("id").asText()).isEqualTo(taskId);
+        data(mockMvc.perform(get("/api/v1/integrations/oa/writing-tasks/{id}/document/versions/{v}", taskId, version)
+                .param("businessId", "DOC-2026-00128").header("X-Tenant-Id", TENANT)));
+        mockMvc.perform(get("/api/v1/integrations/oa/writing-tasks/{id}/document/versions/{v}", taskId, version)
+                        .param("businessId", "OTHER").header("X-Tenant-Id", TENANT))
+                .andExpect(status().isNotFound());
         // 提交版本被保护，不会被版本保留策略清理
         boolean protectedVersion = false;
         for (JsonNode v : data(mockMvc.perform(

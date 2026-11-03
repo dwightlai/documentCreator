@@ -133,7 +133,9 @@ class ModelInvocationIntegrationTest {
                     .andExpect(jsonPath("$.data[0].promptTemplateId").value(promptId))
                     .andExpect(jsonPath("$.data[0].costAmount").value(0.0014))
                     .andExpect(jsonPath("$.data[0].inputSummary")
-                            .value(org.hamcrest.Matchers.containsString("raw_content_logged=false")));
+                            .value(org.hamcrest.Matchers.containsString("chars=")))
+                    .andExpect(jsonPath("$.data[0].inputContent").isNotEmpty())
+                    .andExpect(jsonPath("$.data[0].outputContent").isNotEmpty());
             String writingBody = mockMvc.perform(
                             post("/api/v1/writing-tasks")
                                     .header("X-Tenant-Id", tenant)

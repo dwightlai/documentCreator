@@ -43,6 +43,7 @@ platform:
     allowed-origins: ${PLATFORM_ALLOWED_ORIGINS}
   integration:
     oa:
+      allowed-client-ids: ${OA_ALLOWED_CLIENT_IDS:}
       callback-allowlist: ${OA_CALLBACK_ALLOWLIST:}
       shared-secret: ${OA_SHARED_SECRET:}
       callback-timeout: ${OA_CALLBACK_TIMEOUT:10s}
@@ -57,3 +58,4 @@ platform:
   model:
     allow-http-local: false
     allowed-endpoints: ${MODEL_ALLOWED_ENDPOINTS:}
+    proxy-url: ${MODEL_PROXY_URL:}

@@ -1,0 +1,122 @@
+{
+  "code": "CN-OFFICIAL-DOCUMENT-BASE",
+  "version": "2026.11.03-5",
+  "title": "党政机关公文可执行审校规则包（依据公开规范整理）",
+  "scope": "发文字号、成文日期和标点的明确格式检查；GF 1001—2001 异形词推荐词形提示",
+  "sources": {
+    "format": "GB/T 9704—2012《党政机关公文格式》（现行），https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=F3CC9BEF482524C895FDA7A08BB4A70E；标准文本公开页：https://zjjcmspublic.oss-cn-hangzhou-zwynet-d01-a.internet.cloud.zj.gov.cn/jcms_files/jcms1/web3124/site/attach/0/8373ff13032a45a180308bc53c4f75a8.pdf",
+    "punctuation": "GB/T 15834—2011《标点符号用法》（现行），https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=22EA6D162E4110E752259661E1A0D0A8；标准文本公开页：https://www.zhangye.gov.cn/szb/dzdt/zsbx/201811/t20181129_138125_ghb.html",
+    "variant-words": "GF 1001—2001《第一批异形词整理表》（推荐性试行规范），https://www.moe.gov.cn/jyb_sjzl/ziliao/A19/201001/t20100115_75687.html；标准文本：https://www.moe.gov.cn/ewebeditor/uploadfile/2015/01/12/20150112165927212.pdf"
+  },
+  "dictionaries": [
+    {
+      "code": "NAT-VARIANT-WORDS-GF1001-2001",
+      "name": "第一批异形词推荐词形",
+      "type": "推荐词形",
+      "source": "variant-words",
+      "clause": "正文推荐词形表（338组）",
+      "dataResource": "standards/gf1001-2001-variants.json"
+    }
+  ],
+  "rules": [
+    {
+      "code": "STD-ISSUE-YEAR-BRACKETS",
+      "name": "发文字号年份使用六角括号",
+      "category": "格式与版式",
+      "risk": "一般",
+      "method": "正则",
+      "expression": "[\\[【（(]([12]\\d{3})[\\]】）)](?=\\d+号)=>〔$1〕",
+      "source": "format",
+      "clause": "7.2.5",
+      "types": []
+    },
+    {
+      "code": "STD-ISSUE-ORDER-LEADING-ZERO",
+      "name": "发文顺序号不编虚位",
+      "category": "格式与版式",
+      "risk": "一般",
+      "method": "正则",
+      "expression": "〔([12]\\d{3})〕0+([1-9]\\d*)号=>〔$1〕$2号",
+      "source": "format",
+      "clause": "7.2.5",
+      "types": []
+    },
+    {
+      "code": "STD-ISSUE-ORDER-DI",
+      "name": "发文顺序号不加第字",
+      "category": "格式与版式",
+      "risk": "一般",
+      "method": "正则",
+      "expression": "〔([12]\\d{3})〕第(\\d+)号=>〔$1〕$2号",
+      "source": "format",
+      "clause": "7.2.5",
+      "types": []
+    },
+    {
+      "code": "STD-PUNCT-ELLIPSIS",
+      "name": "中文语句中的省略号形式",
+      "category": "语言文字",
+      "risk": "提示",
+      "method": "正则",
+      "expression": "(?<=[\\p{IsHan}])\\.{3,}(?=[\\p{IsHan}，。；：！？])=>……",
+      "source": "punctuation",
+      "clause": "4.11.2",
+      "types": []
+    },
+    {
+      "code": "STD-VARIANT-GF1001",
+      "name": "第一批异形词推荐词形提示",
+      "category": "语言文字",
+      "risk": "提示",
+      "method": "词库",
+      "expression": "NAT-VARIANT-WORDS-GF1001-2001",
+      "source": "variant-words",
+      "clause": "正文推荐词形表（338组）",
+      "types": []
+    },
+    {
+      "code": "STD-DATE-MONTH-LEADING-ZERO",
+      "name": "成文日期月份不编虚位",
+      "category": "格式与版式",
+      "risk": "一般",
+      "method": "正则",
+      "expression": "([12]\\d{3}年)0([1-9])月=>$1$2月",
+      "source": "format",
+      "clause": "7.3.5.4",
+      "types": []
+    },
+    {
+      "code": "STD-DATE-DAY-LEADING-ZERO",
+      "name": "成文日期日期不编虚位",
+      "category": "格式与版式",
+      "risk": "一般",
+      "method": "正则",
+      "expression": "([12]\\d{3}年(?:0?[1-9]|1[0-2])月)0([1-9])日=>$1$2日",
+      "source": "format",
+      "clause": "7.3.5.4",
+      "types": []
+    },
+    {
+      "code": "STD-PUNCT-REPEATED-COMMA",
+      "name": "连续重复逗号提示",
+      "category": "语言文字",
+      "risk": "提示",
+      "method": "正则",
+      "expression": "，{2,}=>，",
+      "source": "punctuation",
+      "clause": "第4章：逗号用法",
+      "types": []
+    },
+    {
+      "code": "STD-PUNCT-REPEATED-PERIOD",
+      "name": "连续重复句号提示",
+      "category": "语言文字",
+      "risk": "提示",
+      "method": "正则",
+      "expression": "。{2,}=>。",
+      "source": "punctuation",
+      "clause": "第4章：句号用法",
+      "types": []
+    }
+  ]
+}

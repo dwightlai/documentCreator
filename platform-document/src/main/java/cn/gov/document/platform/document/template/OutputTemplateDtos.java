@@ -55,4 +55,6 @@ public final class OutputTemplateDtos {
             String approvedBy,
             OffsetDateTime approvedAt,
             OffsetDateTime createdAt) {}
+
+    public record UsageItem(String kind, String refId, String title, String status) {}
 }

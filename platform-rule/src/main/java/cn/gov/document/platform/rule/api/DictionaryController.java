@@ -34,6 +34,20 @@ public class DictionaryController {
         return ApiResponse.success(service.dictionary(dictId));
     }
 
+    @PutMapping("/{dictId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<DictionaryDtos.DictionaryResponse> update(
+            @PathVariable String dictId, @Valid @RequestBody DictionaryDtos.UpdateDictionaryRequest request) {
+        return ApiResponse.success(service.updateDictionary(dictId, request));
+    }
+
+    @DeleteMapping("/{dictId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String dictId) {
+        service.deleteDictionary(dictId);
+        return ApiResponse.success(null);
+    }
+
     @GetMapping("/{dictId}/terms")
     ApiResponse<List<DictionaryDtos.TermResponse>> terms(
             @PathVariable String dictId,

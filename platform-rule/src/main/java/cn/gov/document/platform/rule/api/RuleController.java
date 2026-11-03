@@ -40,6 +40,13 @@ public class RuleController {
         return ApiResponse.success(service.update(ruleId, request));
     }
 
+    @DeleteMapping("/{ruleId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String ruleId) {
+        service.delete(ruleId);
+        return ApiResponse.success(null);
+    }
+
     @PostMapping("/{ruleId}/test")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<RuleDtos.TestResponse> test(

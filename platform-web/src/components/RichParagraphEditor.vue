@@ -8,7 +8,7 @@ import { plainTextOf, type SelectionRewrite } from '@/editor/richText'
 
 /**
  * A7 段落富文本编辑器。只启用公文正文需要的格式（加粗、倾斜、下划线、列表、表格），与服务端 RichContent 白名单一致；
- * 粘贴进来的标题、图片、链接等会被编辑器规范为普通段落或丢弃。内容只在挂载时读取：保存后段落形成新版本、ID 变化，组件随之重建。
+ * 粘贴进来的标题、图片、链接等会被编辑器规范为普通段落或丢弃。
  */
 
 const props = defineProps<{ content: JSONContent; editable: boolean; label: string }>()
@@ -150,7 +150,7 @@ const groups = [
 .rich-toolbar-group:last-child{border-right:0}
 .rich-toolbar button{min-width:30px;height:28px;padding:0 7px;border:1px solid transparent;background:transparent;color:#2f3430;font-size:13px;cursor:pointer}
 .rich-toolbar button:hover:not(:disabled){border-color:#aaa397;background:#fff}
-.rich-toolbar button.active{background:#17231e;color:#fff}
+.rich-toolbar button.active{background:#fdf0ef;color:#c4302b;border-color:#e8aaa6}
 .rich-toolbar-group.ai button:not(:disabled){color:#1a56db}
 .rich-toolbar-group.ai button:hover:not(:disabled){border-color:#1a56db;background:#e8f0fe}
 .rich-toolbar button:disabled{color:#8c877e;cursor:not-allowed}

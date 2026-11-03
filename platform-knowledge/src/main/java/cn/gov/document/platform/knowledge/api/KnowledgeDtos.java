@@ -17,6 +17,18 @@ public final class KnowledgeDtos {
             @Min(1) Integer vectorDimensions,
             String permissionScope) {}
 
+    public record UpdateSourceRequest(
+            @NotBlank @Size(max = 200) String sourceName,
+            @NotBlank String category,
+            @NotBlank String storageType,
+            String vectorModel,
+            @Min(1) Integer vectorDimensions,
+            String permissionScope,
+            @NotNull Integer lockVersion) {}
+
+    public record ReclassifySourceRequest(@NotBlank @Size(max = 100) String category,
+                                          @NotNull Integer lockVersion) {}
+
     public record SourceResponse(
             String id,
             String sourceCode,
@@ -61,7 +73,19 @@ public final class KnowledgeDtos {
             String permissionLevel,
             int chunkCount,
             int documentVersion,
-            int lockVersion) {
+            int lockVersion,
+            String usageType,
+            String completeness,
+            String verificationStatus,
+            String validityStatus,
+            String publisher,
+            String documentNumber,
+            LocalDate issuedDate,
+            String applicableRegion,
+            String applicableAudience,
+            String applicableScope,
+            String reviewedBy,
+            OffsetDateTime reviewedAt) {
         public static DocumentResponse from(KnowledgeDocumentEntity e) {
             return new DocumentResponse(
                     e.getId(),
@@ -77,11 +101,46 @@ public final class KnowledgeDtos {
                     e.getPermissionLevel(),
                     e.getChunkCount(),
                     e.getDocumentVersion(),
-                    e.getLockVersion());
+                    e.getLockVersion(),
+                    e.getUsageType(), e.getCompleteness(), e.getVerificationStatus(), e.getValidityStatus(),
+                    e.getPublisher(), e.getDocumentNumber(), e.getIssuedDate(), e.getApplicableRegion(),
+                    e.getApplicableAudience(), e.getApplicableScope(), e.getReviewedBy(), e.getReviewedAt());
         }
     }
 
+    public record UpdateDocumentRequest(
+            @NotBlank @Size(max = 500) String documentTitle,
+            String metadata,
+            @NotBlank String authorityLevel,
+            LocalDate effectiveDate,
+            LocalDate expiryDate,
+            @NotBlank String permissionLevel,
+            @NotNull Integer lockVersion,
+            String usageType,
+            String completeness,
+            String verificationStatus,
+            String validityStatus,
+            String publisher,
+            String documentNumber,
+            LocalDate issuedDate,
+            String applicableRegion,
+            String applicableAudience,
+            String applicableScope) {}
+
+    public record ChunkResponse(
+            String id, int chunkOrder, String chunkText, int startPosition, int endPosition,
+            Integer pageNumber, int lockVersion) {
+        public static ChunkResponse from(KnowledgeChunkEntity e) {
+            return new ChunkResponse(e.getId(), e.getChunkOrder(), e.getChunkText(), e.getStartPosition(),
+                    e.getEndPosition(), e.getPageNumber(), e.getLockVersion());
+        }
+    }
+
+    public record UpdateChunkRequest(@NotBlank @Size(max = 20000) String chunkText, @NotNull Integer lockVersion) {}
+
     public record ParseResponse(String documentId, String status, int chunkCount, List<String> warnings) {}
+    public record ReadResponse(DocumentResponse document, List<ChunkResponse> chunks) {}
+    public record RevisionResponse(int documentVersion, String snapshotJson, String capturedBy, OffsetDateTime capturedAt) {}
 
     public record SearchResponse(
             String sourceId,
@@ -96,5 +155,10 @@ public final class KnowledgeDtos {
             double score,
             String fileHash,
             /** 命中方式：关键词、语义或混合。 */
-            String matchType) {}
+            String matchType,
+            String usageType,
+            String completeness,
+            String verificationStatus,
+            String validityStatus,
+            int documentVersion) {}
 }

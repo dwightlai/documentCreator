@@ -106,6 +106,7 @@ services:
       OIDC_JWK_SET_URI: http://oidc:8180/realms/${OIDC_REALM:-document-platform}/protocol/openid-connect/certs
       PLATFORM_ALLOWED_ORIGINS: ${PLATFORM_ALLOWED_ORIGINS:-http://localhost:8088}
       OA_CALLBACK_ALLOWLIST: ${OA_CALLBACK_ALLOWLIST:-}
+      OA_ALLOWED_CLIENT_IDS: ${OA_ALLOWED_CLIENT_IDS:-}
       OA_SHARED_SECRET: ${OA_SHARED_SECRET:-}
       OA_CALLBACK_TIMEOUT: ${OA_CALLBACK_TIMEOUT:-10s}
       PLATFORM_STORAGE_TYPE: minio

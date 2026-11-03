@@ -38,4 +38,11 @@ public class ReviewPlanController {
             @PathVariable String id, @Valid @RequestBody ReviewPlanDtos.Request request) {
         return ApiResponse.success(service.update(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ApiResponse.success(null);
+    }
 }

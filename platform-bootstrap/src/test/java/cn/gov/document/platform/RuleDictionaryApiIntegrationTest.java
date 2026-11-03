@@ -32,6 +32,56 @@ class RuleDictionaryApiIntegrationTest {
     EffectiveReviewRuleProvider effectiveReviewRuleProvider;
 
     @Test
+    void editsAndDeletesRulesDictionariesAndTerms() throws Exception {
+        String tenant = "tenant-rule-crud";
+        String rule = mockMvc.perform(post("/api/v1/rules").header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ruleCode\":\"CRUD-001\",\"ruleName\":\"原规则\",\"category\":\"语言文字\",\"riskLevel\":\"一般\",\"detectionMethod\":\"词项\",\"ruleExpression\":\"原词=>新词\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String ruleId = objectMapper.readTree(rule).path("data").path("id").asText();
+        mockMvc.perform(put("/api/v1/rules/{id}", ruleId).header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ruleName\":\"修改后的规则\",\"category\":\"语言文字\",\"riskLevel\":\"一般\",\"detectionMethod\":\"词项\",\"ruleExpression\":\"错词=>正词\",\"changeDescription\":\"调整表达式\",\"lockVersion\":0}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.ruleName").value("修改后的规则"))
+                .andExpect(jsonPath("$.data.currentVersion").value(2));
+        mockMvc.perform(delete("/api/v1/rules/{id}", ruleId).header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/rules/{id}", ruleId).header("X-Tenant-Id", tenant))
+                .andExpect(status().isNotFound());
+
+        String dictionary = mockMvc.perform(post("/api/v1/dictionaries").header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dictCode\":\"CRUD-DICT\",\"dictName\":\"原词库\",\"dictType\":\"易错词\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String dictionaryId = objectMapper.readTree(dictionary).path("data").path("id").asText();
+        mockMvc.perform(put("/api/v1/dictionaries/{id}", dictionaryId).header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dictName\":\"修改后的词库\",\"dictType\":\"易错词\",\"lockVersion\":0}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.dictName").value("修改后的词库"));
+        String term = mockMvc.perform(post("/api/v1/dictionaries/{id}/terms", dictionaryId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"termText\":\"误词\",\"standardForm\":\"正词\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String termId = objectMapper.readTree(term).path("data").path("id").asText();
+        mockMvc.perform(put("/api/v1/dictionaries/{id}/terms/{termId}", dictionaryId, termId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termText\":\"误词\",\"standardForm\":\"正确形式\",\"lockVersion\":0}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.standardForm").value("正确形式"));
+        mockMvc.perform(delete("/api/v1/dictionaries/{id}/terms/{termId}", dictionaryId, termId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/dictionaries/{id}", dictionaryId).header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.entryCount").value(0));
+        mockMvc.perform(delete("/api/v1/dictionaries/{id}", dictionaryId).header("X-Tenant-Id", tenant)
+                        .header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/dictionaries/{id}", dictionaryId).header("X-Tenant-Id", tenant))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void enforcesRuleLifecycleAndImportsDictionaryTerms() throws Exception {
         String tenant = "tenant-rules";
         String createdBody = mockMvc.perform(
@@ -41,7 +91,7 @@ class RuleDictionaryApiIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         """
-                    {"ruleCode":"WORD-DEADLINE-001","ruleName":"截至用语规范","category":"规范",
+                    {"ruleCode":"WORD-DEADLINE-001","ruleName":"截至用语规范","category":"语言文字",
                      "applicableDocumentTypes":["请示","报告"],"riskLevel":"一般","detectionMethod":"词项",
                      "ruleExpression":"截止目前为止=>截至目前","basis":"现代汉语规范用法","changeDescription":"建立初版"}
                     """))
@@ -133,6 +183,19 @@ class RuleDictionaryApiIntegrationTest {
         mockMvc.perform(get("/api/v1/dictionaries/{id}/terms", dictionaryId).header("X-Tenant-Id", tenant))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(3));
+
+        String dictionaryRuleBody = mockMvc.perform(post("/api/v1/rules")
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ruleCode\":\"COMMON-MISTAKES-RULE\",\"ruleName\":\"核对常见易错词\",\"category\":\"语言文字\",\"riskLevel\":\"一般\",\"detectionMethod\":\"词库\",\"ruleExpression\":\"COMMON-MISTAKES\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String dictionaryRuleId = objectMapper.readTree(dictionaryRuleBody).path("data").path("id").asText();
+        mockMvc.perform(post("/api/v1/rules/{id}/submit-for-review", dictionaryRuleId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/rules/{id}/publish", dictionaryRuleId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
 
         RequestContext.set("rule-provider-test", tenant, "reviewer-1");
         try {

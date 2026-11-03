@@ -20,6 +20,8 @@ public final class DocumentCommentDtos {
         }
     }
 
+    public record UpdateRequest(@NotBlank @Size(max = 10000) String commentText) {}
+
     /**
      * @param paragraphId 批注创建时所在版本的段落
      * @param currentParagraphId 当前版本中同一位置的段落；段落已被删除时为空。正文每次保存都会形成新版本段落，前端按此字段把批注挂到当前段落上

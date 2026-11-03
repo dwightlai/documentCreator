@@ -41,6 +41,12 @@ public class PromptTemplateController {
         return ApiResponse.success(service.update(id, r));
     }
 
+    @DeleteMapping("/{id}")
+    ApiResponse<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ApiResponse.success(null);
+    }
+
     @PostMapping("/{id}/test")
     ApiResponse<PromptTemplateDtos.TestResponse> test(
             @PathVariable String id, @Valid @RequestBody PromptTemplateDtos.TestRequest r) {

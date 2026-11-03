@@ -4,6 +4,7 @@ import cn.gov.document.platform.common.api.ApiResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +15,11 @@ public class OaSubmissionController {
 
     public OaSubmissionController(OaWritingService service) {
         this.service = service;
+    }
+
+    @GetMapping("/api/v1/writing-tasks/{writingTaskId}/submissions/latest")
+    ApiResponse<OaIntegrationDtos.SubmissionProgress> latest(@PathVariable String writingTaskId) {
+        return ApiResponse.success(service.latestSubmission(writingTaskId));
     }
 
     /** 经提交门禁检查后，将当前文稿版本提交回 OA。 */

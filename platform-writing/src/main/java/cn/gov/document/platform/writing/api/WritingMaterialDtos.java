@@ -11,6 +11,9 @@ import java.util.List;
 public final class WritingMaterialDtos {
     private WritingMaterialDtos() {}
 
+    public record FromKnowledgeRequest(@NotBlank String sourceId, @NotBlank String documentId,
+            String chunkId, String outlineNodeId) {}
+
     public record CreateRequest(
             @NotBlank @Size(max = 500) String materialName,
             @NotBlank String sourceType,
@@ -24,7 +27,8 @@ public final class WritingMaterialDtos {
             String selectedFragment,
             Boolean locked,
             String fileHash,
-            String filePath) {}
+            String filePath,
+            String outlineNodeId) {}
 
     public record UpdateRequest(
             @NotBlank @Size(max = 500) String materialName,
@@ -43,6 +47,7 @@ public final class WritingMaterialDtos {
     public record Response(
             String id,
             String taskId,
+            String outlineNodeId,
             String materialName,
             String sourceType,
             String sourceId,
@@ -61,6 +66,7 @@ public final class WritingMaterialDtos {
             return new Response(
                     entity.getId(),
                     entity.getTaskId(),
+                    entity.getOutlineNodeId(),
                     entity.getMaterialName(),
                     entity.getSourceType(),
                     entity.getSourceId(),

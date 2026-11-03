@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 public class ModelGatewayProperties {
     private List<String> allowedEndpoints = new ArrayList<>();
     private boolean allowHttpLocal;
+    private String proxyUrl = "";
 
     public List<String> getAllowedEndpoints() {
         return allowedEndpoints;
@@ -25,5 +26,13 @@ public class ModelGatewayProperties {
 
     public void setAllowHttpLocal(boolean v) {
         allowHttpLocal = v;
+    }
+
+    public String getProxyUrl() {
+        return proxyUrl;
+    }
+
+    public void setProxyUrl(String v) {
+        proxyUrl = v == null ? "" : v;
     }
 }

@@ -27,11 +27,24 @@ public class ModelGatewayController {
         return ApiResponse.success(service.create(request));
     }
 
+    @GetMapping("/api/v1/model-configs/{id}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<ModelDtos.ConfigResponse> get(@PathVariable String id) {
+        return ApiResponse.success(service.get(id));
+    }
+
     @PutMapping("/api/v1/model-configs/{id}")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<ModelDtos.ConfigResponse> update(
             @PathVariable String id, @Valid @RequestBody ModelDtos.ConfigRequest request) {
         return ApiResponse.success(service.update(id, request));
+    }
+
+    @DeleteMapping("/api/v1/model-configs/{id}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/api/v1/model-call-logs")

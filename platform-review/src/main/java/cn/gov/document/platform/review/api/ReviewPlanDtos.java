@@ -12,7 +12,7 @@ public final class ReviewPlanDtos {
             @NotBlank @Size(max = 50) String planCode,
             @NotBlank @Size(max = 200) String planName,
             String applicableScenarios,
-            @NotEmpty List<@Pattern(regexp = "L[1-7]") String> reviewLevels,
+            @NotEmpty List<@Pattern(regexp = "政治与重要表述|政策法规与事实依据|公文业务规范|内容与逻辑|语言文字|格式与版式") String> reviewLevels,
             String ruleSetVersion,
             List<String> knowledgeScope,
             boolean allowExternalModel,

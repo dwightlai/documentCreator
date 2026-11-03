@@ -55,25 +55,21 @@ public class EffectiveReviewRuleProvider {
                 .eq(ReviewRuleEntity::getEnabled, true));
         for (ReviewRuleEntity rule : rules) {
             if (!isEffective(rule.getEffectiveDate(), rule.getExpiryDate(), today)
+                    || "人工核验".equals(rule.getDetectionMethod())
                     || !supportsDocumentType(rule.getApplicableDocumentTypes(), documentTypeCode)) {
                 continue;
             }
-            addRuleMatches(result, deduplication, rule, source);
-        }
-
-        List<String> activeDictionaryIds =
-                dictionaryMapper.selectList(new LambdaQueryWrapper<ReviewDictionaryEntity>()).stream()
-                        .filter(dictionary ->
-                                isEffective(dictionary.getEffectiveDate(), dictionary.getExpiryDate(), today))
-                        .map(ReviewDictionaryEntity::getId)
-                        .toList();
-        if (!activeDictionaryIds.isEmpty()) {
-            for (ReviewTermEntity term : termMapper.selectList(new LambdaQueryWrapper<ReviewTermEntity>()
-                    .in(ReviewTermEntity::getDictionaryId, activeDictionaryIds))) {
-                if (isEffective(term.getEffectiveDate(), term.getExpiryDate(), today)) {
-                    addTermMatches(result, deduplication, term, source);
+            if ("词库".equals(rule.getDetectionMethod())) {
+                ReviewDictionaryEntity dictionary = dictionaryMapper.selectOne(new LambdaQueryWrapper<ReviewDictionaryEntity>()
+                        .eq(ReviewDictionaryEntity::getDictCode, rule.getRuleExpression().trim()));
+                if (dictionary != null && isEffective(dictionary.getEffectiveDate(), dictionary.getExpiryDate(), today)) {
+                    for (ReviewTermEntity term : termMapper.selectList(new LambdaQueryWrapper<ReviewTermEntity>()
+                            .eq(ReviewTermEntity::getDictionaryId, dictionary.getId()))) {
+                        if (isEffective(term.getEffectiveDate(), term.getExpiryDate(), today))
+                            addTermMatches(result, deduplication, term, rule, source);
+                    }
                 }
-            }
+            } else addRuleMatches(result, deduplication, rule, source);
         }
         return result;
     }
@@ -91,7 +87,7 @@ public class EffectiveReviewRuleProvider {
                     result,
                     deduplication,
                     new Match(
-                            rule.getRuleCode(),
+                            rule.getRuleCode() + "@V" + rule.getCurrentVersion(),
                             rule.getCategory(),
                             defaultRisk(rule.getRiskLevel()),
                             matcher.start(),
@@ -105,7 +101,10 @@ public class EffectiveReviewRuleProvider {
         }
     }
 
-    private void addTermMatches(List<Match> result, Set<String> deduplication, ReviewTermEntity term, String text) {
+    private void addTermMatches(List<Match> result, Set<String> deduplication, ReviewTermEntity term, ReviewRuleEntity rule, String text) {
+        // A reference entry with the same standard form is correct terminology, not a correction to report.
+        if (!StringUtils.hasText(term.getStandardForm())
+                || term.getTermText().equals(term.getStandardForm().trim())) return;
         List<String> variants = new ArrayList<>();
         variants.add(term.getTermText());
         variants.addAll(readAliases(term.getAliases()));
@@ -119,9 +118,9 @@ public class EffectiveReviewRuleProvider {
                         result,
                         deduplication,
                         new Match(
-                                "DICT:" + term.getId(),
-                                StringUtils.hasText(term.getCategoryTag()) ? term.getCategoryTag() : "词语规范",
-                                defaultRisk(term.getRiskLevel()),
+                                rule.getRuleCode() + "@V" + rule.getCurrentVersion() + ":" + term.getId(),
+                                rule.getCategory(),
+                                defaultRisk(rule.getRiskLevel()),
                                 from,
                                 from + variant.length(),
                                 variant,

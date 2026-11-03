@@ -75,6 +75,36 @@ public class DocumentCommentService {
                         .orderByAsc(DocumentCommentEntity::getCreatedAt)));
     }
 
+    @Transactional
+    public DocumentCommentDtos.CommentResponse update(String documentId, String commentId, DocumentCommentDtos.UpdateRequest request) {
+        DocumentEntity document = requireDocument(documentId);
+        DocumentCommentEntity entity = requireComment(documentId, commentId);
+        if (!RequestContext.userId().equals(entity.getCommenterId()))
+            throw new BusinessException("FORBIDDEN", "只能编辑自己的批注", org.springframework.http.HttpStatus.FORBIDDEN);
+        if (Boolean.TRUE.equals(entity.getIsResolved()))
+            throw BusinessException.conflict("已解决的批注不能编辑");
+        entity.setCommentText(request.commentText().trim());
+        commentMapper.updateById(entity);
+        return withCurrentParagraphs(document, List.of(entity)).get(0);
+    }
+
+    @Transactional
+    public void delete(String documentId, String commentId) {
+        requireDocument(documentId);
+        DocumentCommentEntity entity = requireComment(documentId, commentId);
+        if (!RequestContext.userId().equals(entity.getCommenterId()))
+            throw new BusinessException("FORBIDDEN", "只能删除自己的批注", org.springframework.http.HttpStatus.FORBIDDEN);
+        commentMapper.deleteById(entity.getId());
+    }
+
+    private DocumentCommentEntity requireComment(String documentId, String commentId) {
+        DocumentCommentEntity entity = commentMapper.selectOne(new LambdaQueryWrapper<DocumentCommentEntity>()
+                .eq(DocumentCommentEntity::getId, commentId)
+                .eq(DocumentCommentEntity::getDocumentId, documentId));
+        if (entity == null) throw BusinessException.notFound("批注不存在");
+        return entity;
+    }
+
     /** 批注挂在创建时版本的段落上；按“大纲节点 + 段落序号”映射到当前版本同一位置的段落（与段落编辑的变基规则一致）。 */
     private List<DocumentCommentDtos.CommentResponse> withCurrentParagraphs(
             DocumentEntity document, List<DocumentCommentEntity> comments) {

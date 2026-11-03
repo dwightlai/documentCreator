@@ -1,0 +1,48 @@
+.el-overlay.is-message-box {
+  background: rgba(20, 27, 37, .46);
+  backdrop-filter: blur(2px);
+}
+
+.el-message-box {
+  --el-messagebox-width: 440px;
+  --el-messagebox-border-radius: 12px;
+  --el-messagebox-padding-primary: 24px;
+  border: 1px solid #e6e8ee;
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(20, 27, 37, .2);
+}
+
+.el-message-box__title {
+  color: #202635;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.el-message-box__message {
+  color: #596171;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.el-message-box__btns {
+  gap: 8px;
+  padding-top: 22px;
+}
+
+.el-message-box__btns .el-button {
+  min-width: 76px;
+  border-radius: 7px;
+}
+
+.el-message-box__btns .el-button--primary {
+  background: #c8322c;
+  border-color: #c8322c;
+}
+
+.el-message-box__btns .el-button--primary:hover {
+  background: #aa2823;
+  border-color: #aa2823;
+}
+
+.field-hint { display:block; margin-top:4px; color:#8a8680; font-size:12px; line-height:1.4; }
+.el-message { z-index: 4000 !important; }

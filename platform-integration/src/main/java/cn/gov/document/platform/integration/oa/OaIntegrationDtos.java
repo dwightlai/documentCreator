@@ -48,5 +48,16 @@ public final class OaIntegrationDtos {
             String callbackJobId,
             cn.gov.document.platform.review.api.SubmissionGateDtos.CheckResult gate) {}
 
+    public record SubmissionProgress(int documentVersion, java.time.OffsetDateTime submittedAt) {}
+
     public record CreateReviewResponse(ReviewDtos.TaskResponse reviewTask, String callbackJobId, String statusUrl) {}
+
+    public record ReviewResult(
+            ReviewDtos.TaskResponse reviewTask,
+            java.util.List<ReviewDtos.IssueResponse> issues,
+            java.util.List<cn.gov.document.platform.review.api.ReviewReportDtos.Response> reports) {}
+
+    public record WritingStatus(
+            cn.gov.document.platform.writing.api.WritingTaskDtos.Response writingTask,
+            SubmissionProgress latestSubmission) {}
 }

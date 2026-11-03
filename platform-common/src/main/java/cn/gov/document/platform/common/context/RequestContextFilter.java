@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.util.function.BiFunction;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -18,9 +20,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final boolean localHeadersEnabled;
+    private final BiFunction<String, String, List<String>> localRoles;
 
     public RequestContextFilter(@Value("${platform.security.local-header-enabled:false}") boolean localHeadersEnabled) {
+        this(localHeadersEnabled, (tenant, user) -> List.of("platform.user", "platform.reviewer", "platform.admin"));
+    }
+
+    public RequestContextFilter(boolean localHeadersEnabled, BiFunction<String, String, List<String>> localRoles) {
         this.localHeadersEnabled = localHeadersEnabled;
+        this.localRoles = localRoles;
     }
 
     @Override
@@ -34,14 +42,14 @@ public class RequestContextFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().getAuthentication();
         if (localHeadersEnabled
                 && !(previousAuthentication != null && previousAuthentication.getPrincipal() instanceof Jwt)) {
-            SecurityContextHolder.getContext()
-                    .setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                            identity.userId(),
-                            null,
-                            java.util.List.of(
-                                    new SimpleGrantedAuthority("ROLE_platform.user"),
-                                    new SimpleGrantedAuthority("ROLE_platform.reviewer"),
-                                    new SimpleGrantedAuthority("ROLE_platform.admin"))));
+            var roles = localRoles.apply(identity.tenantId(), identity.userId());
+            if (!roles.isEmpty()) {
+                SecurityContextHolder.getContext()
+                        .setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                                identity.userId(),
+                                null,
+                                roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList()));
+            }
         }
         response.setHeader("X-Request-Id", requestId);
         try {

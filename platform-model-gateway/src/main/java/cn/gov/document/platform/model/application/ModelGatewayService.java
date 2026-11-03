@@ -63,6 +63,17 @@ public class ModelGatewayService implements ModelGenerationPort {
                 .toList();
     }
 
+    public ModelDtos.ConfigResponse get(String id) {
+        return ModelDtos.ConfigResponse.from(require(id));
+    }
+
+    @Transactional
+    public void delete(String id) {
+        ModelConfigEntity entity = require(id);
+        if (Boolean.TRUE.equals(entity.getIsActive())) throw BusinessException.conflict("请先停用模型路由再删除");
+        if (configMapper.deleteById(entity.getId()) != 1) throw BusinessException.conflict("模型路由已被其他用户修改");
+    }
+
     @Transactional
     public ModelDtos.ConfigResponse create(ModelDtos.ConfigRequest r) {
         validate(r);
@@ -148,6 +159,8 @@ public class ModelGatewayService implements ModelGenerationPort {
                     break;
                 } catch (RuntimeException e) {
                     failure = e;
+                    // 仅对服务端限流和临时故障重试，避免超时、凭据或参数错误重复耗时。
+                    if (e.getMessage() == null || !e.getMessage().matches(".*HTTP (429|5[0-9]{2}).*")) break;
                 }
             }
             boolean emptyOutput = failure == null
@@ -337,8 +350,13 @@ public class ModelGatewayService implements ModelGenerationPort {
         e.setPromptTemplateVersion(prompt.version());
         e.setInputHash(sha256(input));
         e.setInputDataLevel(dataLevel);
-        e.setInputSummary("chars=" + input.codePointCount(0, input.length()) + "; raw_content_logged=false");
+        String storedInput = clipContent(input, LOG_CONTENT_LIMIT);
+        String storedOutput = output == null ? null : clipContent(output, LOG_CONTENT_LIMIT);
+        int inputChars = input.codePointCount(0, input.length());
+        e.setInputSummary("chars=" + inputChars + (storedInput != null && storedInput.length() < input.length() ? "; truncated=true" : ""));
+        e.setInputContent(storedInput);
         e.setOutputHash(output == null ? null : sha256(output));
+        e.setOutputContent(storedOutput);
         e.setTokenCountInput(inputTokens);
         e.setTokenCountOutput(outputTokens);
         e.setDurationMs(duration);
@@ -349,13 +367,21 @@ public class ModelGatewayService implements ModelGenerationPort {
         logMapper.insert(e);
     }
 
+    private static final int LOG_CONTENT_LIMIT = 20_000;
+
+    private static String clipContent(String value, int limit) {
+        if (value == null) return null;
+        if (value.length() <= limit) return value;
+        return value.substring(0, limit) + "…";
+    }
+
     private void validate(ModelDtos.ConfigRequest r) {
         if (!LEVELS.contains(r.dataLevel())) throw BusinessException.unprocessable("无效数据级别");
         if (r.provider().contains("云") && "涉密".equals(r.dataLevel()))
             throw BusinessException.unprocessable("云端模型不得配置为处理涉密数据");
         if (StringUtils.hasText(r.endpointUrl())) endpointSecurity.validate(r.endpointUrl());
         if (StringUtils.hasText(r.credentialRef()) && !r.credentialRef().matches("[A-Z][A-Z0-9_]{2,99}"))
-            throw BusinessException.unprocessable("模型密钥引用名称不合法");
+            throw BusinessException.unprocessable("密钥须填写环境变量名（如 DEEPSEEK_API_KEY），禁止填写真实密钥");
     }
 
     private void apply(ModelConfigEntity e, ModelDtos.ConfigRequest r) {

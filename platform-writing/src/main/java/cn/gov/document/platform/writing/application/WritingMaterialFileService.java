@@ -43,7 +43,8 @@ public class WritingMaterialFileService {
             String authorityLevel,
             String usageMode,
             String citationPurpose,
-            String permissionStatus) {
+            String permissionStatus,
+            String outlineNodeId) {
         if (file == null || file.isEmpty()) throw BusinessException.unprocessable("请选择材料文件");
         if (file.getSize() > MAX_FILE_SIZE) throw BusinessException.unprocessable("材料文件不得超过 20MB");
         byte[] bytes;
@@ -82,7 +83,8 @@ public class WritingMaterialFileService {
                         extracted,
                         false,
                         hash,
-                        key));
+                        key,
+                        outlineNodeId));
     }
 
     private String extract(String filename, byte[] bytes) {

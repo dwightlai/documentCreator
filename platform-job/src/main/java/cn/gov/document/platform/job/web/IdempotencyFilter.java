@@ -3,6 +3,7 @@ package cn.gov.document.platform.job.web;
 import cn.gov.document.platform.job.application.IdempotencyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Part;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -24,6 +25,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Pattern VALID_KEY = Pattern.compile("[A-Za-z0-9._:-]{8,128}");
     private static final int MAX_REQUEST_BYTES = 25 * 1024 * 1024;
+    private static final int MAX_MULTIPART_BYTES = 60 * 1024 * 1024;
 
     private final IdempotencyService service;
 
@@ -44,14 +46,13 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             writeError(response, 400, "Idempotency-Key 长度须为 8—128，且只能包含字母、数字、点、下划线、冒号和连字符");
             return;
         }
-        if (request.getContentLengthLong() > MAX_REQUEST_BYTES) {
+        String contentType = request.getContentType();
+        boolean multipart = contentType != null
+                && contentType.toLowerCase(java.util.Locale.ROOT).startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
+        if (request.getContentLengthLong() > (multipart ? MAX_MULTIPART_BYTES : MAX_REQUEST_BYTES)) {
             writeError(response, 413, "带幂等键的请求体不能超过 25MB");
             return;
         }
-
-        String contentType = request.getContentType();
-        boolean multipart =
-                contentType != null && contentType.toLowerCase().startsWith(MediaType.MULTIPART_FORM_DATA_VALUE);
 
         byte[] requestBody = multipart ? new byte[0] : request.getInputStream().readAllBytes();
         if (!multipart && requestBody.length > MAX_REQUEST_BYTES) {
@@ -59,10 +60,10 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
         String endpoint = request.getMethod() + " " + request.getRequestURI();
-        String requestHash = sha256(
+        String requestHash = multipart ? sha256Multipart(request, endpoint) : sha256(
                 request.getMethod() + "\n" + request.getRequestURI() + "\n"
                         + String.valueOf(request.getQueryString()) + "\n"
-                        + (multipart ? ("multipart:" + request.getContentLengthLong() + "\n") : ""),
+                        + "",
                 requestBody);
         IdempotencyService.Reservation reservation = service.reserve(endpoint, key, requestHash);
 
@@ -121,6 +122,33 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(prefix.getBytes(StandardCharsets.UTF_8));
             digest.update(body);
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 unavailable", impossible);
+        }
+    }
+
+    private String sha256Multipart(HttpServletRequest request, String endpoint) throws ServletException, IOException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(endpoint.getBytes(StandardCharsets.UTF_8));
+            long total = 0;
+            for (Part part : request.getParts()) {
+                digest.update(part.getName().getBytes(StandardCharsets.UTF_8));
+                digest.update((byte) 0);
+                if (part.getSubmittedFileName() != null)
+                    digest.update(part.getSubmittedFileName().getBytes(StandardCharsets.UTF_8));
+                digest.update((byte) 0);
+                try (var input = part.getInputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        total += count;
+                        if (total > MAX_MULTIPART_BYTES) throw new IOException("Multipart request exceeds 60MB");
+                        digest.update(buffer, 0, count);
+                    }
+                }
+            }
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException("SHA-256 unavailable", impossible);

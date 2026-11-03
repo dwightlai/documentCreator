@@ -42,6 +42,13 @@ public class DocumentTypeConfigController {
         return ApiResponse.success(service.update(typeCode, r));
     }
 
+    @DeleteMapping("/{typeCode}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String typeCode) {
+        service.delete(typeCode);
+        return ApiResponse.success(null);
+    }
+
     @PostMapping("/{typeCode}/test")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<DocumentTypeConfigDtos.TestResponse> test(@PathVariable String typeCode) {

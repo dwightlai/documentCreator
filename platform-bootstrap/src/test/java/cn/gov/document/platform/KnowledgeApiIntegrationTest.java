@@ -29,6 +29,113 @@ class KnowledgeApiIntegrationTest {
     ObjectMapper objectMapper;
 
     @Test
+    void categoryRequiresExplicitReclassificationAndIndexRemainsReferenceOnly() throws Exception {
+        String tenant = "tenant-evidence-boundary";
+        String created = mockMvc.perform(post("/api/v1/knowledge/sources")
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"sourceCode\":\"EVIDENCE-KB\",\"sourceName\":\"业务依据\",\"category\":\"财政业务\",\"storageType\":\"全文索引\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(created).path("data").path("id").asText();
+        int version = objectMapper.readTree(created).path("data").path("lockVersion").asInt();
+        mockMvc.perform(put("/api/v1/knowledge/sources/{id}", id)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"sourceName\":\"业务依据\",\"category\":\"历史公文\",\"storageType\":\"全文索引\",\"lockVersion\":" + version + "}"))
+                .andExpect(status().isConflict());
+        mockMvc.perform(post("/api/v1/knowledge/sources/{id}/reclassify", id)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"category\":\"历史公文\",\"lockVersion\":" + version + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.category").value("历史公文"));
+        MockMultipartFile file = new MockMultipartFile("file", "note.txt", "text/plain", "可核对的本地正文。".getBytes(StandardCharsets.UTF_8));
+        String uploaded = mockMvc.perform(multipart("/api/v1/knowledge/sources/{id}/documents/upload", id)
+                        .file(file).header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.verificationStatus").value("待核验"))
+                .andReturn().getResponse().getContentAsString();
+        String documentId = objectMapper.readTree(uploaded).path("data").path("id").asText();
+        mockMvc.perform(post("/api/v1/knowledge/sources/{id}/documents/{documentId}/parse", id, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/knowledge/sources/{id}/documents/{documentId}/read", id, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "writer-1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.chunks[0].chunkText").value("可核对的本地正文。"));
+    }
+
+    @Test
+    void editsAndDeletesKnowledgeSource() throws Exception {
+        String tenant = "tenant-source-crud";
+        String created = mockMvc.perform(post("/api/v1/knowledge/sources")
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"sourceCode\":\"SOURCE-CRUD\",\"sourceName\":\"原知识库\",\"category\":\"单位制度\",\"storageType\":\"全文索引\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(created).path("data").path("id").asText();
+        int lockVersion = objectMapper.readTree(created).path("data").path("lockVersion").asInt();
+        mockMvc.perform(put("/api/v1/knowledge/sources/{id}", id)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"sourceName\":\"新知识库\",\"category\":\"单位制度\",\"storageType\":\"全文索引\",\"lockVersion\":" + lockVersion + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.sourceName").value("新知识库"));
+        mockMvc.perform(delete("/api/v1/knowledge/sources/{id}", id)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/knowledge/sources").header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    void editsMetadataAndChunksThenDeletesDocument() throws Exception {
+        String tenant = "tenant-knowledge-edit";
+        String source = mockMvc.perform(post("/api/v1/knowledge/sources")
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"sourceCode\":\"EDIT-KB\",\"sourceName\":\"编辑测试库\",\"category\":\"单位制度\",\"storageType\":\"全文索引\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String sourceId = objectMapper.readTree(source).path("data").path("id").asText();
+        MockMultipartFile file = new MockMultipartFile("file", "edit.txt", "text/plain",
+                "原始知识内容。".getBytes(StandardCharsets.UTF_8));
+        String document = mockMvc.perform(multipart("/api/v1/knowledge/sources/{s}/documents/upload", sourceId)
+                        .file(file).header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String documentId = objectMapper.readTree(document).path("data").path("id").asText();
+        mockMvc.perform(post("/api/v1/knowledge/sources/{s}/documents/{d}/parse", sourceId, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        String details = mockMvc.perform(get("/api/v1/knowledge/sources/{s}/documents", sourceId)
+                        .header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        int documentLock = objectMapper.readTree(details).path("data").get(0).path("lockVersion").asInt();
+        mockMvc.perform(put("/api/v1/knowledge/sources/{s}/documents/{d}", sourceId, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"documentTitle\":\"更新后的标题\",\"metadata\":\"{}\",\"authorityLevel\":\"单位制度\",\"permissionLevel\":\"内部\",\"lockVersion\":" + documentLock + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.documentTitle").value("更新后的标题"));
+        String chunks = mockMvc.perform(get("/api/v1/knowledge/sources/{s}/documents/{d}/chunks", sourceId, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+        String chunkId = objectMapper.readTree(chunks).path("data").get(0).path("id").asText();
+        int chunkLock = objectMapper.readTree(chunks).path("data").get(0).path("lockVersion").asInt();
+        mockMvc.perform(put("/api/v1/knowledge/sources/{s}/documents/{d}/chunks/{c}", sourceId, documentId, chunkId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1")
+                        .contentType("application/json")
+                        .content("{\"chunkText\":\"人工修订知识内容\",\"lockVersion\":" + chunkLock + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.chunkText").value("人工修订知识内容"));
+        mockMvc.perform(get("/api/v1/knowledge/search").param("q", "人工修订")
+                        .header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].snippet").value("人工修订知识内容"));
+        mockMvc.perform(delete("/api/v1/knowledge/sources/{s}/documents/{d}", sourceId, documentId)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", "admin-1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/knowledge/sources/{s}/documents", sourceId).header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        mockMvc.perform(get("/api/v1/knowledge/search").param("q", "人工修订")
+                        .header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
     void uploadsChunksSearchesAndFiltersBeforeRetrieval() throws Exception {
         String tenant = "tenant-knowledge";
         String sourceBody = mockMvc.perform(

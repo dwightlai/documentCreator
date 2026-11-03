@@ -95,7 +95,7 @@ public class BuiltInReviewEngine {
                 }
             }
             for (EffectiveReviewRuleProvider.Match match : effectiveRuleProvider.inspect(documentTypeCode, text)) {
-                String level = levelForCategory(match.category());
+                String level = levelForCategory(match.category(), match.detectionMethod());
                 if (!enabledLevels.contains(level) || !atOrAbove(match.risk(), riskThreshold)) {
                     continue;
                 }
@@ -109,10 +109,14 @@ public class BuiltInReviewEngine {
                         match.end(),
                         match.original(),
                         // 内容安全类词条只提示，不提供自动替换（§21）
-                        "L7".equals(level) ? null : match.replacement(),
+                        ("L7".equals(level) || "内容安全".equals(match.category()) || "敏感词".equals(match.category()))
+                                ? null : match.replacement(),
                         match.explanation(),
                         match.basis(),
-                        match.confidence());
+                        match.confidence(),
+                        "词库".equals(match.detectionMethod())
+                                ? "标准词库:" + match.sourceCode()
+                                : "配置规则:" + match.sourceCode());
                 boolean duplicate = result.stream()
                         .anyMatch(existing -> java.util.Objects.equals(existing.paragraphId(), candidate.paragraphId())
                                 && existing.start() == candidate.start()
@@ -295,10 +299,16 @@ public class BuiltInReviewEngine {
         }
     }
 
-    private String levelForCategory(String category) {
-        if ("文字".equals(category)) return "L1";
-        if ("规范".equals(category)) return "L2";
+    private String levelForCategory(String category, String source) {
+        if (ReviewCategory.POLITICAL.equals(category)) return "L7";
+        if (ReviewCategory.FACT.equals(category)) return "L5";
+        if (ReviewCategory.LOGIC.equals(category)) return "L6";
+        if (ReviewCategory.FORMAT.equals(category)) return "L4";
+        if (ReviewCategory.LANGUAGE.equals(category)) return "L2";
+        if (ReviewCategory.DOCUMENT.equals(category)) return "L3";
         if ("内容安全".equals(category) || "敏感词".equals(category)) return "L7";
+        if ("文字".equals(category) || "错别字".equals(category) || "标点符号".equals(category)) return "L1";
+        if ("规范".equals(category) || "词库".equals(source)) return "L2";
         return "L3";
     }
 
@@ -333,5 +343,23 @@ public class BuiltInReviewEngine {
             String replacement,
             String explanation,
             String basis,
-            BigDecimal confidence) {}
+            BigDecimal confidence,
+            String source) {
+        public Candidate(
+                String level,
+                String paragraphId,
+                int paragraphNumber,
+                String category,
+                String risk,
+                int start,
+                int end,
+                String original,
+                String replacement,
+                String explanation,
+                String basis,
+                BigDecimal confidence) {
+            this(level, paragraphId, paragraphNumber, category, risk, start, end, original, replacement,
+                    explanation, basis, confidence, "内置检查");
+        }
+    }
 }

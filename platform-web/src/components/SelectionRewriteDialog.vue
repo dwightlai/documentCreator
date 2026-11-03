@@ -77,7 +77,7 @@ function regenerate() { emit('regenerate', operation.value, instruction.value.tr
 .rewrite-operations{display:flex;border:1px solid #c9c3b7}
 .rewrite-operations button{border:0;background:#fff;padding:7px 14px;cursor:pointer;color:#2f3430}
 .rewrite-operations button+button{border-left:1px solid #c9c3b7}
-.rewrite-operations button.active{background:#17231e;color:#fff}
+.rewrite-operations button.active{background:#fdf0ef;color:#c4302b}
 .rewrite-request input{flex:1;min-width:220px;border:1px solid #c9c3b7;padding:8px 10px;font:inherit}
 .rewrite-status{color:#5f5b54;padding:28px 0;text-align:center}
 .rewrite-candidates{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}

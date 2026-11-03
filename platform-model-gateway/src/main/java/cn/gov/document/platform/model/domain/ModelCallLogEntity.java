@@ -17,7 +17,9 @@ public class ModelCallLogEntity {
             inputHash,
             inputDataLevel,
             inputSummary,
+            inputContent,
             outputHash,
+            outputContent,
             errorMessage;
     private Integer promptTemplateVersion, tokenCountInput, tokenCountOutput, durationMs;
     private BigDecimal costAmount;
@@ -104,12 +106,28 @@ public class ModelCallLogEntity {
         inputSummary = v;
     }
 
+    public String getInputContent() {
+        return inputContent;
+    }
+
+    public void setInputContent(String v) {
+        inputContent = v;
+    }
+
     public String getOutputHash() {
         return outputHash;
     }
 
     public void setOutputHash(String v) {
         outputHash = v;
+    }
+
+    public String getOutputContent() {
+        return outputContent;
+    }
+
+    public void setOutputContent(String v) {
+        outputContent = v;
     }
 
     public Integer getTokenCountInput() {

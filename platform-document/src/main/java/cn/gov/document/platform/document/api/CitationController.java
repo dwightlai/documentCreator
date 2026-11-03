@@ -26,6 +26,12 @@ public class CitationController {
         return ApiResponse.success(service.list(taskId));
     }
 
+    @PostMapping("/{citationId}/confirm-knowledge")
+    ApiResponse<CitationDtos.Response> confirmKnowledge(@PathVariable String taskId, @PathVariable String citationId,
+            @Valid @RequestBody CitationDtos.ConfirmKnowledgeRequest request) {
+        return ApiResponse.success(service.confirmKnowledge(taskId, citationId, request));
+    }
+
     @DeleteMapping("/{citationId}")
     ApiResponse<Void> delete(@PathVariable String taskId, @PathVariable String citationId) {
         service.delete(taskId, citationId);

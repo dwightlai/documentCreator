@@ -66,6 +66,13 @@ public class DocumentTypeConfigService {
                 : response(entity);
     }
 
+    @Transactional
+    public void delete(String typeCode) {
+        DocumentTypeConfigEntity entity = require(typeCode);
+        if ("生效".equals(entity.getLifecycleStatus())) throw BusinessException.conflict("请先停用文种配置再删除");
+        if (mapper.deleteById(entity.getId()) != 1) throw BusinessException.conflict("文种配置已被其他用户修改");
+    }
+
     public Optional<RuntimeConfig> effective(String typeCode) {
         DocumentTypeConfigEntity entity = mapper.selectOne(new LambdaQueryWrapper<DocumentTypeConfigEntity>()
                 .eq(DocumentTypeConfigEntity::getTypeCode, typeCode)
@@ -112,8 +119,8 @@ public class DocumentTypeConfigService {
     @Transactional
     public DocumentTypeConfigDtos.Response update(String typeCode, DocumentTypeConfigDtos.UpdateRequest request) {
         DocumentTypeConfigEntity entity = require(typeCode);
-        if (!List.of("草稿", "测试").contains(entity.getLifecycleStatus())) {
-            throw BusinessException.conflict("只有草稿或测试状态的文种配置可以编辑");
+        if (!List.of("草稿", "测试", "停用").contains(entity.getLifecycleStatus())) {
+            throw BusinessException.conflict("只有草稿、测试或停用状态的文种配置可以编辑");
         }
         entity.setLockVersion(request.lockVersion());
         entity.setCurrentVersion(entity.getCurrentVersion() + 1);

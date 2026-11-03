@@ -24,6 +24,7 @@ import cn.gov.document.platform.document.persistence.DocumentParagraphMapper;
 import cn.gov.document.platform.document.persistence.DocumentVersionMapper;
 import cn.gov.document.platform.document.persistence.GenerationRecordMapper;
 import cn.gov.document.platform.writing.application.WritingMaterialService;
+import cn.gov.document.platform.writing.application.WritingKnowledgeService;
 import cn.gov.document.platform.writing.application.WritingQaService;
 import cn.gov.document.platform.writing.application.WritingTaskService;
 import cn.gov.document.platform.writing.domain.WritingOutlineEntity;
@@ -59,6 +60,8 @@ public class DocumentService {
     private final GenerationRecordMapper generationRecordMapper;
     private final WritingQaService qaService;
     private final WritingMaterialService materialService;
+    private final WritingKnowledgeService writingKnowledgeService;
+    private final cn.gov.document.platform.knowledge.application.KnowledgeService knowledgeService;
     private final ObjectProvider<ModelGenerationPort> modelPort;
     private final CoordinationStore coordination;
     private final ExclusiveGuard guard;
@@ -81,6 +84,8 @@ public class DocumentService {
             GenerationRecordMapper generationRecordMapper,
             WritingQaService qaService,
             WritingMaterialService materialService,
+            WritingKnowledgeService writingKnowledgeService,
+            cn.gov.document.platform.knowledge.application.KnowledgeService knowledgeService,
             ObjectProvider<ModelGenerationPort> modelPort,
             CoordinationStore coordination,
             ExclusiveGuard guard) {
@@ -95,6 +100,8 @@ public class DocumentService {
         this.generationRecordMapper = generationRecordMapper;
         this.qaService = qaService;
         this.materialService = materialService;
+        this.writingKnowledgeService = writingKnowledgeService;
+        this.knowledgeService = knowledgeService;
         this.modelPort = modelPort;
         this.coordination = coordination;
         this.guard = guard;
@@ -103,6 +110,95 @@ public class DocumentService {
     public DocumentResponse get(String taskId) {
         DocumentEntity document = requireDocument(taskId);
         return DocumentResponse.from(document, paragraphs(document.getId(), document.getCurrentVersion()));
+    }
+
+    @Transactional
+    public DocumentResponse rebuild(String taskId, boolean confirmed) {
+        return rebuild(taskId, confirmed, (percent, message) -> {});
+    }
+
+    @Transactional
+    public DocumentResponse rebuild(String taskId, boolean confirmed, java.util.function.BiConsumer<Integer, String> progress) {
+        if (!confirmed) throw BusinessException.unprocessable("重建正文前必须确认，原版本将保留在版本记录中");
+        WritingTaskEntity task = taskService.require(taskId);
+        if (task.getOutlineConfirmedVersion() == null) throw BusinessException.unprocessable("请先确认提纲");
+        guard.holdUntilTransactionEnd("writing:" + taskId + ":generate", GENERATION_TTL, "该写作任务已有段落正在生成，请等待完成后再试");
+        lockDocumentWrites(taskId);
+        WritingOutlineEntity outline = outlineMapper.selectOne(new LambdaQueryWrapper<WritingOutlineEntity>()
+                .eq(WritingOutlineEntity::getTaskId, taskId)
+                .eq(WritingOutlineEntity::getOutlineVersion, task.getOutlineConfirmedVersion())
+                .eq(WritingOutlineEntity::getIsConfirmed, true));
+        if (outline == null) throw BusinessException.unprocessable("已确认提纲不存在，请重新确认");
+        List<WritingOutlineNodeEntity> nodes = outlineNodeMapper.selectList(new LambdaQueryWrapper<WritingOutlineNodeEntity>()
+                .eq(WritingOutlineNodeEntity::getOutlineId, outline.getId())
+                .orderByAsc(WritingOutlineNodeEntity::getNodeOrder));
+        if (nodes.isEmpty()) throw BusinessException.unprocessable("提纲没有章节");
+        DocumentEntity document = findDocument(taskId);
+        List<DocumentParagraphEntity> prior = document == null ? List.of() : paragraphs(document.getId(), document.getCurrentVersion());
+        if (document == null) document = createDocument(task);
+        else {
+            document.setCurrentVersion(document.getCurrentVersion() + 1);
+            createVersion(document, "AI生成", "人工确认", "按当前提纲重建正文");
+        }
+        int order = 1;
+        for (WritingOutlineNodeEntity node : nodes) {
+            progress.accept((order - 1) * 90 / nodes.size() + 5, "正在生成第 " + order + "/" + nodes.size() + " 节：" + node.getNodeTitle());
+            long started = System.nanoTime();
+            Generated generated = generateSectionText(task, node, regenerationContext(prior, node.getId(), null));
+            DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
+            paragraph.setTenantId(RequestContext.tenantId());
+            paragraph.setDocumentId(document.getId());
+            paragraph.setVersionNumber(document.getCurrentVersion());
+            paragraph.setOutlineNodeId(node.getId());
+            paragraph.setParagraphOrder(order++);
+            paragraph.setContentSourceLevel(generated.sourceMaterialIds().isEmpty() ? "待核实" : "基于归纳");
+            paragraph.setContentOrigin("AI生成");
+            paragraph.setSourceMaterialIds(toJsonArray(generated.sourceMaterialIds()));
+            paragraph.setSourceKnowledgeIds(toJsonArray(writingKnowledgeService.selections(taskId, node.getId()).stream()
+                    .map(cn.gov.document.platform.writing.domain.WritingKnowledgeSelectionEntity::getId).toList()));
+            paragraph.setIsLocked(false);
+            paragraph.setPlainText(generated.output());
+            paragraphMapper.insert(paragraph);
+            linkKnowledgeCandidates(taskId, node.getId(), document.getId(), paragraph);
+            node.setGenerationStatus("已生成");
+            outlineNodeMapper.updateById(node);
+            recordGeneration(taskId, document.getId(), paragraph.getId(), "章节生成", null, generated, started, false);
+        }
+        refreshDocument(document);
+        taskService.attachCurrentDocument(taskId, document.getId());
+        return get(taskId);
+    }
+
+    @Transactional
+    public cn.gov.document.platform.writing.api.WritingTaskDtos.Response rename(
+            String taskId, cn.gov.document.platform.writing.api.WritingTaskDtos.RenameRequest request) {
+        var task = taskService.rename(taskId, request.title(), request.lockVersion());
+        DocumentEntity document = findDocument(taskId);
+        if (document != null) {
+            document.setTitle(task.taskName());
+            documentMapper.updateById(document);
+        }
+        return task;
+    }
+
+    /** 审校页修改标题时，标题和正文一起形成可追溯的新版本。 */
+    @Transactional
+    public DocumentResponse renameForReview(String taskId, String title) {
+        lockDocumentWrites(taskId);
+        DocumentEntity document = requireDocument(taskId);
+        var writingTask = taskService.require(taskId);
+        if (title == null || title.isBlank() || title.length() > 200)
+            throw BusinessException.unprocessable("标题不能为空，且不能超过 200 字");
+        if (title.equals(document.getTitle())) return get(taskId);
+        taskService.rename(taskId, title, writingTask.getLockVersion());
+        int nextVersion = document.getCurrentVersion() + 1;
+        List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
+        document.setCurrentVersion(nextVersion);
+        document.setTitle(title);
+        current.forEach(item -> insertParagraphClone(item, nextVersion));
+        createVersion(document, "人工提交", "用户手工", "审校中修改标题");
+        refreshDocument(document);
+        return get(taskId);
     }
 
     public List<VersionResponse> versions(String taskId) {
@@ -157,11 +253,17 @@ public class DocumentService {
         else beginVersion(document, "AI生成", "AI生成", "生成章节：" + node.getNodeTitle());
 
         List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
-        int order = current.stream()
+        List<DocumentParagraphEntity> previousSection = current.stream()
+                .filter(item -> node.getId().equals(item.getOutlineNodeId()))
+                .toList();
+        if (previousSection.stream().anyMatch(item -> Boolean.TRUE.equals(item.getIsLocked())))
+            throw BusinessException.conflict("本节有锁定段落，请先解锁后再重新生成");
+        int order = previousSection.stream().mapToInt(DocumentParagraphEntity::getParagraphOrder).min().orElseGet(() -> current.stream()
                         .mapToInt(DocumentParagraphEntity::getParagraphOrder)
                         .max()
                         .orElse(0)
-                + 1;
+                + 1);
+        previousSection.forEach(item -> paragraphMapper.deleteById(item.getId()));
         DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
         paragraph.setTenantId(RequestContext.tenantId());
         paragraph.setDocumentId(document.getId());
@@ -173,10 +275,13 @@ public class DocumentService {
         paragraph.setSourceMaterialIds(
                 node.getReferencedMaterialIds() == null ? "[]" : node.getReferencedMaterialIds());
         paragraph.setIsLocked(false);
-        Generated generated = generateSectionText(task, node, request.instruction());
+        Generated generated = generateSectionText(task, node, regenerationContext(previousSection, node.getId(), request.instruction()));
         paragraph.setSourceMaterialIds(toJsonArray(generated.sourceMaterialIds()));
+        paragraph.setSourceKnowledgeIds(toJsonArray(writingKnowledgeService.selections(taskId, node.getId()).stream()
+                .map(cn.gov.document.platform.writing.domain.WritingKnowledgeSelectionEntity::getId).toList()));
         paragraph.setPlainText(generated.output());
         paragraphMapper.insert(paragraph);
+        linkKnowledgeCandidates(taskId, node.getId(), document.getId(), paragraph);
         node.setGenerationStatus("已生成");
         outlineNodeMapper.updateById(node);
         refreshDocument(document);
@@ -264,42 +369,102 @@ public class DocumentService {
     @Transactional
     public DocumentResponse insertQaAnswer(
             String taskId, String qaId, cn.gov.document.platform.writing.api.WritingQaDtos.InsertRequest request) {
-        if (!request.confirmed()) throw BusinessException.unprocessable("插入问答结果前必须由用户显式确认");
-        WritingQaEntity qa = qaService.require(taskId, qaId);
-        if (Boolean.TRUE.equals(qa.getInserted())) throw BusinessException.conflict("该问答结果已插入正文");
+        taskService.require(taskId);
+        throw BusinessException.unprocessable("问答摘录汇总不能直接插入正文；请在正文工作区选用原文并预览后插入");
+    }
+
+    public cn.gov.document.platform.document.api.DocumentDtos.KnowledgeDraftResponse previewKnowledgeDraft(
+            String taskId, cn.gov.document.platform.document.api.DocumentDtos.KnowledgeDraftRequest request) {
+        var selection = writingKnowledgeService.requireSelection(taskId, request.selectionId());
+        WritingTaskEntity task = taskService.require(taskId);
+        ModelGenerationPort port = modelPort.getIfAvailable();
+        if (port == null) throw BusinessException.unprocessable("没有可用的正文生成模型");
+        String prompt = "请根据已选用资料起草一段可插入公文的表述。只输出正文，不输出资料列表、引用标记或解释。"
+                + "写法参考仅用于结构与语气，不得复制其中的具体事实。未能核实的事实不得补造。\n"
+                + "文种：" + task.getDocumentTypeCode() + "\n主题：" + task.getWritingTopic()
+                + "\n用途：" + selection.getUsageType() + "\n来源：" + selection.getDocumentTitle()
+                + "\n选用资料：" + ("写法参考".equals(selection.getUsageType())
+                        ? cn.gov.document.platform.writing.application.WritingKnowledgeService.styleGuidance(selection.getExcerpt())
+                        : selection.getExcerpt())
+                + "\n补充要求：" + (request.instruction() == null ? "" : request.instruction());
+        var generated = port.generate("段落生成", dataLevel(task.getSecurityLevel()), task.getDocumentTypeCode(),
+                prompt, Map.of("topic", task.getWritingTopic(), "section", "依据起草", "instruction",
+                        request.instruction() == null ? "" : request.instruction(), "materials",
+                        "写法参考".equals(selection.getUsageType())
+                                ? cn.gov.document.platform.writing.application.WritingKnowledgeService.styleGuidance(selection.getExcerpt())
+                                : selection.getExcerpt()),
+                "写作", taskId);
+        if (generated.isEmpty() || generated.get().output().isBlank())
+            throw BusinessException.unprocessable("模型未生成可用草稿，请先配置写作模型");
+        return new cn.gov.document.platform.document.api.DocumentDtos.KnowledgeDraftResponse(
+                generated.get().output().trim(), selection.getId(), "待核稿");
+    }
+
+    @Transactional
+    public DocumentResponse insertKnowledge(String taskId,
+            cn.gov.document.platform.document.api.DocumentDtos.KnowledgeInsertionRequest request) {
+        if (!request.confirmed()) throw BusinessException.unprocessable("请先预览并确认插入内容");
+        var selected = writingKnowledgeService.requireSelection(taskId, request.selectionId());
+        boolean original = "原文摘录".equals(request.mode());
+        if (original) writingKnowledgeService.requireOriginalSelection(taskId, request.selectionId());
+        if (!original && !"起草表述".equals(request.mode()))
+            throw BusinessException.unprocessable("插入方式只能是原文摘录或起草表述");
+        String text = request.text().trim();
+        if (original && (!selected.getExcerpt().contains(text) || "写法参考".equals(selected.getUsageType())))
+            throw BusinessException.unprocessable("原文摘录必须是所选原文中的连续文字，写法参考不能当作事实引用");
         lockDocumentWrites(taskId);
-        DocumentEntity document = requireDocument(taskId);
+        DocumentEntity document = findDocument(taskId);
+        boolean created = document == null;
+        if (created) document = createDocument(taskService.require(taskId));
         List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
-        DocumentParagraphEntity anchor;
-        if (request.afterParagraphId() != null && !request.afterParagraphId().isBlank())
-            anchor = requireCurrentParagraph(document, request.afterParagraphId());
-        else anchor = current.get(current.size() - 1);
-        int nextVersion = document.getCurrentVersion() + 1;
-        document.setCurrentVersion(nextVersion);
-        String insertedId = null;
+        DocumentParagraphEntity anchor = request.afterParagraphId() == null || request.afterParagraphId().isBlank()
+                ? current.stream().filter(p -> selected.getOutlineNodeId().equals(p.getOutlineNodeId()))
+                        .reduce((first, second) -> second).orElse(null)
+                : requireCurrentParagraph(document, request.afterParagraphId());
+        if (anchor != null && !selected.getOutlineNodeId().equals(anchor.getOutlineNodeId()))
+            throw BusinessException.unprocessable("插入位置必须属于已选用依据的章节");
+        int order = anchor == null ? current.stream().mapToInt(DocumentParagraphEntity::getParagraphOrder).max().orElse(0)
+                : anchor.getParagraphOrder();
+        int next = created ? document.getCurrentVersion() : document.getCurrentVersion() + 1;
         for (DocumentParagraphEntity old : current) {
-            DocumentParagraphEntity copy = cloneParagraph(old, nextVersion);
-            if (old.getParagraphOrder() > anchor.getParagraphOrder())
-                copy.setParagraphOrder(old.getParagraphOrder() + 1);
+            DocumentParagraphEntity copy = cloneParagraph(old, next);
+            if (old.getParagraphOrder() > order) copy.setParagraphOrder(old.getParagraphOrder() + 1);
             paragraphMapper.insert(copy);
             cloneCitations(old.getId(), copy.getId(), document.getId());
         }
+        document.setCurrentVersion(next);
         DocumentParagraphEntity inserted = new DocumentParagraphEntity();
         inserted.setTenantId(RequestContext.tenantId());
         inserted.setDocumentId(document.getId());
-        inserted.setVersionNumber(nextVersion);
-        inserted.setOutlineNodeId(anchor.getOutlineNodeId());
-        inserted.setParagraphOrder(anchor.getParagraphOrder() + 1);
-        inserted.setContentSourceLevel("原文摘录汇总".equals(qa.getAnswerType()) ? "有直接来源" : "无来源");
-        inserted.setContentOrigin("原文摘录汇总".equals(qa.getAnswerType()) ? "引用原文" : "AI推荐");
+        inserted.setVersionNumber(next);
+        inserted.setOutlineNodeId(selected.getOutlineNodeId());
+        inserted.setParagraphOrder(order + 1);
+        inserted.setContentSourceLevel(original ? "有直接来源" : "待核稿");
+        inserted.setContentOrigin(original ? "引用原文" : "AI推荐");
         inserted.setSourceMaterialIds("[]");
+        inserted.setSourceKnowledgeIds(toJsonArray(List.of(selected.getId())));
         inserted.setIsLocked(false);
-        inserted.setPlainText(qa.getAnswerText());
+        inserted.setPlainText(text);
         paragraphMapper.insert(inserted);
-        insertedId = inserted.getId();
-        createVersion(document, "人工提交", "用户确认插入", "插入写作问答结果");
+        DocumentCitationEntity citation = new DocumentCitationEntity();
+        citation.setTenantId(RequestContext.tenantId());
+        citation.setDocumentId(document.getId());
+        citation.setParagraphId(inserted.getId());
+        citation.setKnowledgeDocumentId(selected.getKnowledgeDocumentId());
+        citation.setKnowledgeChunkId(selected.getChunkId());
+        citation.setKnowledgeDocumentVersion(selected.getDocumentVersion());
+        citation.setSourceFileHash(selected.getFileHash());
+        citation.setSourceExcerpt(original ? text : selected.getExcerpt());
+        citation.setCitationType(original ? "原文摘录" : "候选依据");
+        citation.setCitedFragment(text);
+        citation.setPositionStart(0);
+        citation.setPositionEnd(text.length());
+        citation.setDisplayMode("内部留痕");
+        citation.setReviewStatus(original ? "已引用" : "待复核");
+        if (original) { citation.setConfirmedBy(RequestContext.userId()); citation.setConfirmedAt(java.time.OffsetDateTime.now()); }
+        citationMapper.insert(citation);
+        if (!created) createVersion(document, "人工提交", "用户确认插入", original ? "插入知识原文摘录" : "插入依据起草表述");
         refreshDocument(document);
-        qaService.markInserted(qa, document.getId(), insertedId);
         return get(taskId);
     }
 
@@ -328,6 +493,27 @@ public class DocumentService {
         return get(taskId);
     }
 
+    @Transactional
+    public DocumentResponse deleteParagraph(String taskId, String paragraphId) {
+        lockDocumentWrites(taskId);
+        DocumentEntity document = requireDocument(taskId);
+        DocumentParagraphEntity target = requireCurrentParagraph(document, paragraphId);
+        if (Boolean.TRUE.equals(target.getIsLocked())) throw BusinessException.conflict("请先解锁段落再删除");
+        ensureNotLeasedByOthers(document, target);
+        List<DocumentParagraphEntity> current = paragraphs(document.getId(), document.getCurrentVersion());
+        int next = document.getCurrentVersion() + 1;
+        for (DocumentParagraphEntity old : current) {
+            if (old.getId().equals(paragraphId)) continue;
+            DocumentParagraphEntity copy = cloneParagraph(old, next);
+            paragraphMapper.insert(copy);
+            cloneCitations(old.getId(), copy.getId(), document.getId());
+        }
+        document.setCurrentVersion(next);
+        createVersion(document, "人工提交", "用户手工", "删除第 " + target.getParagraphOrder() + " 段");
+        refreshDocument(document);
+        return get(taskId);
+    }
+
     /** 以修改后的段落形成新版本；人工保存和接受修订共用，保证来源标识、引用复制和版本记录规则一致。 */
     private void applyEdit(
             DocumentEntity document,
@@ -349,7 +535,8 @@ public class DocumentService {
                 copy.setContentOrigin(aiAssisted ? "AI改写" : "人工录入");
             }
             paragraphMapper.insert(copy);
-            if (!edit) cloneCitations(old.getId(), copy.getId(), document.getId());
+            if (edit) cloneCitations(old.getId(), copy.getId(), document.getId(), true);
+            else cloneCitations(old.getId(), copy.getId(), document.getId());
         }
         createVersion(document, "人工提交", changeSource, description);
         refreshDocument(document);
@@ -553,6 +740,11 @@ public class DocumentService {
                         .orderByAsc(DocumentCitationEntity::getCreatedAt));
         if (citations.isEmpty()) return source;
         Map<String, List<DocumentCitationEntity>> byParagraph = citations.stream()
+                .filter(citation -> citation.getReviewStatus() == null || "已引用".equals(citation.getReviewStatus()))
+                .filter(citation -> citation.getKnowledgeDocumentId() == null
+                        || knowledgeService.isCitationCurrent(citation.getKnowledgeDocumentId(),
+                                citation.getKnowledgeChunkId(), citation.getKnowledgeDocumentVersion(),
+                                citation.getSourceFileHash(), citation.getSourceExcerpt()))
                 .collect(java.util.stream.Collectors.groupingBy(DocumentCitationEntity::getParagraphId));
         java.util.concurrent.atomic.AtomicInteger number = new java.util.concurrent.atomic.AtomicInteger();
         List<DocumentParagraphEntity> result = new ArrayList<>();
@@ -560,7 +752,13 @@ public class DocumentService {
             DocumentParagraphEntity copy = cloneParagraph(paragraph, paragraph.getVersionNumber());
             String text = paragraph.getPlainText();
             StringBuilder references = new StringBuilder();
-            List<DocumentCitationEntity> values = byParagraph.getOrDefault(paragraph.getId(), List.of());
+            List<DocumentCitationEntity> values = byParagraph.getOrDefault(paragraph.getId(), List.of()).stream()
+                    .filter(citation -> citation.getPositionStart() != null && citation.getPositionEnd() != null
+                            && citation.getPositionStart() >= 0 && citation.getPositionEnd() <= text.length()
+                            && citation.getPositionEnd() > citation.getPositionStart()
+                            && text.substring(citation.getPositionStart(), citation.getPositionEnd())
+                                    .equals(citation.getCitedFragment()))
+                    .toList();
             record Positioned(int end, int number, DocumentCitationEntity citation) {}
             List<Positioned> positioned = values.stream()
                     .map(citation -> new Positioned(
@@ -582,8 +780,10 @@ public class DocumentService {
                     .forEach(value -> references
                             .append("\n[")
                             .append(value.number())
-                            .append("] 材料 ")
-                            .append(value.citation().getMaterialId())
+                            .append(value.citation().getKnowledgeDocumentId() == null ? "] 材料 " : "] 知识原文 ")
+                            .append(value.citation().getKnowledgeDocumentId() == null
+                                    ? value.citation().getMaterialId()
+                                    : value.citation().getKnowledgeDocumentId() + " V" + value.citation().getKnowledgeDocumentVersion())
                             .append("：")
                             .append(
                                     value.citation().getCitedFragment() == null
@@ -684,10 +884,23 @@ public class DocumentService {
         return record.getId();
     }
 
+    private String regenerationContext(List<DocumentParagraphEntity> paragraphs, String nodeId, String instruction) {
+        String existing = paragraphs.stream().filter(p -> nodeId.equals(p.getOutlineNodeId()))
+                .map(p -> ("人工录入".equals(p.getContentOrigin()) ? "[人工修改]" : "") + p.getPlainText())
+                .collect(java.util.stream.Collectors.joining("\n"));
+        if (existing.isBlank()) return instruction;
+        return (instruction == null ? "" : instruction) + "\n重新生成要求：以下当前正文是待修改的草稿，不保证表达正确。保留明确的事实、请求意图和已核实数据，按本节提纲重新撰写。必须修正错别字、漏字、词序混乱、残缺句和重复表达；人工修改中的病句也必须修正，不得照抄错误表达。不能确定的金额、日期等事实不得猜测或补造。结束语应简洁完整，避免重复正文中的请求事项。输出可直接使用的本节正文，不输出修改说明。\n当前正文：\n" + existing;
+    }
+
     private Generated generateSectionText(WritingTaskEntity task, WritingOutlineNodeEntity node, String instruction) {
-        var materials = materialService.prepareGenerationContext(task.getId());
+        var materials = materialService.prepareGenerationContext(task.getId(), node.getId());
+        String selectedKnowledge = writingKnowledgeService.generationContext(task.getId(), node.getId());
         String input = "文种：" + task.getDocumentTypeCode() + "\n主题：" + task.getWritingTopic() + "\n章节："
-                + node.getNodeTitle() + "\n要求：" + (instruction == null ? "" : instruction) + "\n\n" + materials.text();
+                + node.getNodeTitle() + "\n写作目的：" + task.getWritingPurpose()
+                + "\n章节要点：" + node.getWritingPurpose() + "\n要求：" + (instruction == null ? "" : instruction)
+                + "\n\n任务材料：\n" + materials.text()
+                + "\n\n本节经人工选用的知识依据（只能使用这里列出的片段；写法参考不得作为事实）："
+                + selectedKnowledge;
         Map<String, Object> variables = Map.of(
                 "topic",
                 task.getWritingTopic(),
@@ -696,7 +909,7 @@ public class DocumentService {
                 "instruction",
                 instruction == null ? "" : instruction,
                 "materials",
-                materials.text());
+                materials.text() + "\n本节人工选用的知识依据：\n" + selectedKnowledge);
         ModelGenerationPort port = modelPort.getIfAvailable();
         if (port != null) {
             var result = port.generate(
@@ -709,7 +922,8 @@ public class DocumentService {
                     task.getId());
             if (result.isPresent()) return fromModel(result.get(), materials, input);
         }
-        String output = generator.generate(task, node, instruction);
+        String fallbackInstruction = instruction == null ? null : instruction.split("\n重新生成要求：", 2)[0];
+        String output = generator.generate(task, node, fallbackInstruction);
         return fallback("章节生成", output, materials, input);
     }
 
@@ -883,6 +1097,7 @@ public class DocumentService {
         copy.setContentSourceLevel(source.getContentSourceLevel());
         copy.setContentOrigin(source.getContentOrigin());
         copy.setSourceMaterialIds(source.getSourceMaterialIds());
+        copy.setSourceKnowledgeIds(source.getSourceKnowledgeIds());
         copy.setIsLocked(source.getIsLocked());
         copy.setPlainText(source.getPlainText());
         copy.setRichContent(source.getRichContent());
@@ -896,6 +1111,34 @@ public class DocumentService {
     }
 
     private void cloneCitations(String sourceParagraphId, String targetParagraphId, String documentId) {
+        cloneCitations(sourceParagraphId, targetParagraphId, documentId, false);
+    }
+
+    private void linkKnowledgeCandidates(String taskId, String nodeId, String documentId,
+            DocumentParagraphEntity paragraph) {
+        if (paragraph.getPlainText() == null || paragraph.getPlainText().isBlank()) return;
+        for (var selected : writingKnowledgeService.selections(taskId, nodeId)) {
+            if ("写法参考".equals(selected.getUsageType())) continue;
+            DocumentCitationEntity candidate = new DocumentCitationEntity();
+            candidate.setTenantId(RequestContext.tenantId());
+            candidate.setDocumentId(documentId);
+            candidate.setParagraphId(paragraph.getId());
+            candidate.setKnowledgeDocumentId(selected.getKnowledgeDocumentId());
+            candidate.setKnowledgeChunkId(selected.getChunkId());
+            candidate.setKnowledgeDocumentVersion(selected.getDocumentVersion());
+            candidate.setSourceFileHash(selected.getFileHash());
+            candidate.setSourceExcerpt(selected.getExcerpt());
+            candidate.setCitationType("候选依据");
+            candidate.setCitedFragment(paragraph.getPlainText());
+            candidate.setPositionStart(0);
+            candidate.setPositionEnd(paragraph.getPlainText().length());
+            candidate.setDisplayMode("内部留痕");
+            candidate.setReviewStatus("待复核");
+            citationMapper.insert(candidate);
+        }
+    }
+
+    private void cloneCitations(String sourceParagraphId, String targetParagraphId, String documentId, boolean revised) {
         citationMapper
                 .selectList(new LambdaQueryWrapper<DocumentCitationEntity>()
                         .eq(DocumentCitationEntity::getParagraphId, sourceParagraphId))
@@ -910,6 +1153,14 @@ public class DocumentService {
                     copy.setPositionStart(source.getPositionStart());
                     copy.setPositionEnd(source.getPositionEnd());
                     copy.setDisplayMode(source.getDisplayMode());
+                    copy.setKnowledgeDocumentId(source.getKnowledgeDocumentId());
+                    copy.setKnowledgeChunkId(source.getKnowledgeChunkId());
+                    copy.setKnowledgeDocumentVersion(source.getKnowledgeDocumentVersion());
+                    copy.setSourceFileHash(source.getSourceFileHash());
+                    copy.setSourceExcerpt(source.getSourceExcerpt());
+                    copy.setReviewStatus(revised ? "待复核" : source.getReviewStatus());
+                    copy.setConfirmedBy(revised ? null : source.getConfirmedBy());
+                    copy.setConfirmedAt(revised ? null : source.getConfirmedAt());
                     citationMapper.insert(copy);
                 });
     }

@@ -150,9 +150,15 @@ const data = async <T>(request: Promise<{ data: ApiEnvelope<T> }>) => (await req
 
 export const listModelConfigs = () => data(http.get<ApiEnvelope<ModelConfig[]>>('/model-configs'))
 export const createModelConfig = (input: ModelConfigInput) => data(http.post<ApiEnvelope<ModelConfig>>('/model-configs', input))
+export const getModelConfig = (id: string) => data(http.get<ApiEnvelope<ModelConfig>>(`/model-configs/${encodeURIComponent(id)}`))
+export const updateModelConfig = (id: string, input: ModelConfigInput) => data(http.put<ApiEnvelope<ModelConfig>>(`/model-configs/${encodeURIComponent(id)}`, input))
+export const deleteModelConfig = (id: string) => data(http.delete<ApiEnvelope<void>>(`/model-configs/${encodeURIComponent(id)}`))
 
 export const listPromptTemplates = () => data(http.get<ApiEnvelope<PromptTemplate[]>>('/prompt-templates'))
 export const createPromptTemplate = (input: PromptTemplateInput) => data(http.post<ApiEnvelope<PromptTemplate>>('/prompt-templates', input))
+export const getPromptTemplate = (id: string) => data(http.get<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${encodeURIComponent(id)}`))
+export const updatePromptTemplate = (id: string, input: PromptTemplateInput) => data(http.put<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${encodeURIComponent(id)}`, input))
+export const deletePromptTemplate = (id: string) => data(http.delete<ApiEnvelope<void>>(`/prompt-templates/${encodeURIComponent(id)}`))
 export const testPromptTemplate = (id: string, variables: Record<string, unknown>) => data(http.post<ApiEnvelope<ConfigurationTestResult>>(`/prompt-templates/${id}/test`, { variables }))
 export const submitPromptTemplate = (id: string) => data(http.post<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/submit-for-review`))
 export const publishPromptTemplate = (id: string) => data(http.post<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/publish`))
@@ -160,12 +166,39 @@ export const deactivatePromptTemplate = (id: string) => data(http.patch<ApiEnvel
 
 export const listDocumentTypes = () => data(http.get<ApiEnvelope<DocumentTypeConfig[]>>('/document-type-configs'))
 export const createDocumentType = (input: DocumentTypeInput) => data(http.post<ApiEnvelope<DocumentTypeConfig>>('/document-type-configs', input))
+export const getDocumentType = (code: string) => data(http.get<ApiEnvelope<DocumentTypeConfig>>(`/document-type-configs/${encodeURIComponent(code)}`))
+export const updateDocumentType = (code: string, input: Omit<DocumentTypeInput, 'typeCode'> & { lockVersion: number }) => data(http.put<ApiEnvelope<DocumentTypeConfig>>(`/document-type-configs/${encodeURIComponent(code)}`, input))
+export const deleteDocumentType = (code: string) => data(http.delete<ApiEnvelope<void>>(`/document-type-configs/${encodeURIComponent(code)}`))
 export const testDocumentType = (code: string) => data(http.post<ApiEnvelope<ConfigurationTestResult>>(`/document-type-configs/${encodeURIComponent(code)}/test`))
 export const submitDocumentType = (code: string) => data(http.post<ApiEnvelope<DocumentTypeConfig>>(`/document-type-configs/${encodeURIComponent(code)}/submit-for-review`))
 export const publishDocumentType = (code: string) => data(http.post<ApiEnvelope<DocumentTypeConfig>>(`/document-type-configs/${encodeURIComponent(code)}/publish`))
 export const deactivateDocumentType = (code: string) => data(http.patch<ApiEnvelope<DocumentTypeConfig>>(`/document-type-configs/${encodeURIComponent(code)}/deactivate`))
 
 export const listAuditLogs = (auditType?: string, targetId?: string) => data(http.get<ApiEnvelope<AuditLog[]>>('/audit-logs', { params: { auditType: auditType || undefined, targetId: targetId || undefined, limit: 200 } }))
+
+export interface ModelCallLog {
+  id: string
+  taskType: string
+  taskId: string
+  modelConfigId: string
+  promptTemplateId?: string
+  promptTemplateVersion?: number
+  inputHash?: string
+  inputDataLevel?: string
+  inputSummary?: string
+  inputContent?: string
+  outputHash?: string
+  outputContent?: string
+  tokenCountInput?: number
+  tokenCountOutput?: number
+  durationMs?: number
+  costAmount?: number
+  success: boolean
+  errorMessage?: string
+  calledAt: string
+}
+export const listModelCallLogs = (taskType?: string, taskId?: string) =>
+  data(http.get<ApiEnvelope<ModelCallLog[]>>('/model-call-logs', { params: { taskType: taskType || undefined, taskId: taskId || undefined } }))
 
 /** §31.3 提交门禁（单位级配置） */
 export interface SubmissionGateConfig { requireReview: boolean; requireLatestReview: boolean; blockOnSevere: boolean; requireImportantProcessed: boolean; requireReport: boolean; requiredSubmitRole?: string | null }

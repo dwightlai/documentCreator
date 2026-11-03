@@ -11,6 +11,7 @@ public class DocumentParagraphEntity extends BaseEntity {
     private Integer paragraphOrder;
     private String contentSourceLevel;
     private String sourceMaterialIds;
+    private String sourceKnowledgeIds;
     private Boolean isLocked;
     private String contentOrigin;
     private String plainText;
@@ -72,6 +73,9 @@ public class DocumentParagraphEntity extends BaseEntity {
     public void setSourceMaterialIds(String value) {
         sourceMaterialIds = value;
     }
+
+    public String getSourceKnowledgeIds() { return sourceKnowledgeIds; }
+    public void setSourceKnowledgeIds(String value) { sourceKnowledgeIds = value; }
 
     public Boolean getIsLocked() {
         return isLocked;

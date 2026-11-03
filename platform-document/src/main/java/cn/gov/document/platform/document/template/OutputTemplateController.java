@@ -5,12 +5,14 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,10 +30,13 @@ public class OutputTemplateController {
             MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     private final OutputTemplateService service;
     private final DocxFormatReviewService formatReviewService;
+    private final DocxTemplateEngine engine;
 
-    public OutputTemplateController(OutputTemplateService service, DocxFormatReviewService formatReviewService) {
+    public OutputTemplateController(
+            OutputTemplateService service, DocxFormatReviewService formatReviewService, DocxTemplateEngine engine) {
         this.service = service;
         this.formatReviewService = formatReviewService;
+        this.engine = engine;
     }
 
     @GetMapping
@@ -41,9 +46,54 @@ public class OutputTemplateController {
         return ApiResponse.success(service.list(documentTypeCode, lifecycleStatus));
     }
 
+    @GetMapping("/standard-template")
+    @PreAuthorize("hasRole('platform.admin')")
+    ResponseEntity<byte[]> standardTemplate() {
+        return docx(StandardOfficialTemplate.build(), "standard-request-template.docx");
+    }
+
+    @PostMapping("/complete-example")
+    @PreAuthorize("hasRole('platform.admin')")
+    ResponseEntity<byte[]> completeExample(@RequestBody OutputTemplateDtos.RenderRequest request) {
+        Map<String, String> values = request.values() == null ? Map.of() : request.values();
+        List<DocxTemplateEngine.BodyBlock> paragraphs = request.sections() == null
+                ? List.of()
+                : request.sections().stream()
+                        .map(value -> new DocxTemplateEngine.BodyBlock(value, null))
+                        .toList();
+        return docx(
+                engine.renderDocument(StandardOfficialTemplate.build(), values, paragraphs),
+                "complete-request-example.docx");
+    }
+
     @GetMapping("/{templateId}")
     ApiResponse<OutputTemplateDtos.Response> get(@PathVariable String templateId) {
         return ApiResponse.success(service.get(templateId));
+    }
+
+    @GetMapping("/{templateId}/preview")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<List<OutputTemplateService.PreviewBlock>> preview(@PathVariable String templateId) {
+        return ApiResponse.success(service.preview(templateId));
+    }
+
+    @GetMapping("/{templateId}/file")
+    @PreAuthorize("hasRole('platform.admin')")
+    ResponseEntity<byte[]> file(@PathVariable String templateId) {
+        return docx(service.fileContent(templateId), "output-template.docx");
+    }
+
+    @GetMapping("/{templateId}/usages")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<List<OutputTemplateDtos.UsageItem>> usages(@PathVariable String templateId) {
+        return ApiResponse.success(service.usages(templateId));
+    }
+
+    @DeleteMapping("/{templateId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> delete(@PathVariable String templateId) {
+        service.delete(templateId);
+        return ApiResponse.success(null);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

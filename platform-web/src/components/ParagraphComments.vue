@@ -3,7 +3,7 @@ import type { DocumentComment } from '@/api/writing'
 
 /** 段落下方的批注列表：引用文字可点击定位到正文，未解决的批注可标记为已解决。 */
 defineProps<{ comments: DocumentComment[] }>()
-const emit = defineEmits<{ resolve: [comment: DocumentComment]; reveal: [text: string] }>()
+const emit = defineEmits<{ resolve: [comment: DocumentComment]; reveal: [text: string]; edit: [comment: DocumentComment]; delete: [comment: DocumentComment] }>()
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 </script>
 
@@ -15,7 +15,9 @@ const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12
         <b>{{ comment.commenterId }}</b>
         <small>{{ time(comment.createdAt) }}</small>
         <small v-if="comment.resolved" class="comment-state">已解决{{ comment.resolvedBy ? ' · ' + comment.resolvedBy : '' }}</small>
-        <button v-else type="button" @click.stop="emit('resolve', comment)">解决</button>
+        <button v-if="!comment.resolved" type="button" @click.stop="emit('edit', comment)">编辑</button>
+        <button type="button" @click.stop="emit('delete', comment)">删除</button>
+        <button v-if="!comment.resolved" type="button" @click.stop="emit('resolve', comment)">解决</button>
       </header>
       <button v-if="comment.quotedText" type="button" class="comment-quote" title="在正文中定位" @click.stop="emit('reveal', comment.quotedText)">“{{ comment.quotedText }}”</button>
       <p>{{ comment.commentText }}</p>

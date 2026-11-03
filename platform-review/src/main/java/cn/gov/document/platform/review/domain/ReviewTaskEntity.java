@@ -18,6 +18,10 @@ public class ReviewTaskEntity extends BaseEntity {
     private String initiatorId;
     private String callbackUrl;
     private Integer documentVersion;
+    private String sourceFileName;
+    private String editedFileId;
+    private Integer editVersion;
+    private String reviewTitle;
 
     public String getSourceSystem() {
         return sourceSystem;
@@ -122,4 +126,19 @@ public class ReviewTaskEntity extends BaseEntity {
     public void setDocumentVersion(Integer value) {
         documentVersion = value;
     }
+
+    public String getSourceFileName() {
+        return sourceFileName;
+    }
+
+    public void setSourceFileName(String value) {
+        sourceFileName = value;
+    }
+
+    public String getEditedFileId() { return editedFileId; }
+    public void setEditedFileId(String value) { editedFileId = value; }
+    public Integer getEditVersion() { return editVersion; }
+    public void setEditVersion(Integer value) { editVersion = value; }
+    public String getReviewTitle() { return reviewTitle; }
+    public void setReviewTitle(String value) { reviewTitle = value; }
 }

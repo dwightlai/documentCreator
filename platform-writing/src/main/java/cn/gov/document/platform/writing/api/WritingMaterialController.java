@@ -36,6 +36,12 @@ public class WritingMaterialController {
         return ApiResponse.success(service.create(taskId, request));
     }
 
+    @PostMapping("/from-knowledge")
+    ApiResponse<WritingMaterialDtos.Response> attachKnowledge(
+            @PathVariable String taskId, @Valid @RequestBody WritingMaterialDtos.FromKnowledgeRequest request) {
+        return ApiResponse.success(service.attachKnowledge(taskId, request));
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ApiResponse<WritingMaterialDtos.Response> upload(
             @PathVariable String taskId,
@@ -43,9 +49,10 @@ public class WritingMaterialController {
             @RequestParam(required = false) String authorityLevel,
             @RequestParam(required = false) String usageMode,
             @RequestParam(required = false) String citationPurpose,
-            @RequestParam(required = false) String permissionStatus) {
+            @RequestParam(required = false) String permissionStatus,
+            @RequestParam(required = false) String outlineNodeId) {
         return ApiResponse.success(
-                fileService.upload(taskId, file, authorityLevel, usageMode, citationPurpose, permissionStatus));
+                fileService.upload(taskId, file, authorityLevel, usageMode, citationPurpose, permissionStatus, outlineNodeId));
     }
 
     @GetMapping

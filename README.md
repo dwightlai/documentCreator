@@ -82,7 +82,7 @@ docker compose up -d
 
 CI 工作流位于 `.github/workflows/ci.yml`，包含 Java 17 后端全量测试、PostgreSQL 16 真实迁移与逻辑 CLOB 兼容测试、前端类型/单测/构建、双镜像构建、高危漏洞/密钥/IaC 扫描和 CycloneDX SBOM 归档。备份、恢复和上线检查见 `docs/OPERATIONS_RUNBOOK.md`。
 
-OA 回调仅允许 `OA_CALLBACK_ALLOWLIST` 中预登记的 HTTPS 源与路径，签名密钥由 `OA_SHARED_SECRET` 注入，不能写入源码或普通配置文件。回调体只包含业务编号、审校任务状态和状态地址，不包含文稿正文。
+OA 回调仅允许 `OA_CALLBACK_ALLOWLIST` 中预登记的 HTTPS 源与路径，签名密钥由 `OA_SHARED_SECRET` 注入，不能写入源码或普通配置文件。回调体不包含文稿正文。对接身份、接口和回调验签见 [OA 对接接口](docs/OA_INTEGRATION_API.md)。
 
 ## 数据库兼容策略
 

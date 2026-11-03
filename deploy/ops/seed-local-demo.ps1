@@ -405,8 +405,6 @@ function New-InitialTask {
 Write-Output "Seeding demo data into tenant '$TenantId' at $BaseUrl ..."
 $null = Invoke-DemoApi GET "/api/v1/document-type-configs" $null
 $null = Invoke-DemoApi GET "/api/v1/review-plans" $null
-$dictionary = Ensure-Dictionary
-Ensure-Rules
 $knowledgeSource = Ensure-KnowledgeSource
 Ensure-PromptTemplates
 Ensure-ModelConfigs

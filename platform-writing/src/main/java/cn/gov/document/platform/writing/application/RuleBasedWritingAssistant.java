@@ -91,8 +91,11 @@ public class RuleBasedWritingAssistant implements WritingAssistant {
                 task.getPrimaryRecipient() == null || task.getPrimaryRecipient().isBlank()
                         ? "本单位"
                         : task.getPrimaryRecipient();
-        String subject = task.getWritingTopic();
+        String subject = task.getWritingTopic().trim();
+        if (subject.startsWith("关于")) subject = subject.substring(2);
         String type = task.getDocumentTypeCode();
+        if (subject.endsWith("的" + type)) subject = subject.substring(0, subject.length() - type.length() - 1);
+        if (subject.endsWith(type)) subject = subject.substring(0, subject.length() - type.length());
         String standard = authority + "关于" + subject + "的" + type;
         return List.of(
                 new TitleCandidate(standard, "发文机关＋事由＋文种", "正式发文标题", true, true, true, List.of(), 0.94),

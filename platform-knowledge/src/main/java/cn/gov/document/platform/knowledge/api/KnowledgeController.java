@@ -41,9 +41,71 @@ public class KnowledgeController {
         return ApiResponse.success(service.createSource(request));
     }
 
+    @PutMapping("/sources/{sourceId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<KnowledgeDtos.SourceResponse> updateSource(
+            @PathVariable String sourceId, @Valid @RequestBody KnowledgeDtos.UpdateSourceRequest request) {
+        return ApiResponse.success(service.updateSource(sourceId, request));
+    }
+
+    @PostMapping("/sources/{sourceId}/reclassify")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<KnowledgeDtos.SourceResponse> reclassifySource(
+            @PathVariable String sourceId, @Valid @RequestBody KnowledgeDtos.ReclassifySourceRequest request) {
+        return ApiResponse.success(service.reclassifySource(sourceId, request.category(), request.lockVersion()));
+    }
+
+    @DeleteMapping("/sources/{sourceId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> deleteSource(@PathVariable String sourceId) {
+        service.deleteSource(sourceId);
+        return ApiResponse.success(null);
+    }
+
     @GetMapping("/sources/{sourceId}/documents")
     ApiResponse<List<KnowledgeDtos.DocumentResponse>> documents(@PathVariable String sourceId) {
         return ApiResponse.success(service.documents(sourceId));
+    }
+
+    @PutMapping("/sources/{sourceId}/documents/{documentId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<KnowledgeDtos.DocumentResponse> updateDocument(
+            @PathVariable String sourceId, @PathVariable String documentId,
+            @Valid @RequestBody KnowledgeDtos.UpdateDocumentRequest request) {
+        return ApiResponse.success(service.updateDocument(sourceId, documentId, request));
+    }
+
+    @DeleteMapping("/sources/{sourceId}/documents/{documentId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<Void> deleteDocument(@PathVariable String sourceId, @PathVariable String documentId) {
+        service.deleteDocument(sourceId, documentId);
+        return ApiResponse.success(null);
+    }
+
+    @GetMapping("/sources/{sourceId}/documents/{documentId}/chunks")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<List<KnowledgeDtos.ChunkResponse>> chunks(@PathVariable String sourceId, @PathVariable String documentId) {
+        return ApiResponse.success(service.chunks(sourceId, documentId));
+    }
+
+    @GetMapping("/sources/{sourceId}/documents/{documentId}/read")
+    @PreAuthorize("hasAnyRole('platform.admin','platform.writer')")
+    ApiResponse<KnowledgeDtos.ReadResponse> read(@PathVariable String sourceId, @PathVariable String documentId) {
+        return ApiResponse.success(service.readDocument(sourceId, documentId));
+    }
+
+    @GetMapping("/sources/{sourceId}/documents/{documentId}/revisions")
+    @PreAuthorize("hasAnyRole('platform.admin','platform.writer')")
+    ApiResponse<List<KnowledgeDtos.RevisionResponse>> revisions(@PathVariable String sourceId, @PathVariable String documentId) {
+        return ApiResponse.success(service.revisions(sourceId, documentId));
+    }
+
+    @PutMapping("/sources/{sourceId}/documents/{documentId}/chunks/{chunkId}")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<KnowledgeDtos.ChunkResponse> updateChunk(
+            @PathVariable String sourceId, @PathVariable String documentId, @PathVariable String chunkId,
+            @Valid @RequestBody KnowledgeDtos.UpdateChunkRequest request) {
+        return ApiResponse.success(service.updateChunk(sourceId, documentId, chunkId, request));
     }
 
     @PostMapping(value = "/sources/{sourceId}/documents/upload", consumes = "multipart/form-data")

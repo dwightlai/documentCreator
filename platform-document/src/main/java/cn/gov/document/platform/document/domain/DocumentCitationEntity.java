@@ -2,6 +2,7 @@ package cn.gov.document.platform.document.domain;
 
 import cn.gov.document.platform.common.domain.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.OffsetDateTime;
 
 @TableName("ai_document_citation")
 public class DocumentCitationEntity extends BaseEntity {
@@ -13,6 +14,10 @@ public class DocumentCitationEntity extends BaseEntity {
     private Integer positionStart;
     private Integer positionEnd;
     private String displayMode;
+    private String knowledgeDocumentId, knowledgeChunkId, sourceFileHash, sourceExcerpt,
+            reviewStatus, confirmedBy;
+    private Integer knowledgeDocumentVersion;
+    private OffsetDateTime confirmedAt;
 
     public String getDocumentId() {
         return documentId;
@@ -77,4 +82,21 @@ public class DocumentCitationEntity extends BaseEntity {
     public void setDisplayMode(String v) {
         displayMode = v;
     }
+
+    public String getKnowledgeDocumentId() { return knowledgeDocumentId; }
+    public void setKnowledgeDocumentId(String v) { knowledgeDocumentId = v; }
+    public String getKnowledgeChunkId() { return knowledgeChunkId; }
+    public void setKnowledgeChunkId(String v) { knowledgeChunkId = v; }
+    public String getSourceFileHash() { return sourceFileHash; }
+    public void setSourceFileHash(String v) { sourceFileHash = v; }
+    public String getSourceExcerpt() { return sourceExcerpt; }
+    public void setSourceExcerpt(String v) { sourceExcerpt = v; }
+    public String getReviewStatus() { return reviewStatus; }
+    public void setReviewStatus(String v) { reviewStatus = v; }
+    public String getConfirmedBy() { return confirmedBy; }
+    public void setConfirmedBy(String v) { confirmedBy = v; }
+    public Integer getKnowledgeDocumentVersion() { return knowledgeDocumentVersion; }
+    public void setKnowledgeDocumentVersion(Integer v) { knowledgeDocumentVersion = v; }
+    public OffsetDateTime getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(OffsetDateTime v) { confirmedAt = v; }
 }

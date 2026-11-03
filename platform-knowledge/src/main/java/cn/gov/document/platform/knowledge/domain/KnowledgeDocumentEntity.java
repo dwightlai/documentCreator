@@ -3,6 +3,7 @@ package cn.gov.document.platform.knowledge.domain;
 import cn.gov.document.platform.common.domain.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @TableName("ai_knowledge_document")
 public class KnowledgeDocumentEntity extends BaseEntity {
@@ -14,8 +15,11 @@ public class KnowledgeDocumentEntity extends BaseEntity {
             metadata,
             authorityLevel,
             permissionLevel,
-            extractedText;
-    private LocalDate effectiveDate, expiryDate;
+            extractedText,
+            usageType, completeness, verificationStatus, validityStatus, publisher,
+            documentNumber, applicableRegion, applicableAudience, applicableScope, reviewedBy;
+    private LocalDate effectiveDate, expiryDate, issuedDate;
+    private OffsetDateTime reviewedAt;
     private Integer chunkCount, documentVersion;
 
     public String getSourceId() {
@@ -121,4 +125,29 @@ public class KnowledgeDocumentEntity extends BaseEntity {
     public void setExtractedText(String v) {
         extractedText = v;
     }
+
+    public String getUsageType() { return usageType; }
+    public void setUsageType(String v) { usageType = v; }
+    public String getCompleteness() { return completeness; }
+    public void setCompleteness(String v) { completeness = v; }
+    public String getVerificationStatus() { return verificationStatus; }
+    public void setVerificationStatus(String v) { verificationStatus = v; }
+    public String getValidityStatus() { return validityStatus; }
+    public void setValidityStatus(String v) { validityStatus = v; }
+    public String getPublisher() { return publisher; }
+    public void setPublisher(String v) { publisher = v; }
+    public String getDocumentNumber() { return documentNumber; }
+    public void setDocumentNumber(String v) { documentNumber = v; }
+    public LocalDate getIssuedDate() { return issuedDate; }
+    public void setIssuedDate(LocalDate v) { issuedDate = v; }
+    public String getApplicableRegion() { return applicableRegion; }
+    public void setApplicableRegion(String v) { applicableRegion = v; }
+    public String getApplicableAudience() { return applicableAudience; }
+    public void setApplicableAudience(String v) { applicableAudience = v; }
+    public String getApplicableScope() { return applicableScope; }
+    public void setApplicableScope(String v) { applicableScope = v; }
+    public String getReviewedBy() { return reviewedBy; }
+    public void setReviewedBy(String v) { reviewedBy = v; }
+    public OffsetDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(OffsetDateTime v) { reviewedAt = v; }
 }

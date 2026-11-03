@@ -9,14 +9,33 @@ import org.springframework.util.StringUtils;
 public class RuleBasedDocumentGenerator {
     public String generate(WritingTaskEntity task, WritingOutlineNodeEntity node, String instruction) {
         String topic = task.getWritingTopic();
-        String purpose = node.getWritingPurpose();
+        String section = node.getNodeTitle();
         String extra = StringUtils.hasText(instruction) ? "写作要求：" + instruction.trim() + "。" : "";
+        String body;
+        if (contains(section, "背景", "概况", "总体", "基本情况", "现状")) {
+            body = "围绕“" + topic + "”，本节应交代工作背景、当前基础和目标范围。具体时间、数据及政策依据请依据核实后的材料补充。";
+        } else if (contains(section, "主要工作", "主要内容", "任务", "举措", "措施", "实施")) {
+            body = "围绕“" + topic + "”，本节应分项说明已开展或拟开展的重点工作，明确责任主体、实施方式和完成标准。具体项目与成效请依据核实后的材料补充。";
+        } else if (contains(section, "问题", "困难", "风险", "不足", "分析")) {
+            body = "围绕“" + topic + "”，本节应分析当前存在的主要问题、形成原因及可能影响。问题表现和影响程度请依据核实后的材料补充，避免无据判断。";
+        } else if (contains(section, "下一步", "后续", "安排", "计划", "保障")) {
+            body = "下一步，围绕“" + topic + "”明确重点任务、责任分工、完成时限和跟踪机制。具体安排应与已确认的计划及审批意见保持一致。";
+        } else if (contains(section, "请示事项", "请求", "审批")) {
+            body = "本节应明确“" + topic + "”所需批准的单一事项、实施范围和请求内容；金额、期限等关键要素请依据核实后的材料填写。";
+        } else {
+            body = "“" + section + "”部分围绕“" + topic + "”展开，应按提纲要求补充该节专属事实、依据与措施，并核对相关材料。";
+        }
         return switch (task.getDocumentTypeCode()) {
-            case "请示" -> "根据有关工作要求，现就" + topic + "有关事项说明如下。" + purpose + "为确保工作依法依规、稳妥有序推进，恳请对上述事项予以研究批复。" + extra;
-            case "通知" -> "为切实做好" + topic + "，现将有关事项通知如下。" + purpose + "各责任单位要强化组织领导，明确责任分工，按期完成各项任务。" + extra;
-            case "报告" -> "现将" + topic + "有关情况报告如下。" + purpose + "下一步，将持续跟踪工作进展，及时研究解决实施中的问题。" + extra;
-            default -> "围绕" + topic + "，本节重点说明以下内容。" + purpose + extra;
+            case "请示" -> body + (contains(section, "请求", "请示事项", "审批") ? "以上事项妥否，请批示。" : "") + extra;
+            case "通知", "报告" -> body + extra;
+            default -> body + extra;
         };
+    }
+
+    private boolean contains(String value, String... keywords) {
+        if (value == null) return false;
+        for (String keyword : keywords) if (value.contains(keyword)) return true;
+        return false;
     }
 
     public String transform(
