@@ -5,6 +5,7 @@ import cn.gov.document.platform.document.domain.DocumentEntity;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
 import cn.gov.document.platform.document.domain.DocumentVersionEntity;
 import cn.gov.document.platform.document.domain.GenerationRecordEntity;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -18,12 +19,19 @@ public final class DocumentDtos {
     private DocumentDtos() {}
 
     public record GenerateSectionRequest(@NotBlank String outlineNodeId, @Size(max = 1000) String instruction) {}
+
     public record RebuildRequest(boolean confirmed) {}
 
     public record KnowledgeDraftRequest(@NotBlank String selectionId, @Size(max = 1000) String instruction) {}
+
     public record KnowledgeDraftResponse(String text, String selectionId, String status) {}
-    public record KnowledgeInsertionRequest(@NotBlank String selectionId, @NotBlank String mode,
-            @NotBlank @Size(max = 10000) String text, String afterParagraphId, boolean confirmed) {}
+
+    public record KnowledgeInsertionRequest(
+            @NotBlank String selectionId,
+            @NotBlank String mode,
+            @NotBlank @Size(max = 10000) String text,
+            String afterParagraphId,
+            boolean confirmed) {}
 
     public record TransformRequest(
             @NotBlank String paragraphId,
@@ -195,6 +203,34 @@ public final class DocumentDtos {
                     entity.getUpdatedAt());
         }
     }
+
+    public record SummaryResponse(String brief, List<String> points, String modelVersion) {}
+
+    public record SummaryInsertRequest(@NotBlank @Size(max = 4000) String text) {}
+
+    public record AssistPreviewRequest(
+            @NotBlank @Pattern(regexp = "润色|扩写") String operation,
+            @NotBlank @Pattern(regexp = "本节|全文") String scope,
+            String outlineNodeId) {}
+
+    public record AssistProposal(String paragraphId, int order, String original, String proposed) {}
+
+    public record AssistPreviewResponse(
+            String operation, String scope, List<AssistProposal> proposals, boolean truncated) {}
+
+    public record AssistApplyItem(@NotBlank String paragraphId, @NotBlank @Size(max = 30000) String text) {}
+
+    public record AssistApplyRequest(@NotNull @Size(min = 1, max = 20) @Valid List<AssistApplyItem> items) {}
+
+    public record FormatChange(String paragraphId, int order, String original, String proposed, String reason) {}
+
+    public record FormatPreviewResponse(List<FormatChange> changes) {}
+
+    public record OpenWritingRequest(
+            @Size(max = 64) String taskId,
+            @Size(max = 20000) String text,
+            @Pattern(regexp = "本节|全文") String scope,
+            @Size(max = 64) String outlineNodeId) {}
 
     private static List<String> parseIds(String value) {
         if (value == null || value.isBlank() || "[]".equals(value)) return List.of();

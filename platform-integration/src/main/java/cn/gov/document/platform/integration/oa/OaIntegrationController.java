@@ -3,33 +3,34 @@ package cn.gov.document.platform.integration.oa;
 import cn.gov.document.platform.common.api.ApiResponse;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.document.api.DocumentDtos;
+import cn.gov.document.platform.document.application.DocumentAssistService;
 import cn.gov.document.platform.document.application.DocumentService;
 import cn.gov.document.platform.job.api.AsyncJobDtos;
 import cn.gov.document.platform.job.application.AsyncJobService;
 import cn.gov.document.platform.review.api.ReviewDtos;
-import cn.gov.document.platform.review.application.ReviewService;
 import cn.gov.document.platform.review.application.ReviewReportService;
+import cn.gov.document.platform.review.application.ReviewService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.io.IOException;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/v1/integrations/oa")
@@ -41,6 +42,7 @@ public class OaIntegrationController {
     private final OaCallbackSecurity callbackSecurity;
     private final ObjectMapper objectMapper;
     private final OaWritingService writingService;
+    private final DocumentAssistService assistService;
 
     public OaIntegrationController(
             ReviewService reviewService,
@@ -49,7 +51,8 @@ public class OaIntegrationController {
             AsyncJobService jobService,
             OaCallbackSecurity callbackSecurity,
             ObjectMapper objectMapper,
-            OaWritingService writingService) {
+            OaWritingService writingService,
+            DocumentAssistService assistService) {
         this.reviewService = reviewService;
         this.reportService = reportService;
         this.documentService = documentService;
@@ -57,6 +60,7 @@ public class OaIntegrationController {
         this.callbackSecurity = callbackSecurity;
         this.objectMapper = objectMapper;
         this.writingService = writingService;
+        this.assistService = assistService;
     }
 
     /** §31.1 从 OA 发起写作：建立写作任务、关联业务单据并导入关联材料。 */
@@ -75,6 +79,38 @@ public class OaIntegrationController {
     ApiResponse<OaIntegrationDtos.WritingStatus> writingStatus(
             @PathVariable String taskId, @RequestParam String businessId) {
         return ApiResponse.success(writingService.status(taskId, businessId));
+    }
+
+    @PostMapping("/documents/summary")
+    ApiResponse<DocumentDtos.SummaryResponse> documentSummary(
+            @Valid @RequestBody OaIntegrationDtos.SubmittedDocument request) {
+        return ApiResponse.success(assistService.summarizeSubmitted(request.text()));
+    }
+
+    @PostMapping("/documents/polish")
+    ApiResponse<DocumentDtos.AssistPreviewResponse> documentPolish(
+            @Valid @RequestBody OaIntegrationDtos.SubmittedDocument request) {
+        return ApiResponse.success(assistService.rewriteSubmitted("润色", request.text()));
+    }
+
+    @PostMapping("/documents/expand")
+    ApiResponse<DocumentDtos.AssistPreviewResponse> documentExpand(
+            @Valid @RequestBody OaIntegrationDtos.SubmittedDocument request) {
+        return ApiResponse.success(assistService.rewriteSubmitted("扩写", request.text()));
+    }
+
+    @PostMapping("/documents/review")
+    @Transactional
+    ApiResponse<OaIntegrationDtos.ReviewResult> documentReview(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody OaIntegrationDtos.SubmittedReview request) {
+        requireIdempotencyKey(idempotencyKey);
+        ReviewDtos.TaskResponse task = reviewService.createFromSubmittedText(request.text(), null, null);
+        reportService.generate(task.id());
+        return ApiResponse.success(new OaIntegrationDtos.ReviewResult(
+                reviewService.get(task.id()),
+                reviewService.issues(task.id(), null, null, null),
+                reportService.list(task.id())));
     }
 
     @GetMapping("/writing-tasks")
@@ -104,44 +140,48 @@ public class OaIntegrationController {
         }
         rejectDuplicateReview(request.businessId());
         ReviewDtos.TaskResponse created = reviewService.create(
-                new ReviewDtos.CreateRequest(request.writingTaskId(), request.reviewPlanId(), request.callbackUrl()));
+                new ReviewDtos.CreateRequest(request.writingTaskId(), null, request.callbackUrl()));
         ReviewDtos.TaskResponse external = reviewService.annotateExternal(
                 created.id(), "OA", request.businessId(), request.documentFileId(), request.callbackUrl());
         reportService.generate(external.id());
 
         var response = reviewResponse(external, request.callbackUrl());
-        return ResponseEntity.accepted().location(URI.create(response.statusUrl())).body(ApiResponse.accepted(response));
+        return ResponseEntity.accepted()
+                .location(URI.create(response.statusUrl()))
+                .body(ApiResponse.accepted(response));
     }
 
     @PostMapping(value = "/review-tasks/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Transactional
     ResponseEntity<ApiResponse<OaIntegrationDtos.CreateReviewResponse>> uploadReview(
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestParam String businessId,
-            @RequestParam String documentTypeCode,
-            @RequestParam(required = false) String reviewPlanId,
+            @RequestParam(required = false) String businessId,
             @RequestParam(required = false) String outputTemplateId,
             @RequestParam(required = false) String callbackUrl,
-            @RequestPart("file") MultipartFile file) throws IOException {
+            @RequestPart("file") MultipartFile file)
+            throws IOException {
         requireIdempotencyKey(idempotencyKey);
-        if (!StringUtils.hasText(businessId) || businessId.length() > 100)
-            throw BusinessException.unprocessable("businessId 不能为空且不能超过 100 字符");
+        if (StringUtils.hasText(businessId) && businessId.length() > 100)
+            throw BusinessException.unprocessable("businessId 不能超过 100 字符");
         if (StringUtils.hasText(callbackUrl)) callbackSecurity.validateCallbackUrl(callbackUrl);
-        rejectDuplicateReview(businessId);
+        if (StringUtils.hasText(businessId)) rejectDuplicateReview(businessId);
         ReviewDtos.TaskResponse created = reviewService.createStandaloneDocx(
-                documentTypeCode, reviewPlanId, outputTemplateId, file.getOriginalFilename(), file.getBytes());
+                null, null, outputTemplateId, file.getOriginalFilename(), file.getBytes());
         ReviewDtos.TaskResponse external = reviewService.annotateExternal(
-                created.id(), "OA", businessId, null, callbackUrl);
+                created.id(), "OA", StringUtils.hasText(businessId) ? businessId : created.id(), null, callbackUrl);
         reportService.generate(external.id());
         OaIntegrationDtos.CreateReviewResponse response = reviewResponse(external, callbackUrl);
-        return ResponseEntity.accepted().location(URI.create(response.statusUrl())).body(ApiResponse.accepted(response));
+        return ResponseEntity.accepted()
+                .location(URI.create(response.statusUrl()))
+                .body(ApiResponse.accepted(response));
     }
 
     @GetMapping("/review-tasks/{taskId}")
     ApiResponse<OaIntegrationDtos.ReviewResult> reviewResult(
-            @PathVariable String taskId, @RequestParam String businessId) {
+            @PathVariable String taskId, @RequestParam(required = false) String businessId) {
         ReviewDtos.TaskResponse task = reviewService.get(taskId);
-        if (!"OA".equals(task.sourceSystem()) || !businessId.equals(task.businessId()))
+        if (!"OA".equals(task.sourceSystem())
+                || (StringUtils.hasText(businessId) && !businessId.equals(task.businessId())))
             throw BusinessException.notFound("OA 审校任务不存在");
         return ApiResponse.success(new OaIntegrationDtos.ReviewResult(
                 task, reviewService.issues(taskId, null, null, null), reportService.list(taskId)));
@@ -156,10 +196,13 @@ public class OaIntegrationController {
 
     @GetMapping("/review-tasks/{taskId}/reports/{version}/export")
     ResponseEntity<byte[]> exportReviewReport(
-            @PathVariable String taskId, @PathVariable int version,
-            @RequestParam String businessId, @RequestParam(defaultValue = "PDF") String format) {
+            @PathVariable String taskId,
+            @PathVariable int version,
+            @RequestParam(required = false) String businessId,
+            @RequestParam(defaultValue = "PDF") String format) {
         ReviewDtos.TaskResponse task = reviewService.get(taskId);
-        if (!"OA".equals(task.sourceSystem()) || !businessId.equals(task.businessId()))
+        if (!"OA".equals(task.sourceSystem())
+                || (StringUtils.hasText(businessId) && !businessId.equals(task.businessId())))
             throw BusinessException.notFound("OA 审校任务不存在");
         return reportFile(taskId, version, format);
     }
@@ -173,8 +216,11 @@ public class OaIntegrationController {
 
     @GetMapping("/writing-tasks/{taskId}/reviews/{reviewId}/reports/{version}/export")
     ResponseEntity<byte[]> exportWritingReviewReport(
-            @PathVariable String taskId, @PathVariable String reviewId, @PathVariable int version,
-            @RequestParam String businessId, @RequestParam(defaultValue = "PDF") String format) {
+            @PathVariable String taskId,
+            @PathVariable String reviewId,
+            @PathVariable int version,
+            @RequestParam String businessId,
+            @RequestParam(defaultValue = "PDF") String format) {
         requireWritingReview(taskId, reviewId, businessId);
         return reportFile(reviewId, version, format);
     }
@@ -187,15 +233,15 @@ public class OaIntegrationController {
 
     private ResponseEntity<byte[]> reportFile(String taskId, int version, String format) {
         boolean docx = "DOCX".equalsIgnoreCase(format);
-        if (!docx && !"PDF".equalsIgnoreCase(format))
-            throw BusinessException.unprocessable("报告仅支持 PDF 或 DOCX");
+        if (!docx && !"PDF".equalsIgnoreCase(format)) throw BusinessException.unprocessable("报告仅支持 PDF 或 DOCX");
         byte[] content = docx ? reportService.exportDocx(taskId, version) : reportService.exportPdf(taskId, version);
-        String mediaType = docx
-                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                : "application/pdf";
+        String mediaType =
+                docx ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(mediaType))
-                .header("Content-Disposition", "attachment; filename=review-report-v" + version + (docx ? ".docx" : ".pdf"))
+                .header(
+                        "Content-Disposition",
+                        "attachment; filename=review-report-v" + version + (docx ? ".docx" : ".pdf"))
                 .body(content);
     }
 
@@ -221,10 +267,13 @@ public class OaIntegrationController {
             body.put("status", task.status());
             body.put("totalIssues", task.totalIssues());
             body.put("pendingIssues", task.pendingIssues());
-            body.put("statusUrl", statusUrl + "?businessId=" + java.net.URLEncoder.encode(task.businessId(), java.nio.charset.StandardCharsets.UTF_8));
+            body.put(
+                    "statusUrl",
+                    statusUrl + "?businessId="
+                            + java.net.URLEncoder.encode(task.businessId(), java.nio.charset.StandardCharsets.UTF_8));
             String payload = objectMapper.writeValueAsString(Map.of("callbackUrl", callbackUrl, "body", body));
-            AsyncJobDtos.Response job = jobService.submit(
-                    new AsyncJobDtos.SubmitRequest("OA_CALLBACK", task.id(), payload, 5));
+            AsyncJobDtos.Response job =
+                    jobService.submit(new AsyncJobDtos.SubmitRequest("OA_CALLBACK", task.id(), payload, 5));
             callbackJobId = job.id();
         }
         return new OaIntegrationDtos.CreateReviewResponse(task, callbackJobId, statusUrl);

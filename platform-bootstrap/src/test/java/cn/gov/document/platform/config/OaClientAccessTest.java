@@ -13,13 +13,20 @@ class OaClientAccessTest {
     @Test
     void onlyAllowlistedTenantBoundMachineTokensCanUseOaApi() {
         var allowed = List.of("oa-client");
-        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", true), allowed)).isTrue();
-        assertThat(SecurityConfiguration.oaClientAllowed(token("other", "tenant-a", true), allowed)).isFalse();
-        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", null, true), allowed)).isFalse();
-        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", false), allowed)).isFalse();
-        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", true), List.of())).isFalse();
-        assertThat(SecurityConfiguration.normalApiAllowed(token("oa-client", "tenant-a", true))).isFalse();
-        assertThat(SecurityConfiguration.normalApiAllowed(token("web-client", "tenant-a", false))).isTrue();
+        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", true), allowed))
+                .isTrue();
+        assertThat(SecurityConfiguration.oaClientAllowed(token("other", "tenant-a", true), allowed))
+                .isFalse();
+        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", null, true), allowed))
+                .isFalse();
+        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", false), allowed))
+                .isFalse();
+        assertThat(SecurityConfiguration.oaClientAllowed(token("oa-client", "tenant-a", true), List.of()))
+                .isFalse();
+        assertThat(SecurityConfiguration.normalApiAllowed(token("oa-client", "tenant-a", true)))
+                .isFalse();
+        assertThat(SecurityConfiguration.normalApiAllowed(token("web-client", "tenant-a", false)))
+                .isTrue();
     }
 
     private static JwtAuthenticationToken token(String clientId, String tenant, boolean oaScope) {
@@ -30,8 +37,7 @@ class OaClientAccessTest {
                 .subject("service-account")
                 .claim("azp", clientId);
         if (tenant != null) builder.claim("tenant_id", tenant);
-        return new JwtAuthenticationToken(builder.build(), oaScope
-                ? List.of(new SimpleGrantedAuthority("SCOPE_oa.integration"))
-                : List.of());
+        return new JwtAuthenticationToken(
+                builder.build(), oaScope ? List.of(new SimpleGrantedAuthority("SCOPE_oa.integration")) : List.of());
     }
 }

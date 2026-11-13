@@ -7,22 +7,22 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.OffsetDateTime;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class OutputTemplateService implements OutputTemplatePort {
@@ -249,8 +249,14 @@ public class OutputTemplateService implements OutputTemplatePort {
         return fileStore.read(entity.getTemplateFilePath());
     }
 
-    public record PreviewBlock(String type, String text, String align, Integer fontSize, boolean bold, String color,
-                               List<List<String>> rows) {}
+    public record PreviewBlock(
+            String type,
+            String text,
+            String align,
+            Integer fontSize,
+            boolean bold,
+            String color,
+            List<List<String>> rows) {}
 
     public List<PreviewBlock> preview(String id) {
         byte[] bytes = fileContent(id);
@@ -259,14 +265,31 @@ public class OutputTemplateService implements OutputTemplatePort {
             for (IBodyElement element : document.getBodyElements()) {
                 if (element instanceof XWPFParagraph paragraph) {
                     if (paragraph.getText().isBlank()) continue;
-                    var run = paragraph.getRuns().stream().filter(value -> StringUtils.hasText(value.text())).findFirst().orElse(null);
-                    blocks.add(new PreviewBlock("paragraph", paragraph.getText(),
-                            paragraph.getAlignment().name(), run == null ? null : run.getFontSize(),
-                            run != null && run.isBold(), run == null ? null : run.getColor(), null));
+                    var run = paragraph.getRuns().stream()
+                            .filter(value -> StringUtils.hasText(value.text()))
+                            .findFirst()
+                            .orElse(null);
+                    blocks.add(new PreviewBlock(
+                            "paragraph",
+                            paragraph.getText(),
+                            paragraph.getAlignment().name(),
+                            run == null ? null : run.getFontSize(),
+                            run != null && run.isBold(),
+                            run == null ? null : run.getColor(),
+                            null));
                 } else if (element instanceof XWPFTable table) {
-                    blocks.add(new PreviewBlock("table", null, null, null, false, null,
-                            table.getRows().stream().map(row -> row.getTableCells().stream()
-                                    .map(cell -> cell.getText()).toList()).toList()));
+                    blocks.add(new PreviewBlock(
+                            "table",
+                            null,
+                            null,
+                            null,
+                            false,
+                            null,
+                            table.getRows().stream()
+                                    .map(row -> row.getTableCells().stream()
+                                            .map(cell -> cell.getText())
+                                            .toList())
+                                    .toList()));
                 }
             }
             return blocks;
@@ -287,7 +310,8 @@ public class OutputTemplateService implements OutputTemplatePort {
                 """,
                 (rs, row) -> new OutputTemplateDtos.UsageItem(
                         "写作任务", rs.getString("id"), rs.getString("task_name"), rs.getString("status")),
-                tenant, id));
+                tenant,
+                id));
         items.addAll(jdbc.query(
                 """
                 SELECT id, COALESCE(document_type_code, '审校'), status FROM ai_review_task
@@ -296,7 +320,8 @@ public class OutputTemplateService implements OutputTemplatePort {
                 """,
                 (rs, row) -> new OutputTemplateDtos.UsageItem(
                         "审校任务", rs.getString("id"), "审校·" + rs.getString(2), rs.getString("status")),
-                tenant, id));
+                tenant,
+                id));
         items.addAll(jdbc.query(
                 """
                 SELECT t.id, COALESCE(w.task_name, d.title, '定稿'), t.source
@@ -308,28 +333,31 @@ public class OutputTemplateService implements OutputTemplatePort {
                 """,
                 (rs, row) -> new OutputTemplateDtos.UsageItem(
                         "套红定稿", rs.getString("id"), rs.getString(2), rs.getString("source")),
-                tenant, id));
+                tenant,
+                id));
         return items;
     }
 
     @Transactional
     public void delete(String id) {
         require(id);
-        List<OutputTemplateDtos.UsageItem> blocking = usages(id).stream()
-                .filter(item -> !"套红定稿".equals(item.kind()))
-                .toList();
+        List<OutputTemplateDtos.UsageItem> blocking =
+                usages(id).stream().filter(item -> !"套红定稿".equals(item.kind())).toList();
         if (!blocking.isEmpty()) {
             String summary = blocking.stream()
                     .limit(5)
                     .map(item -> item.kind() + "「" + item.title() + "」")
                     .reduce((a, b) -> a + "、" + b)
                     .orElse("");
-            throw BusinessException.conflict("模板已被使用，不能删除。引用：" + summary
-                    + (blocking.size() > 5 ? " 等共 " + blocking.size() + " 项" : ""));
+            throw BusinessException.conflict(
+                    "模板已被使用，不能删除。引用：" + summary + (blocking.size() > 5 ? " 等共 " + blocking.size() + " 项" : ""));
         }
         // 唯一约束仍覆盖逻辑删除行，释放代码以便重新上传。
-        jdbc.update("UPDATE ai_output_template SET template_code=? WHERE tenant_id=? AND id=?",
-                "deleted-" + id, RequestContext.tenantId(), id);
+        jdbc.update(
+                "UPDATE ai_output_template SET template_code=? WHERE tenant_id=? AND id=?",
+                "deleted-" + id,
+                RequestContext.tenantId(),
+                id);
         mapper.deleteById(id);
     }
 

@@ -53,12 +53,17 @@ public class PublicSourcePackService {
 
     public PackInfo info(String tenantId) {
         int count = 0;
-        for (JsonNode category : pack.path("categories")) count += category.path("entries").size();
+        for (JsonNode category : pack.path("categories"))
+            count += category.path("entries").size();
         boolean installed = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM public_source_pack_install WHERE tenant_id=? AND pack_code=? AND pack_version=?",
-                Integer.class, tenantId, code(), version()) > 0;
-        return new PackInfo(code(), version(), pack.path("sourceCheckedOn").asText(), 5,
-                count + offlineByUrl.size(), installed);
+                        "SELECT COUNT(*) FROM public_source_pack_install WHERE tenant_id=? AND pack_code=? AND pack_version=?",
+                        Integer.class,
+                        tenantId,
+                        code(),
+                        version())
+                > 0;
+        return new PackInfo(
+                code(), version(), pack.path("sourceCheckedOn").asText(), 5, count + offlineByUrl.size(), installed);
     }
 
     @Transactional
@@ -70,30 +75,53 @@ public class PublicSourcePackService {
             String sourceCode = category.path("code").asText();
             String sourceId = jdbc.query(
                     "SELECT source_id FROM public_source_pack_source WHERE tenant_id=? AND source_code=?",
-                    rs -> rs.next() ? rs.getString(1) : null, tenantId, sourceCode);
+                    rs -> rs.next() ? rs.getString(1) : null,
+                    tenantId,
+                    sourceCode);
             if (sourceId == null) {
                 Integer conflicting = jdbc.queryForObject(
                         "SELECT COUNT(*) FROM ai_knowledge_source WHERE tenant_id=? AND source_code=?",
-                        Integer.class, tenantId, sourceCode);
-                if (conflicting != null && conflicting > 0)
-                    throw new IllegalStateException("知识库代码已被占用：" + sourceCode);
+                        Integer.class,
+                        tenantId,
+                        sourceCode);
+                if (conflicting != null && conflicting > 0) throw new IllegalStateException("知识库代码已被占用：" + sourceCode);
                 sourceId = id();
-                jdbc.update("INSERT INTO ai_knowledge_source (id,tenant_id,source_code,source_name,category,storage_type,permission_scope,entry_count,last_sync_time,is_active,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,?,?,?,TRUE,?,?,?,?,FALSE,0)",
-                        sourceId, tenantId, sourceCode, category.path("name").asText(), category.path("name").asText(),
-                        "全文索引", "公开", 0, now, now, now, actor, actor);
-                jdbc.update("INSERT INTO public_source_pack_source (tenant_id,source_code,source_id) VALUES (?,?,?)",
-                        tenantId, sourceCode, sourceId);
+                jdbc.update(
+                        "INSERT INTO ai_knowledge_source (id,tenant_id,source_code,source_name,category,storage_type,permission_scope,entry_count,last_sync_time,is_active,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,?,?,?,TRUE,?,?,?,?,FALSE,0)",
+                        sourceId,
+                        tenantId,
+                        sourceCode,
+                        category.path("name").asText(),
+                        category.path("name").asText(),
+                        "全文索引",
+                        "公开",
+                        0,
+                        now,
+                        now,
+                        now,
+                        actor,
+                        actor);
+                jdbc.update(
+                        "INSERT INTO public_source_pack_source (tenant_id,source_code,source_id) VALUES (?,?,?)",
+                        tenantId,
+                        sourceCode,
+                        sourceId);
                 newSources++;
             }
             for (JsonNode entry : category.path("entries")) {
                 String entryCode = entry.path("id").asText();
                 String existingId = jdbc.query(
                         "SELECT document_id FROM public_source_pack_entry WHERE tenant_id=? AND entry_code=?",
-                        rs -> rs.next() ? rs.getString(1) : null, tenantId, entryCode);
+                        rs -> rs.next() ? rs.getString(1) : null,
+                        tenantId,
+                        entryCode);
                 if (existingId != null) {
                     upgradeCard(tenantId, existingId, entry, actor, now);
-                    jdbc.update("UPDATE public_source_pack_entry SET installed_version=? WHERE tenant_id=? AND entry_code=?",
-                            version(), tenantId, entryCode);
+                    jdbc.update(
+                            "UPDATE public_source_pack_entry SET installed_version=? WHERE tenant_id=? AND entry_code=?",
+                            version(),
+                            tenantId,
+                            entryCode);
                     continue;
                 }
                 String documentId = id();
@@ -107,14 +135,40 @@ public class PublicSourcePackService {
                 metadata.put("issuedOn", entry.path("issuedOn").asText());
                 metadata.put("sourceCheckedOn", pack.path("sourceCheckedOn").asText());
                 metadata.put("reviewStatus", "公开页面来源已核验；效力及具体适用仍需人工确认");
-                metadata.put("offlineContentType", offlineByUrl.containsKey(entry.path("url").asText()) ? "原文摘录" : "来源索引");
-                jdbc.update("INSERT INTO ai_knowledge_document (id,tenant_id,source_id,document_title,original_file_hash,parsed_status,metadata,authority_level,permission_level,chunk_count,document_version,extracted_text,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,'已完成',?,'官方公开资料','公开',1,1,?,?,?,?,?,FALSE,0)",
-                        documentId, tenantId, sourceId, entry.path("title").asText(), hash, metadata.toString(), content,
-                        now, now, actor, actor);
-                jdbc.update("INSERT INTO ai_knowledge_chunk (id,tenant_id,document_id,chunk_order,chunk_text,chunk_text_hash,keywords,start_position,end_position,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,1,?,?,'[]',0,?,?,?,?,?,FALSE,0)",
-                        id(), tenantId, documentId, content, hash, content.length(), now, now, actor, actor);
-                jdbc.update("INSERT INTO public_source_pack_entry (tenant_id,entry_code,document_id,installed_version) VALUES (?,?,?,?)",
-                        tenantId, entryCode, documentId, version());
+                metadata.put(
+                        "offlineContentType",
+                        offlineByUrl.containsKey(entry.path("url").asText()) ? "原文摘录" : "来源索引");
+                jdbc.update(
+                        "INSERT INTO ai_knowledge_document (id,tenant_id,source_id,document_title,original_file_hash,parsed_status,metadata,authority_level,permission_level,chunk_count,document_version,extracted_text,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,'已完成',?,'官方公开资料','公开',1,1,?,?,?,?,?,FALSE,0)",
+                        documentId,
+                        tenantId,
+                        sourceId,
+                        entry.path("title").asText(),
+                        hash,
+                        metadata.toString(),
+                        content,
+                        now,
+                        now,
+                        actor,
+                        actor);
+                jdbc.update(
+                        "INSERT INTO ai_knowledge_chunk (id,tenant_id,document_id,chunk_order,chunk_text,chunk_text_hash,keywords,start_position,end_position,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,1,?,?,'[]',0,?,?,?,?,?,FALSE,0)",
+                        id(),
+                        tenantId,
+                        documentId,
+                        content,
+                        hash,
+                        content.length(),
+                        now,
+                        now,
+                        actor,
+                        actor);
+                jdbc.update(
+                        "INSERT INTO public_source_pack_entry (tenant_id,entry_code,document_id,installed_version) VALUES (?,?,?,?)",
+                        tenantId,
+                        entryCode,
+                        documentId,
+                        version());
                 newDocuments++;
             }
             for (OfflineDocument offline : offlineByUrl.values()) {
@@ -123,47 +177,94 @@ public class PublicSourcePackService {
                 String entryCode = "OFFLINE-" + item.path("entryId").asText();
                 String existingId = jdbc.query(
                         "SELECT document_id FROM public_source_pack_entry WHERE tenant_id=? AND entry_code=?",
-                        rs -> rs.next() ? rs.getString(1) : null, tenantId, entryCode);
+                        rs -> rs.next() ? rs.getString(1) : null,
+                        tenantId,
+                        entryCode);
                 if (existingId != null) {
-                    String formerTitle = "离线原文 · " + item.path("sourceCardTitle").asText();
+                    String formerTitle =
+                            "离线原文 · " + item.path("sourceCardTitle").asText();
                     String currentTitle = "离线原文 · " + item.path("title").asText();
                     if (!formerTitle.equals(currentTitle))
-                        jdbc.update("UPDATE ai_knowledge_document SET document_title=?,updated_at=?,updated_by=? WHERE tenant_id=? AND id=? AND document_title=? AND original_file_hash=?",
-                                currentTitle, now, actor, tenantId, existingId, formerTitle, item.path("textSha256").asText());
+                        jdbc.update(
+                                "UPDATE ai_knowledge_document SET document_title=?,updated_at=?,updated_by=? WHERE tenant_id=? AND id=? AND document_title=? AND original_file_hash=?",
+                                currentTitle,
+                                now,
+                                actor,
+                                tenantId,
+                                existingId,
+                                formerTitle,
+                                item.path("textSha256").asText());
                     continue;
                 }
                 installOfflineDocument(tenantId, sourceId, entryCode, offline, actor, now);
                 newDocuments++;
             }
-            jdbc.update("UPDATE ai_knowledge_source SET entry_count=(SELECT COUNT(*) FROM ai_knowledge_document WHERE tenant_id=? AND source_id=? AND is_deleted=FALSE),last_sync_time=?,updated_at=? WHERE id=? AND tenant_id=?",
-                    tenantId, sourceId, now, now, sourceId, tenantId);
+            jdbc.update(
+                    "UPDATE ai_knowledge_source SET entry_count=(SELECT COUNT(*) FROM ai_knowledge_document WHERE tenant_id=? AND source_id=? AND is_deleted=FALSE),last_sync_time=?,updated_at=? WHERE id=? AND tenant_id=?",
+                    tenantId,
+                    sourceId,
+                    now,
+                    now,
+                    sourceId,
+                    tenantId);
         }
-        jdbc.update("INSERT INTO public_source_pack_install (tenant_id,pack_code,pack_version,installed_at,installed_by) VALUES (?,?,?,?,?)",
-                tenantId, code(), version(), now, actor);
+        jdbc.update(
+                "INSERT INTO public_source_pack_install (tenant_id,pack_code,pack_version,installed_at,installed_by) VALUES (?,?,?,?,?)",
+                tenantId,
+                code(),
+                version(),
+                now,
+                actor);
         return new InstallResult(true, newSources, newDocuments);
     }
 
     private void upgradeCard(String tenantId, String documentId, JsonNode entry, String actor, OffsetDateTime now) {
         ExistingCard existing = jdbc.query(
                 "SELECT d.original_file_hash,c.id,c.chunk_text,d.metadata FROM ai_knowledge_document d JOIN ai_knowledge_chunk c ON c.document_id=d.id AND c.is_deleted=FALSE WHERE d.tenant_id=? AND d.id=? AND d.is_deleted=FALSE AND c.chunk_order=1",
-                rs -> rs.next() ? new ExistingCard(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4)) : null,
-                tenantId, documentId);
+                rs -> rs.next()
+                        ? new ExistingCard(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4))
+                        : null,
+                tenantId,
+                documentId);
         String old = sourceCard(entry);
         if (existing == null || !sha256(old).equals(existing.hash()) || !old.equals(existing.chunkText())) return;
         String changed = card(entry);
         String hash = sha256(changed);
         ObjectNode metadata;
-        try { metadata = (ObjectNode) mapper.readTree(existing.metadata()); }
-        catch (IOException e) { throw new IllegalStateException("公开来源元数据损坏：" + documentId, e); }
-        metadata.put("offlineContentType", offlineByUrl.containsKey(entry.path("url").asText()) ? "原文摘录" : "来源索引");
-        jdbc.update("UPDATE ai_knowledge_document SET original_file_hash=?,extracted_text=?,metadata=?,document_version=document_version+1,updated_at=?,updated_by=? WHERE tenant_id=? AND id=?",
-                hash, changed, metadata.toString(), now, actor, tenantId, documentId);
-        jdbc.update("UPDATE ai_knowledge_chunk SET chunk_text=?,chunk_text_hash=?,end_position=?,updated_at=?,updated_by=? WHERE tenant_id=? AND id=?",
-                changed, hash, changed.length(), now, actor, tenantId, existing.chunkId());
+        try {
+            metadata = (ObjectNode) mapper.readTree(existing.metadata());
+        } catch (IOException e) {
+            throw new IllegalStateException("公开来源元数据损坏：" + documentId, e);
+        }
+        metadata.put(
+                "offlineContentType", offlineByUrl.containsKey(entry.path("url").asText()) ? "原文摘录" : "来源索引");
+        jdbc.update(
+                "UPDATE ai_knowledge_document SET original_file_hash=?,extracted_text=?,metadata=?,document_version=document_version+1,updated_at=?,updated_by=? WHERE tenant_id=? AND id=?",
+                hash,
+                changed,
+                metadata.toString(),
+                now,
+                actor,
+                tenantId,
+                documentId);
+        jdbc.update(
+                "UPDATE ai_knowledge_chunk SET chunk_text=?,chunk_text_hash=?,end_position=?,updated_at=?,updated_by=? WHERE tenant_id=? AND id=?",
+                changed,
+                hash,
+                changed.length(),
+                now,
+                actor,
+                tenantId,
+                existing.chunkId());
     }
 
-    private void installOfflineDocument(String tenantId, String sourceId, String entryCode,
-            OfflineDocument offline, String actor, OffsetDateTime now) {
+    private void installOfflineDocument(
+            String tenantId,
+            String sourceId,
+            String entryCode,
+            OfflineDocument offline,
+            String actor,
+            OffsetDateTime now) {
         JsonNode item = offline.manifest();
         String text = offline.text();
         String documentId = id();
@@ -178,17 +279,43 @@ public class PublicSourcePackService {
         metadata.put("offlineContentType", "公开页正文");
         metadata.put("completeness", item.path("completeness").asText());
         metadata.put("sourceTextSha256", item.path("textSha256").asText());
-        jdbc.update("INSERT INTO ai_knowledge_document (id,tenant_id,source_id,document_title,original_file_hash,parsed_status,metadata,authority_level,permission_level,chunk_count,document_version,extracted_text,completeness,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,'已完成',?,'官方公开资料','公开',?,1,?,'本地原文可用',?,?,?,?,FALSE,0)",
-                documentId, tenantId, sourceId, "离线原文 · " + item.path("title").asText(), sha256(text),
-                metadata.toString(), parts.size(), text, now, now, actor, actor);
+        jdbc.update(
+                "INSERT INTO ai_knowledge_document (id,tenant_id,source_id,document_title,original_file_hash,parsed_status,metadata,authority_level,permission_level,chunk_count,document_version,extracted_text,completeness,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,'已完成',?,'官方公开资料','公开',?,1,?,'本地原文可用',?,?,?,?,FALSE,0)",
+                documentId,
+                tenantId,
+                sourceId,
+                "离线原文 · " + item.path("title").asText(),
+                sha256(text),
+                metadata.toString(),
+                parts.size(),
+                text,
+                now,
+                now,
+                actor,
+                actor);
         int order = 1;
         for (TextPart part : parts) {
-            jdbc.update("INSERT INTO ai_knowledge_chunk (id,tenant_id,document_id,chunk_order,chunk_text,chunk_text_hash,keywords,start_position,end_position,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,'[]',?,?,?,?,?,?,FALSE,0)",
-                    id(), tenantId, documentId, order++, part.text(), sha256(part.text()), part.start(), part.end(),
-                    now, now, actor, actor);
+            jdbc.update(
+                    "INSERT INTO ai_knowledge_chunk (id,tenant_id,document_id,chunk_order,chunk_text,chunk_text_hash,keywords,start_position,end_position,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,'[]',?,?,?,?,?,?,FALSE,0)",
+                    id(),
+                    tenantId,
+                    documentId,
+                    order++,
+                    part.text(),
+                    sha256(part.text()),
+                    part.start(),
+                    part.end(),
+                    now,
+                    now,
+                    actor,
+                    actor);
         }
-        jdbc.update("INSERT INTO public_source_pack_entry (tenant_id,entry_code,document_id,installed_version) VALUES (?,?,?,?)",
-                tenantId, entryCode, documentId, version());
+        jdbc.update(
+                "INSERT INTO public_source_pack_entry (tenant_id,entry_code,document_id,installed_version) VALUES (?,?,?,?)",
+                tenantId,
+                entryCode,
+                documentId,
+                version());
     }
 
     private static List<TextPart> splitText(String text) {
@@ -224,7 +351,8 @@ public class PublicSourcePackService {
     }
 
     private String sourceCard(JsonNode entry) {
-        return entry.path("title").asText() + "\n发布机构：" + entry.path("publisher").asText()
+        return entry.path("title").asText() + "\n发布机构："
+                + entry.path("publisher").asText()
                 + "\n文号：" + entry.path("documentNumber").asText()
                 + "\n发文或公开日期：" + entry.path("issuedOn").asText()
                 + "\n内容摘要：" + entry.path("summary").asText()
@@ -241,30 +369,50 @@ public class PublicSourcePackService {
         Set<String> codes = new HashSet<>();
         Set<String> entries = new HashSet<>();
         for (JsonNode category : pack.path("categories")) {
-            if (!codes.add(category.path("code").asText()) || !category.path("entries").isArray()
+            if (!codes.add(category.path("code").asText())
+                    || !category.path("entries").isArray()
                     || category.path("entries").isEmpty()) throw new IllegalStateException("公开来源分类无效");
             for (JsonNode entry : category.path("entries")) {
-                if (!entries.add(entry.path("id").asText()) || entry.path("title").asText().isBlank()
-                        || entry.path("summary").asText().isBlank() || entry.path("publisher").asText().isBlank()
+                if (!entries.add(entry.path("id").asText())
+                        || entry.path("title").asText().isBlank()
+                        || entry.path("summary").asText().isBlank()
+                        || entry.path("publisher").asText().isBlank()
                         || !entry.path("url").asText().startsWith("https://"))
-                    throw new IllegalStateException("公开来源条目无效：" + entry.path("id").asText());
+                    throw new IllegalStateException(
+                            "公开来源条目无效：" + entry.path("id").asText());
             }
         }
     }
 
-    private String code() { return pack.path("code").asText(); }
-    private String version() { return pack.path("version").asText(); }
-    private static String id() { return UUID.randomUUID().toString().replace("-", ""); }
+    private String code() {
+        return pack.path("code").asText();
+    }
+
+    private String version() {
+        return pack.path("version").asText();
+    }
+
+    private static String id() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
     private static String sha256(String text) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
             return java.util.HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    public record PackInfo(String code, String version, String sourceCheckedOn, int categories, int entries, boolean installed) {}
+    public record PackInfo(
+            String code, String version, String sourceCheckedOn, int categories, int entries, boolean installed) {}
+
     public record InstallResult(boolean installed, int sources, int documents) {}
+
     private record OfflineDocument(JsonNode manifest, String text) {}
+
     private record TextPart(int start, int end, String text) {}
+
     private record ExistingCard(String hash, String chunkId, String chunkText, String metadata) {}
 }

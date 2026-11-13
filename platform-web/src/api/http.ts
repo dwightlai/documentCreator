@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { accessToken, usesOidc } from '@/auth/identity'
+import { accessToken, clearSession, sessionToken, usesOidc } from '@/auth/identity'
 
 export interface ApiEnvelope<T> {
   code: number
@@ -29,9 +29,8 @@ http.interceptors.request.use(async (config) => {
   if (usesOidc()) {
     const token = await accessToken()
     config.headers.set('Authorization', `Bearer ${token}`)
-  } else {
-    config.headers.set('X-Tenant-Id', import.meta.env.VITE_TENANT_ID || 'local-government')
-    config.headers.set('X-User-Id', import.meta.env.VITE_USER_ID || 'local-user')
+  } else if (sessionToken()) {
+    config.headers.set('Authorization', `Bearer ${sessionToken()}`)
   }
   config.headers.set('X-Request-Id', randomId())
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
@@ -48,6 +47,10 @@ http.interceptors.response.use((response) => {
   return response
 }, (error) => {
   const message = error?.response?.data?.message
+  if (error?.response?.status === 401 && message === '请先登录') {
+    clearSession()
+    if (!location.pathname.startsWith('/login')) location.assign('/login')
+  }
   return Promise.reject(message ? new ApiError(message, error.response) : error)
 })
 

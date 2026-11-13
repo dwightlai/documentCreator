@@ -135,10 +135,27 @@ public class ReviewTaskEntity extends BaseEntity {
         sourceFileName = value;
     }
 
-    public String getEditedFileId() { return editedFileId; }
-    public void setEditedFileId(String value) { editedFileId = value; }
-    public Integer getEditVersion() { return editVersion; }
-    public void setEditVersion(Integer value) { editVersion = value; }
-    public String getReviewTitle() { return reviewTitle; }
-    public void setReviewTitle(String value) { reviewTitle = value; }
+    public String getEditedFileId() {
+        return editedFileId;
+    }
+
+    public void setEditedFileId(String value) {
+        editedFileId = value;
+    }
+
+    public Integer getEditVersion() {
+        return editVersion;
+    }
+
+    public void setEditVersion(Integer value) {
+        editVersion = value;
+    }
+
+    public String getReviewTitle() {
+        return reviewTitle;
+    }
+
+    public void setReviewTitle(String value) {
+        reviewTitle = value;
+    }
 }

@@ -51,8 +51,8 @@ public class WritingMaterialController {
             @RequestParam(required = false) String citationPurpose,
             @RequestParam(required = false) String permissionStatus,
             @RequestParam(required = false) String outlineNodeId) {
-        return ApiResponse.success(
-                fileService.upload(taskId, file, authorityLevel, usageMode, citationPurpose, permissionStatus, outlineNodeId));
+        return ApiResponse.success(fileService.upload(
+                taskId, file, authorityLevel, usageMode, citationPurpose, permissionStatus, outlineNodeId));
     }
 
     @GetMapping

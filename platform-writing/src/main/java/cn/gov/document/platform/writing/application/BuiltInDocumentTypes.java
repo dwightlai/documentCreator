@@ -60,6 +60,15 @@ final class BuiltInDocumentTypes {
         Map<String, Definition> values = new LinkedHashMap<>();
         add(
                 values,
+                "决议",
+                "法定公文",
+                "下行",
+                "用于会议讨论通过的重大决策事项",
+                List.of("会议和议题", "决议事项", "贯彻要求"),
+                List.of("未经会议讨论通过", "决策事项不明确"),
+                List.of());
+        add(
+                values,
                 "通知",
                 "法定公文",
                 "下行",
@@ -141,6 +150,24 @@ final class BuiltInDocumentTypes {
                 List.of("本决定自发布之日起施行。"));
         add(
                 values,
+                "命令",
+                "法定公文",
+                "下行",
+                "用于公布行政法规和规章、宣布施行重大强制性措施、批准授予和晋升衔级、嘉奖有关单位和人员",
+                List.of("发布依据", "命令事项", "施行要求"),
+                List.of("发文权限不明", "执行事项不明确"),
+                List.of());
+        add(
+                values,
+                "公报",
+                "法定公文",
+                "下行",
+                "用于公布重要决定或者重大事项",
+                List.of("公布事项", "相关情况", "结论或决定"),
+                List.of("公布内容不明确", "依据不明"),
+                List.of());
+        add(
+                values,
                 "公告",
                 "法定公文",
                 "下行",
@@ -157,6 +184,15 @@ final class BuiltInDocumentTypes {
                 List.of("通告依据", "具体事项", "实施时间", "责任要求"),
                 List.of("适用范围不明", "执行主体缺失"),
                 List.of("特此通告。"));
+        add(
+                values,
+                "议案",
+                "法定公文",
+                "平行",
+                "用于各级人民政府按照法律程序向同级人民代表大会或者其常务委员会提请审议事项",
+                List.of("提请审议事项", "提出依据", "主要内容"),
+                List.of("提请主体或程序不符", "审议事项不明确"),
+                List.of());
 
         add(
                 values,

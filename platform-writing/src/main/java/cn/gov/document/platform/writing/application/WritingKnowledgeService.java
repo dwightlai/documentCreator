@@ -25,9 +25,12 @@ public class WritingKnowledgeService {
     private final WritingTaskService tasks;
     private final KnowledgeService knowledge;
 
-    public WritingKnowledgeService(WritingKnowledgeSelectionMapper mapper, WritingOutlineNodeMapper nodeMapper,
+    public WritingKnowledgeService(
+            WritingKnowledgeSelectionMapper mapper,
+            WritingOutlineNodeMapper nodeMapper,
             WritingOutlineMapper outlineMapper,
-            WritingTaskService tasks, KnowledgeService knowledge) {
+            WritingTaskService tasks,
+            KnowledgeService knowledge) {
         this.mapper = mapper;
         this.nodeMapper = nodeMapper;
         this.outlineMapper = outlineMapper;
@@ -39,17 +42,14 @@ public class WritingKnowledgeService {
     public WritingKnowledgeDtos.SelectionResponse select(String taskId, WritingKnowledgeDtos.SelectRequest request) {
         tasks.require(taskId);
         WritingOutlineNodeEntity node = nodeMapper.selectById(request.outlineNodeId());
-        if (node == null)
-            throw BusinessException.unprocessable("请先选择提纲章节");
+        if (node == null) throw BusinessException.unprocessable("请先选择提纲章节");
         WritingOutlineEntity outline = outlineMapper.selectById(node.getOutlineId());
         if (outline == null || !taskId.equals(outline.getTaskId()))
             throw BusinessException.unprocessable("请先选择当前任务的提纲章节");
-        var excerpt = knowledge.requireWritingExcerpt(request.sourceId(), request.documentId(), request.chunkId(),
-                request.usageType());
-        if (!request.applicabilityConfirmed())
-            throw BusinessException.unprocessable("请先核对本任务的适用地区、对象、事项范围与资料时效");
-        if (request.selectionReason().trim().length() > 500)
-            throw BusinessException.unprocessable("选用理由不能超过 500 字");
+        var excerpt = knowledge.requireWritingExcerpt(
+                request.sourceId(), request.documentId(), request.chunkId(), request.usageType());
+        if (!request.applicabilityConfirmed()) throw BusinessException.unprocessable("请先核对本任务的适用地区、对象、事项范围与资料时效");
+        if (request.selectionReason().trim().length() > 500) throw BusinessException.unprocessable("选用理由不能超过 500 字");
         long duplicates = mapper.selectCount(new LambdaQueryWrapper<WritingKnowledgeSelectionEntity>()
                 .eq(WritingKnowledgeSelectionEntity::getTaskId, taskId)
                 .eq(WritingKnowledgeSelectionEntity::getOutlineNodeId, node.getId())
@@ -77,7 +77,9 @@ public class WritingKnowledgeService {
 
     public List<WritingKnowledgeDtos.SelectionResponse> list(String taskId, String nodeId) {
         tasks.require(taskId);
-        return selections(taskId, nodeId).stream().map(WritingKnowledgeDtos.SelectionResponse::from).toList();
+        return selections(taskId, nodeId).stream()
+                .map(WritingKnowledgeDtos.SelectionResponse::from)
+                .toList();
     }
 
     public List<WritingKnowledgeSelectionEntity> selections(String taskId, String nodeId) {
@@ -92,8 +94,7 @@ public class WritingKnowledgeService {
         tasks.require(taskId);
         WritingKnowledgeSelectionEntity e = mapper.selectById(selectionId);
         if (e == null || !taskId.equals(e.getTaskId())) throw BusinessException.notFound("选用记录不存在");
-        if (!RequestContext.userId().equals(e.getSelectedBy()))
-            throw BusinessException.unprocessable("请由选用该依据的写作者移除");
+        if (!RequestContext.userId().equals(e.getSelectedBy())) throw BusinessException.unprocessable("请由选用该依据的写作者移除");
         mapper.deleteById(selectionId);
     }
 
@@ -103,18 +104,18 @@ public class WritingKnowledgeService {
         if (e == null || !taskId.equals(e.getTaskId())) throw BusinessException.notFound("选用记录不存在");
         if (!RequestContext.userId().equals(e.getSelectedBy()))
             throw BusinessException.unprocessable("请由选用该依据的写作者完成本次操作");
-        var current = knowledge.requireWritingExcerpt(e.getSourceId(), e.getKnowledgeDocumentId(), e.getChunkId(),
-                e.getUsageType());
+        var current = knowledge.requireWritingExcerpt(
+                e.getSourceId(), e.getKnowledgeDocumentId(), e.getChunkId(), e.getUsageType());
         if (current.documentVersion() != e.getDocumentVersion()
                 || !Objects.equals(current.fileHash(), e.getFileHash())
-                || !current.text().equals(e.getExcerpt()))
-            throw BusinessException.conflict("知识文档已变化，请重新核对并选用");
+                || !current.text().equals(e.getExcerpt())) throw BusinessException.conflict("知识文档已变化，请重新核对并选用");
         return e;
     }
 
     public WritingKnowledgeSelectionEntity requireOriginalSelection(String taskId, String selectionId) {
         WritingKnowledgeSelectionEntity e = requireSelection(taskId, selectionId);
-        var current = knowledge.requireWritingExcerpt(e.getSourceId(), e.getKnowledgeDocumentId(), e.getChunkId(), e.getUsageType());
+        var current = knowledge.requireWritingExcerpt(
+                e.getSourceId(), e.getKnowledgeDocumentId(), e.getChunkId(), e.getUsageType());
         if (!"本地原文可用".equals(current.completeness()))
             throw BusinessException.unprocessable("直接摘录需要可核对的本地完整原文；当前资料仅可参考或起草待核表述");
         return e;
@@ -126,29 +127,37 @@ public class WritingKnowledgeService {
         for (WritingKnowledgeSelectionEntity e : selections(taskId, nodeId)) {
             if (!RequestContext.userId().equals(e.getSelectedBy()))
                 throw BusinessException.unprocessable("本节有其他用户选用的依据，请由当前写作者重新核对");
-            var current = knowledge.requireWritingExcerptForGeneration(e.getSourceId(), e.getKnowledgeDocumentId(),
-                    e.getChunkId(), e.getUsageType());
+            var current = knowledge.requireWritingExcerptForGeneration(
+                    e.getSourceId(), e.getKnowledgeDocumentId(), e.getChunkId(), e.getUsageType());
             if (current.documentVersion() != e.getDocumentVersion()
                     || !Objects.equals(current.fileHash(), e.getFileHash())
                     || !current.text().equals(e.getExcerpt()))
                 throw BusinessException.conflict("已选用的知识文档发生变化，请重新核对并选用：" + e.getDocumentTitle());
             String text = "写法参考".equals(e.getUsageType()) ? styleGuidance(e.getExcerpt()) : e.getExcerpt();
             if (text.length() > 1800) text = text.substring(0, 1800);
-            result.append("\n【").append(e.getUsageType()).append("；来源：").append(e.getDocumentTitle())
-                    .append("；版本 V").append(e.getDocumentVersion()).append("；选用 ID：")
-                    .append(e.getId()).append("】\n").append(text).append('\n');
+            result.append("\n【")
+                    .append(e.getUsageType())
+                    .append("；来源：")
+                    .append(e.getDocumentTitle())
+                    .append("；版本 V")
+                    .append(e.getDocumentVersion())
+                    .append("；选用 ID：")
+                    .append(e.getId())
+                    .append("】\n")
+                    .append(text)
+                    .append('\n');
         }
         return result.toString();
     }
 
     public static String styleGuidance(String excerpt) {
         String[] paragraphs = excerpt.split("[\\r\\n]+");
-        long nonblank = java.util.Arrays.stream(paragraphs).filter(p -> !p.isBlank()).count();
+        long nonblank =
+                java.util.Arrays.stream(paragraphs).filter(p -> !p.isBlank()).count();
         int average = nonblank == 0 ? 0 : excerpt.length() / (int) nonblank;
         boolean numbered = excerpt.matches("(?s).*[一二三四五六七八九十][、．.].*") || excerpt.matches("(?s).*\\d+[、．.].*");
         return "只参考行文组织：约 " + nonblank + " 个段落，平均每段约 " + average
                 + " 字，" + (numbered ? "使用条列结构" : "使用连续段落")
                 + "。不得复制原文中的人名、单位、数值、事项或政策结论。";
     }
-
 }

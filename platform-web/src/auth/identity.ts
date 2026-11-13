@@ -22,3 +22,26 @@ export async function accessToken() {
 }
 
 export function usesOidc() { return Boolean(client) }
+
+const sessionKey = 'platform.session'
+
+export function sessionToken() {
+  return localStorage.getItem(sessionKey) || ''
+}
+
+export function saveSession(token: string) {
+  localStorage.setItem(sessionKey, token)
+}
+
+export function clearSession() {
+  localStorage.removeItem(sessionKey)
+}
+
+export async function authorizationHeader(): Promise<Record<string, string>> {
+  if (usesOidc()) {
+    const token = await accessToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+  const token = sessionToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}

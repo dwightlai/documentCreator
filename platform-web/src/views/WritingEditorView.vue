@@ -8,6 +8,7 @@ import SelectionRewriteDialog from '@/components/SelectionRewriteDialog.vue'
 import ParagraphComments from '@/components/ParagraphComments.vue'
 import ParagraphSuggestions from '@/components/ParagraphSuggestions.vue'
 import TypesetDialog from '@/components/TypesetDialog.vue'
+import DocumentAssistDialog from '@/components/DocumentAssistDialog.vue'
 import { useDict } from '@/composables/useDict'
 import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
 const { options: authorityOptions } = useDict('material_authority', ['正式公文', '权威资料', '内部资料', '参考资料'])
@@ -631,6 +632,10 @@ function setEditorRef(paragraphId:string, el:unknown) { if (el) editorRefs[parag
 const rewrite = ref<{ paragraph: DocumentParagraph; request: SelectionRewrite; operation: SelectionOperation; candidates: SelectionCandidate[]; loading: boolean }>()
 const rewriteOpen = ref(false)
 const typesetOpen = ref(false)
+const assistOpen = ref(false)
+const assistMode = ref<'summary' | 'polish' | 'expand' | 'format'>('summary')
+function openAssist(mode: 'summary' | 'polish' | 'expand' | 'format') { assistMode.value = mode; assistOpen.value = true }
+function appliedAssist(value: WritingDocument) { document.value = value; ElMessage.success('已写入新版本') }
 let rewriteSeq = 0
 async function loadCandidates(operation:SelectionOperation, instruction?:string) {
   const current = rewrite.value
@@ -781,7 +786,7 @@ onBeforeUnmount(endEditing)
     <section class="editor-workspace" v-loading="loading">
       <header class="editor-command" v-if="task">
         <div><RouterLink to="/writing">← 返回任务</RouterLink><span class="classification">{{ task.securityLevel }}</span><h2>{{ task.taskName }}</h2><p>{{ task.documentTypeCode }} · {{ task.writingTopic }}</p></div>
-        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ documentMaterials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" title="按 GB/T 9704 输出模板排版生成定稿稿" @click="typesetOpen=true">套红排版</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
+        <div class="editor-status"><span>材料 <b>{{ allowedMaterials }}/{{ documentMaterials.length }}</b></span><span>提纲 <b>{{ outline?.confirmed ? '已确认' : outline ? '待确认' : '未生成' }}</b></span><span>正文 <b>V{{ document?.currentVersion ?? 0 }}</b></span><span v-if="disclosure" :title="disclosure.modelVersions.length ? '模型：' + disclosure.modelVersions.join('、') : '平台规则生成'">AI 参与 <b>{{ aiPercent }}%</b></span><label v-if="document" class="disclosure-toggle"><input v-model="includeDisclosure" type="checkbox"> 导出附 AI 说明</label><label v-if="document" class="disclosure-toggle" title="开启后段落修改作为修订提交，接受后才形成新版本"><input v-model="trackChanges" type="checkbox"> 修订模式</label><button v-if="document" type="button" @click="openVersions">版本记录</button><button v-if="document" type="button" @click="openSubmission">{{ task?.sourceSystem === 'OA' ? '提交 OA' : '提交检查' }}</button><button v-if="document" type="button" @click="startReview">一键发起审校</button><button v-if="document" type="button" @click="openAssist('summary')">提取摘要</button><button v-if="document" type="button" @click="openAssist('polish')">润色</button><button v-if="document" type="button" @click="openAssist('expand')">扩写</button><button v-if="document" type="button" title="整理标题、主送、层次序号和落款，确认后存成新版本" @click="openAssist('format')">格式整理</button><button v-if="document" type="button" title="按 GB/T 9704 输出模板排版生成定稿稿" @click="typesetOpen=true">套红排版</button><button v-if="document" type="button" @click="download('DOCX')">导出 DOCX</button><button v-if="document" type="button" @click="download('PDF')">PDF</button></div>
       </header>
 
       <div class="editor-columns" v-if="task">
@@ -932,6 +937,7 @@ onBeforeUnmount(endEditing)
       </div>
     </el-dialog>
     <TypesetDialog v-if="document && task" v-model="typesetOpen" :task-id="taskId" :document-type-code="task.documentTypeCode" :current-version="document.currentVersion" />
+    <DocumentAssistDialog v-if="document" v-model="assistOpen" :task-id="taskId" :mode="assistMode" :outline-node-id="selectedNodeId" :outline-confirmed="Boolean(outline?.confirmed)" @applied="appliedAssist" />
 
 
     <el-dialog v-model="citationDialog" title="核对知识引用" width="620px" class="task-dialog"><p>请把当前段落中的具体表述与本地原文的连续摘录逐一核对。确认后才标为“已引用”。</p><el-form label-position="top"><el-form-item label="当前段落中的具体表述"><el-input v-model="citationFragment" type="textarea" :rows="3" /></el-form-item><el-form-item label="对应的本地原文摘录"><el-input v-model="citationSourceExcerpt" type="textarea" :rows="5" /></el-form-item></el-form><template #footer><button class="secondary-button" type="button" @click="citationDialog=false">取消</button><button class="primary-button" type="button" @click="confirmCitation">核对并确认引用</button></template></el-dialog>

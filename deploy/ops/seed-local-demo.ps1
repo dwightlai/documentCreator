@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:18089",
     [string]$TenantId = "local-government",
-    [string]$UserId = "local-user"
+    [string]$UserId = "admin"
 )
 
 $ErrorActionPreference = "Stop"

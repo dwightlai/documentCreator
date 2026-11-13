@@ -5,39 +5,66 @@ import static org.assertj.core.api.Assertions.assertThat;
 import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.rule.application.EffectiveReviewRuleProvider;
 import cn.gov.document.platform.standards.OfficialReviewPackService;
-import java.time.OffsetDateTime;
-import javax.sql.DataSource;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
 class OfficialReviewPackIntegrationTest {
-    @Autowired OfficialReviewPackService service;
-    @Autowired EffectiveReviewRuleProvider provider;
-    @Autowired JdbcTemplate jdbc;
-    @Autowired DataSource dataSource;
+    @Autowired
+    OfficialReviewPackService service;
+
+    @Autowired
+    EffectiveReviewRuleProvider provider;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @Autowired
+    ObjectMapper mapper;
 
     @Test
-    void installsExecutablePackOnceWithoutFlaggingCorrectVocabulary() {
+    void installsExecutablePackOnceWithoutFlaggingCorrectVocabulary() throws IOException {
+        var pack = mapper.readTree(new ClassPathResource("standards/official-review-pack.json").getInputStream());
+        int ruleCount = pack.path("rules").size();
+        int dictionaryCount = pack.path("dictionaries").size();
+        int termCount = 0;
+        for (var dictionary : pack.path("dictionaries")) {
+            var groups = mapper.readTree(new ClassPathResource(
+                                    dictionary.path("dataResource").asText())
+                            .getInputStream())
+                    .path("groups");
+            for (var group : groups) termCount += group.path("variants").size();
+        }
         String tenant = "tenant-official-pack-test";
         var info = service.info(tenant);
-        assertThat(info.ruleCount()).isEqualTo(9);
-        assertThat(info.automaticRuleCount()).isEqualTo(9);
-        assertThat(info.termCount()).isEqualTo(362);
+        assertThat(info.ruleCount()).isEqualTo(ruleCount);
+        assertThat(info.automaticRuleCount()).isEqualTo(ruleCount);
+        assertThat(info.termCount()).isEqualTo(termCount);
         var installed = service.install(tenant, "review-admin");
         assertThat(installed.installed()).isTrue();
-        assertThat(installed.dictionaries()).isEqualTo(1);
-        assertThat(installed.terms()).isEqualTo(362);
-        assertThat(installed.rules()).isEqualTo(9);
+        assertThat(installed.dictionaries()).isEqualTo(dictionaryCount);
+        assertThat(installed.terms()).isEqualTo(termCount);
+        assertThat(installed.rules()).isEqualTo(ruleCount);
         assertThat(service.install(tenant, "review-admin").installed()).isFalse();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_review_rule WHERE tenant_id=? AND is_deleted=FALSE", Integer.class, tenant)).isEqualTo(9);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_review_term WHERE tenant_id=? AND is_deleted=FALSE", Integer.class, tenant)).isEqualTo(362);
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM ai_review_rule WHERE tenant_id=? AND is_deleted=FALSE",
+                        Integer.class,
+                        tenant))
+                .isEqualTo(ruleCount);
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM ai_review_term WHERE tenant_id=? AND is_deleted=FALSE",
+                        Integer.class,
+                        tenant))
+                .isEqualTo(termCount);
         RequestContext.set("pack-test", tenant, "review-admin");
         try {
             assertThat(provider.inspect("请示", "请示、标题、正文和成文日期均已核对。")).isEmpty();
@@ -54,35 +81,118 @@ class OfficialReviewPackIntegrationTest {
                     .extracting(EffectiveReviewRuleProvider.Match::sourceCode)
                     .anyMatch(code -> code.startsWith("STD-PUNCT-REPEATED-COMMA"))
                     .anyMatch(code -> code.startsWith("STD-PUNCT-REPEATED-PERIOD"));
+            assertThat(provider.inspect("通知", "请办理,并反馈:完成。"))
+                    .anySatisfy(match -> {
+                        assertThat(match.original()).isEqualTo(",");
+                        assertThat(match.replacement()).isEqualTo("，");
+                    })
+                    .anySatisfy(match -> {
+                        assertThat(match.original()).isEqualTo(":");
+                        assertThat(match.replacement()).isEqualTo("：");
+                    });
+            assertThat(provider.inspect("通知", "甲,乙,丙").stream()
+                            .filter(match -> match.sourceCode().startsWith("STD-PUNCT-ASCII-COMMA-BETWEEN-HAN")))
+                    .hasSize(2)
+                    .allSatisfy(match -> assertThat(match.replacement()).isEqualTo("，"));
+            assertThat(provider.inspect("通知", "有关事项……等，请核对。")).anySatisfy(match -> {
+                assertThat(match.sourceCode()).startsWith("STD-PUNCT-ELLIPSIS-REDUNDANT-WORD");
+                assertThat(match.replacement()).isNull();
+            });
+            assertThat(provider.inspect("通知", "…… …… ……"))
+                    .noneMatch(match -> match.sourceCode().startsWith("STD-PUNCT-ELLIPSIS-OVERLONG"));
+            assertThat(provider.inspect("通知", "……………………"))
+                    .anyMatch(match -> match.sourceCode().startsWith("STD-PUNCT-ELLIPSIS-OVERLONG"));
+            assertThat(provider.inspect("通知", "请将工作布署到位。")).anySatisfy(match -> {
+                assertThat(match.original()).isEqualTo("布署到位");
+                assertThat(match.replacement()).isEqualTo("部署到位");
+            });
+            assertThat(provider.inspect("通知", "部署工作已经完成。")).isEmpty();
+            assertThat(provider.inspect("通知", "要再接再励。")).anySatisfy(match -> {
+                assertThat(match.original()).isEqualTo("再接再励");
+                assertThat(match.replacement()).isEqualTo("再接再厉");
+            });
+            assertThat(provider.inspect("通知", "面积按平方公尺计算。"))
+                    .anySatisfy(match -> {
+                        assertThat(match.original()).isEqualTo("平方公尺");
+                        assertThat(match.replacement()).isEqualTo("平方米");
+                    })
+                    .noneMatch(match -> "公尺".equals(match.original()));
+            assertThat(provider.inspect("通知", "国家发展与改革委员会")).anySatisfy(match -> {
+                assertThat(match.original()).isEqualTo("国家发展与改革委员会");
+                assertThat(match.replacement()).isEqualTo("国家发展和改革委员会");
+            });
         } finally {
             RequestContext.clear();
         }
     }
 
     @Test
-    void removesOnlyUntouchedReferenceEntriesFromAnOlderInstalledPack() throws Exception {
-        String tenant = "tenant-official-pack-retirement-test";
-        OffsetDateTime created = OffsetDateTime.now();
-        jdbc.update("INSERT INTO official_review_pack_install (tenant_id,pack_code,pack_version,installed_at,installed_by) VALUES (?,?,?,?,?)",
-                tenant, "CN-OFFICIAL-DOCUMENT-BASE", "2026.11.03-4", created, "official-pack");
-        jdbc.update("INSERT INTO ai_review_dictionary (id,tenant_id,dict_code,dict_name,dict_type,source_description,current_version,entry_count,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,1,1,?,?,?,?,FALSE,0)",
-                "old-pack-dict", tenant, "NAT-DOCUMENT-TYPES-2012", "法定文种", "标准文种", "公开规范", created, created, "official-pack", "official-pack");
-        jdbc.update("INSERT INTO ai_review_term (id,tenant_id,dictionary_id,term_text,standard_form,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,?,?,?,FALSE,0)",
-                "old-pack-term", tenant, "old-pack-dict", "通知", "通知", created, created, "official-pack", "official-pack");
-        jdbc.update("INSERT INTO ai_review_rule (id,tenant_id,rule_code,rule_name,category,risk_level,detection_method,rule_expression,lifecycle_status,current_version,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,?,?,?,1,TRUE,?,?,?,?,FALSE,0)",
-                "old-pack-rule", tenant, "STD-DOC-TYPE", "核验文种", "公文业务规范", "一般", "人工核验", "人工核验", "生效", created, created, "official-pack", "official-pack");
-        jdbc.update("INSERT INTO ai_review_rule_version (id,tenant_id,rule_id,version_number,change_description,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,1,?,?,?,?,?,FALSE,0)",
-                "old-pack-version", tenant, "old-pack-rule", "官方规范数据包 2026.11.03-4", created, created, "official-pack", "official-pack");
-        jdbc.update("INSERT INTO ai_review_rule (id,tenant_id,rule_code,rule_name,category,risk_level,detection_method,rule_expression,lifecycle_status,current_version,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version) VALUES (?,?,?,?,?,?,?,?,?,1,TRUE,?,?,?,?,FALSE,0)",
-                "user-manual-rule", tenant, "USER-MANUAL", "用户核验规则", "公文业务规范", "一般", "人工核验", "人工核验", "生效", created, created, "review-admin", "review-admin");
+    void replaysEveryPublishedVariantAndEveryRuleBoundary() throws IOException {
+        String tenant = "tenant-official-pack-regression";
+        service.install(tenant, "review-admin");
+        RequestContext.set("pack-regression", tenant, "review-admin");
+        try {
+            var pack = mapper.readTree(new ClassPathResource("standards/official-review-pack.json").getInputStream());
+            int regexRules = 0;
+            for (var rule : pack.path("rules"))
+                if ("正则".equals(rule.path("method").asText())) regexRules++;
+            for (var dictionary : pack.path("dictionaries")) {
+                String ruleCode = null;
+                for (var rule : pack.path("rules")) {
+                    if ("词库".equals(rule.path("method").asText())
+                            && dictionary
+                                    .path("code")
+                                    .asText()
+                                    .equals(rule.path("expression").asText()))
+                        ruleCode = rule.path("code").asText();
+                }
+                var groups = mapper.readTree(new ClassPathResource(
+                                        dictionary.path("dataResource").asText())
+                                .getInputStream())
+                        .path("groups");
+                StringBuilder variants = new StringBuilder();
+                StringBuilder preferred = new StringBuilder();
+                Set<String> allVariants = new HashSet<>();
+                for (var group : groups) {
+                    preferred.append(group.path("preferred").asText()).append('。');
+                    for (var variant : group.path("variants")) {
+                        variants.append(variant.asText()).append('。');
+                        allVariants.add(variant.asText());
+                    }
+                }
+                String prefix = ruleCode + "@";
+                assertThat(provider.inspect("通知", variants.toString()).stream()
+                                .filter(match -> match.sourceCode().startsWith(prefix))
+                                .map(EffectiveReviewRuleProvider.Match::original)
+                                .collect(java.util.stream.Collectors.toSet()))
+                        .containsAll(allVariants);
+                assertThat(provider.inspect("通知", preferred.toString()))
+                        .noneMatch(match -> match.sourceCode().startsWith(prefix));
+            }
 
-        try (var connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/common/V45__remove_reference_only_review_pack_data.sql"));
+            var cases = mapper.readTree(new ClassPathResource("standards/review-rule-cases.json").getInputStream());
+            assertThat(cases).hasSize(regexRules);
+            for (var example : cases) {
+                String code = example.path("rule").asText();
+                var positive = provider.inspect("通知", example.path("positive").asText()).stream()
+                        .filter(match -> match.sourceCode().startsWith(code + "@"))
+                        .toList();
+                assertThat(positive)
+                        .as(code + " should report the positive case")
+                        .isNotEmpty();
+                if (example.has("replacement"))
+                    assertThat(positive)
+                            .extracting(EffectiveReviewRuleProvider.Match::replacement)
+                            .contains(example.path("replacement").asText());
+                else
+                    assertThat(positive)
+                            .allSatisfy(match -> assertThat(match.replacement()).isNull());
+                assertThat(provider.inspect("通知", example.path("negative").asText()))
+                        .as(code + " should ignore the negative case")
+                        .noneMatch(match -> match.sourceCode().startsWith(code + "@"));
+            }
+        } finally {
+            RequestContext.clear();
         }
-
-        assertThat(jdbc.queryForObject("SELECT is_deleted FROM ai_review_rule WHERE id='old-pack-rule'", Boolean.class)).isTrue();
-        assertThat(jdbc.queryForObject("SELECT is_deleted FROM ai_review_rule WHERE id='user-manual-rule'", Boolean.class)).isFalse();
-        assertThat(jdbc.queryForObject("SELECT is_deleted FROM ai_review_dictionary WHERE id='old-pack-dict'", Boolean.class)).isTrue();
-        assertThat(jdbc.queryForObject("SELECT is_deleted FROM ai_review_term WHERE id='old-pack-term'", Boolean.class)).isTrue();
     }
 }

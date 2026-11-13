@@ -3,9 +3,9 @@ package cn.gov.document.platform.job.web;
 import cn.gov.document.platform.job.application.IdempotencyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Part;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -60,11 +60,13 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
         String endpoint = request.getMethod() + " " + request.getRequestURI();
-        String requestHash = multipart ? sha256Multipart(request, endpoint) : sha256(
-                request.getMethod() + "\n" + request.getRequestURI() + "\n"
-                        + String.valueOf(request.getQueryString()) + "\n"
-                        + "",
-                requestBody);
+        String requestHash = multipart
+                ? sha256Multipart(request, endpoint)
+                : sha256(
+                        request.getMethod() + "\n" + request.getRequestURI() + "\n"
+                                + String.valueOf(request.getQueryString()) + "\n"
+                                + "",
+                        requestBody);
         IdempotencyService.Reservation reservation = service.reserve(endpoint, key, requestHash);
 
         switch (reservation.decision()) {

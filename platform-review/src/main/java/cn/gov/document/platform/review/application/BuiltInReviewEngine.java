@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class BuiltInReviewEngine {
     private final EffectiveReviewRuleProvider effectiveRuleProvider;
+    private final OfflineEvidenceService offlineEvidenceService;
 
     private final cn.gov.document.platform.review.application.deep.FactDataInspector factInspector =
             new cn.gov.document.platform.review.application.deep.FactDataInspector();
@@ -24,8 +25,10 @@ public class BuiltInReviewEngine {
 
     private final L3StructureInspector l3Structure = new L3StructureInspector();
 
-    public BuiltInReviewEngine(EffectiveReviewRuleProvider effectiveRuleProvider) {
+    public BuiltInReviewEngine(
+            EffectiveReviewRuleProvider effectiveRuleProvider, OfflineEvidenceService offlineEvidenceService) {
         this.effectiveRuleProvider = effectiveRuleProvider;
+        this.offlineEvidenceService = offlineEvidenceService;
     }
 
     private static final List<Rule> RULES = List.of(
@@ -110,7 +113,8 @@ public class BuiltInReviewEngine {
                         match.original(),
                         // 内容安全类词条只提示，不提供自动替换（§21）
                         ("L7".equals(level) || "内容安全".equals(match.category()) || "敏感词".equals(match.category()))
-                                ? null : match.replacement(),
+                                ? null
+                                : match.replacement(),
                         match.explanation(),
                         match.basis(),
                         match.confidence(),
@@ -157,6 +161,8 @@ public class BuiltInReviewEngine {
         if (enabledLevels.contains("L3"))
             addDeep(result, l3Structure.inspect(documentTypeCode, direction, paragraphs), riskThreshold);
         if (enabledLevels.contains("L5")) addDeep(result, factInspector.inspect(paragraphs), riskThreshold);
+        if (enabledLevels.contains("L5") || enabledLevels.contains("L7"))
+            addDeep(result, offlineEvidenceService.inspect(paragraphs, enabledLevels), riskThreshold);
         if (enabledLevels.contains("L6")) addDeep(result, logicInspector.inspect(paragraphs), riskThreshold);
         if (enabledLevels.contains("L7")) addDeep(result, safetyInspector.inspect(paragraphs), riskThreshold);
         return result.stream()
@@ -358,8 +364,20 @@ public class BuiltInReviewEngine {
                 String explanation,
                 String basis,
                 BigDecimal confidence) {
-            this(level, paragraphId, paragraphNumber, category, risk, start, end, original, replacement,
-                    explanation, basis, confidence, "内置检查");
+            this(
+                    level,
+                    paragraphId,
+                    paragraphNumber,
+                    category,
+                    risk,
+                    start,
+                    end,
+                    original,
+                    replacement,
+                    explanation,
+                    basis,
+                    confidence,
+                    "内置检查");
         }
     }
 }

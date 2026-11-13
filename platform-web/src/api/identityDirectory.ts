@@ -3,7 +3,8 @@ import { http, type ApiEnvelope } from './http'
 export interface Organization { id: string; org_code: string; org_name: string; parent_id?: string; enabled: boolean }
 export interface Role { id: string; role_code: string; role_name: string; description?: string; enabled: boolean }
 export interface User { id: string; username: string; display_name: string; org_id?: string; enabled: boolean; roleIds: string[] }
-export interface CurrentUser { username: string; displayName?: string; display_name?: string; org_id?: string; orgName?: string; roles: string[] }
+export interface TenantOption { tenant_code: string; tenant_name: string; enabled?: boolean }
+export interface CurrentUser { username: string; displayName?: string; display_name?: string; org_id?: string; orgName?: string; tenantCode?: string; roles: string[] }
 
 export async function listOrganizations() { return (await http.get<ApiEnvelope<Organization[]>>('/identity/organizations')).data.data }
 export async function listRoles() { return (await http.get<ApiEnvelope<Role[]>>('/identity/roles')).data.data }

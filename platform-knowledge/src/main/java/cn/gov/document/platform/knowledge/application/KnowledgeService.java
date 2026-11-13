@@ -6,8 +6,8 @@ import cn.gov.document.platform.common.file.DocxSecurityValidator;
 import cn.gov.document.platform.knowledge.api.KnowledgeDtos;
 import cn.gov.document.platform.knowledge.domain.*;
 import cn.gov.document.platform.knowledge.persistence.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.springframework.security.core.Authentication;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,8 +104,8 @@ public class KnowledgeService {
         KnowledgeSourceEntity source = requireSource(id);
         if (!source.getStorageType().equals(request.storageType())
                 && documentMapper.selectCount(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
-                        .eq(KnowledgeDocumentEntity::getSourceId, id)) > 0)
-            throw BusinessException.conflict("知识库已有文档，不能更改存储类型");
+                                .eq(KnowledgeDocumentEntity::getSourceId, id))
+                        > 0) throw BusinessException.conflict("知识库已有文档，不能更改存储类型");
         if (request.storageType().contains("向量")
                 && (!StringUtils.hasText(request.vectorModel()) || request.vectorDimensions() == null))
             throw BusinessException.unprocessable("向量或混合知识库必须配置向量模型和维度");
@@ -124,9 +124,12 @@ public class KnowledgeService {
     @Transactional
     public void deleteSource(String id) {
         requireSource(id);
-        List<String> documentIds = documentMapper.selectList(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
-                        .eq(KnowledgeDocumentEntity::getSourceId, id))
-                .stream().map(KnowledgeDocumentEntity::getId).toList();
+        List<String> documentIds = documentMapper
+                .selectList(
+                        new LambdaQueryWrapper<KnowledgeDocumentEntity>().eq(KnowledgeDocumentEntity::getSourceId, id))
+                .stream()
+                .map(KnowledgeDocumentEntity::getId)
+                .toList();
         for (String documentId : documentIds) deleteDocument(id, documentId);
         sourceMapper.deleteById(id);
     }
@@ -156,7 +159,8 @@ public class KnowledgeService {
             String sourceId, String documentId, KnowledgeDtos.UpdateDocumentRequest request) {
         KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
         snapshotRevision(sourceId, document);
-        if (request.effectiveDate() != null && request.expiryDate() != null
+        if (request.effectiveDate() != null
+                && request.expiryDate() != null
                 && request.expiryDate().isBefore(request.effectiveDate()))
             throw BusinessException.unprocessable("失效日期不得早于生效日期");
         if (!List.of("公开", "内部", "秘密", "机密").contains(request.permissionLevel()))
@@ -189,7 +193,10 @@ public class KnowledgeService {
             if ("已核验".equals(request.verificationStatus())) {
                 document.setReviewedBy(RequestContext.userId());
                 document.setReviewedAt(OffsetDateTime.now());
-            } else { document.setReviewedBy(null); document.setReviewedAt(null); }
+            } else {
+                document.setReviewedBy(null);
+                document.setReviewedAt(null);
+            }
         }
         if (request.validityStatus() != null) {
             if (!List.of("待核验", "现行", "尚未施行", "已失效", "已废止", "被替代", "不适用").contains(request.validityStatus()))
@@ -211,33 +218,44 @@ public class KnowledgeService {
     public void deleteDocument(String sourceId, String documentId) {
         KnowledgeSourceEntity source = requireSource(sourceId);
         requireDocument(sourceId, documentId);
-        Integer selections = jdbc.queryForObject("SELECT COUNT(*) FROM ai_writing_knowledge_selection WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false", Integer.class, RequestContext.tenantId(), documentId);
-        Integer citations = jdbc.queryForObject("SELECT COUNT(*) FROM ai_document_citation WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false", Integer.class, RequestContext.tenantId(), documentId);
+        Integer selections = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ai_writing_knowledge_selection WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false",
+                Integer.class,
+                RequestContext.tenantId(),
+                documentId);
+        Integer citations = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ai_document_citation WHERE tenant_id=? AND knowledge_document_id=? AND is_deleted=false",
+                Integer.class,
+                RequestContext.tenantId(),
+                documentId);
         if ((selections != null && selections > 0) || (citations != null && citations > 0))
             throw BusinessException.conflict("该原文已被写作任务选用或引用，请先移除选用；历史引用须保留原文");
         if (vectorEnabled(source)) vectorStore.deleteByDocument(RequestContext.tenantId(), documentId);
-        chunkMapper.delete(new LambdaQueryWrapper<KnowledgeChunkEntity>()
-                .eq(KnowledgeChunkEntity::getDocumentId, documentId));
+        chunkMapper.delete(
+                new LambdaQueryWrapper<KnowledgeChunkEntity>().eq(KnowledgeChunkEntity::getDocumentId, documentId));
         documentMapper.deleteById(documentId);
-        source.setEntryCount(Math.toIntExact(documentMapper.selectCount(new LambdaQueryWrapper<KnowledgeDocumentEntity>()
-                .eq(KnowledgeDocumentEntity::getSourceId, sourceId))));
+        source.setEntryCount(Math.toIntExact(documentMapper.selectCount(
+                new LambdaQueryWrapper<KnowledgeDocumentEntity>().eq(KnowledgeDocumentEntity::getSourceId, sourceId))));
         source.setLastSyncTime(OffsetDateTime.now());
         sourceMapper.updateById(source);
     }
 
     public List<KnowledgeDtos.ChunkResponse> chunks(String sourceId, String documentId) {
         requireDocument(sourceId, documentId);
-        return chunkMapper.selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
+        return chunkMapper
+                .selectList(new LambdaQueryWrapper<KnowledgeChunkEntity>()
                         .eq(KnowledgeChunkEntity::getDocumentId, documentId)
                         .orderByAsc(KnowledgeChunkEntity::getChunkOrder))
-                .stream().map(KnowledgeDtos.ChunkResponse::from).toList();
+                .stream()
+                .map(KnowledgeDtos.ChunkResponse::from)
+                .toList();
     }
 
     public KnowledgeDtos.ReadResponse readDocument(String sourceId, String documentId) {
         KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
-        if (rank(document.getPermissionLevel()) > clearance())
-            throw BusinessException.unprocessable("无权查看该知识文档");
-        return new KnowledgeDtos.ReadResponse(KnowledgeDtos.DocumentResponse.from(document), chunks(sourceId, documentId));
+        if (rank(document.getPermissionLevel()) > clearance()) throw BusinessException.unprocessable("无权查看该知识文档");
+        return new KnowledgeDtos.ReadResponse(
+                KnowledgeDtos.DocumentResponse.from(document), chunks(sourceId, documentId));
     }
 
     public String sourceIdForDocument(String documentId) {
@@ -246,10 +264,11 @@ public class KnowledgeService {
         return document.getSourceId();
     }
 
-    public boolean isCitationCurrent(String documentId, String chunkId, Integer version,
-            String fileHash, String sourceExcerpt) {
+    public boolean isCitationCurrent(
+            String documentId, String chunkId, Integer version, String fileHash, String sourceExcerpt) {
         KnowledgeDocumentEntity document = documentMapper.selectById(documentId);
-        if (document == null || !"已核验".equals(document.getVerificationStatus())
+        if (document == null
+                || !"已核验".equals(document.getVerificationStatus())
                 || "来源索引".equals(document.getCompleteness())
                 || !Objects.equals(document.getDocumentVersion(), version)
                 || !Objects.equals(document.getOriginalFileHash(), fileHash)
@@ -257,23 +276,26 @@ public class KnowledgeService {
         KnowledgeSourceEntity source = sourceMapper.selectById(document.getSourceId());
         if (source == null || !Boolean.TRUE.equals(source.getIsActive())) return false;
         if (List.of("已失效", "已废止", "被替代").contains(document.getValidityStatus())
-                || "规范依据".equals(document.getUsageType())
-                        && !"现行".equals(document.getValidityStatus())) return false;
+                || "规范依据".equals(document.getUsageType()) && !"现行".equals(document.getValidityStatus())) return false;
         LocalDate today = LocalDate.now();
         if (document.getEffectiveDate() != null && document.getEffectiveDate().isAfter(today)
                 || document.getExpiryDate() != null && document.getExpiryDate().isBefore(today)) return false;
         KnowledgeChunkEntity chunk = chunkMapper.selectById(chunkId);
-        return chunk != null && documentId.equals(chunk.getDocumentId())
-                && StringUtils.hasText(sourceExcerpt) && chunk.getChunkText().contains(sourceExcerpt);
+        return chunk != null
+                && documentId.equals(chunk.getDocumentId())
+                && StringUtils.hasText(sourceExcerpt)
+                && chunk.getChunkText().contains(sourceExcerpt);
     }
 
     public List<KnowledgeDtos.RevisionResponse> revisions(String sourceId, String documentId) {
         KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
-        if (rank(document.getPermissionLevel()) > clearance())
-            throw BusinessException.unprocessable("无权查看该知识文档历史");
-        return jdbc.query("SELECT document_version,snapshot_json,captured_by,captured_at FROM ai_knowledge_document_revision WHERE tenant_id=? AND document_id=? ORDER BY document_version DESC",
-                (rs, row) -> new KnowledgeDtos.RevisionResponse(rs.getInt(1), rs.getString(2), rs.getString(3),
-                        rs.getObject(4, OffsetDateTime.class)), RequestContext.tenantId(), documentId);
+        if (rank(document.getPermissionLevel()) > clearance()) throw BusinessException.unprocessable("无权查看该知识文档历史");
+        return jdbc.query(
+                "SELECT document_version,snapshot_json,captured_by,captured_at FROM ai_knowledge_document_revision WHERE tenant_id=? AND document_id=? ORDER BY document_version DESC",
+                (rs, row) -> new KnowledgeDtos.RevisionResponse(
+                        rs.getInt(1), rs.getString(2), rs.getString(3), rs.getObject(4, OffsetDateTime.class)),
+                RequestContext.tenantId(),
+                documentId);
     }
 
     private void snapshotRevision(String sourceId, KnowledgeDocumentEntity document) {
@@ -281,9 +303,15 @@ public class KnowledgeService {
             String snapshot = json.writeValueAsString(Map.of(
                     "document", KnowledgeDtos.DocumentResponse.from(document),
                     "chunks", chunks(sourceId, document.getId())));
-            jdbc.update("INSERT INTO ai_knowledge_document_revision (id,tenant_id,document_id,document_version,snapshot_json,captured_by,captured_at) VALUES (?,?,?,?,?,?,?)",
-                    UUID.randomUUID().toString().replace("-", ""), RequestContext.tenantId(), document.getId(),
-                    document.getDocumentVersion(), snapshot, RequestContext.userId(), OffsetDateTime.now());
+            jdbc.update(
+                    "INSERT INTO ai_knowledge_document_revision (id,tenant_id,document_id,document_version,snapshot_json,captured_by,captured_at) VALUES (?,?,?,?,?,?,?)",
+                    UUID.randomUUID().toString().replace("-", ""),
+                    RequestContext.tenantId(),
+                    document.getId(),
+                    document.getDocumentVersion(),
+                    snapshot,
+                    RequestContext.userId(),
+                    OffsetDateTime.now());
         } catch (com.fasterxml.jackson.core.JsonProcessingException error) {
             throw new IllegalStateException("知识文档历史版本保存失败", error);
         }
@@ -291,7 +319,8 @@ public class KnowledgeService {
 
     private boolean isPackagedOfflineOriginal(KnowledgeDocumentEntity document) {
         if (!StringUtils.hasText(document.getExtractedText())) return false;
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public_source_pack_entry WHERE tenant_id=? AND document_id=? AND entry_code LIKE 'OFFLINE-%'",
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM public_source_pack_entry WHERE tenant_id=? AND document_id=? AND entry_code LIKE 'OFFLINE-%'",
                 Integer.class, RequestContext.tenantId(), document.getId());
         return count != null && count > 0;
     }
@@ -590,8 +619,12 @@ public class KnowledgeService {
                             d.getPermissionLevel(),
                             Math.round(Math.min(1.0, e.getValue() / best) * 1000) / 1000.0,
                             d.getOriginalFileHash(),
-                            matchType.get(e.getKey()), d.getUsageType(), d.getCompleteness(),
-                            d.getVerificationStatus(), d.getValidityStatus(), d.getDocumentVersion());
+                            matchType.get(e.getKey()),
+                            d.getUsageType(),
+                            d.getCompleteness(),
+                            d.getVerificationStatus(),
+                            d.getValidityStatus(),
+                            d.getDocumentVersion());
                 })
                 .toList();
     }
@@ -677,13 +710,13 @@ public class KnowledgeService {
     }
 
     /** 已选用内容的后台生成重核；异步任务保留用户 ID，但没有 HTTP SecurityContext。 */
-    public WritingExcerpt requireWritingExcerptForGeneration(String sourceId, String documentId, String chunkId,
-            String usageType) {
+    public WritingExcerpt requireWritingExcerptForGeneration(
+            String sourceId, String documentId, String chunkId, String usageType) {
         return writingExcerpt(sourceId, documentId, chunkId, usageType, false);
     }
 
-    private WritingExcerpt writingExcerpt(String sourceId, String documentId, String chunkId,
-            String usageType, boolean checkClearance) {
+    private WritingExcerpt writingExcerpt(
+            String sourceId, String documentId, String chunkId, String usageType, boolean checkClearance) {
         KnowledgeSourceEntity source = requireSource(sourceId);
         KnowledgeDocumentEntity document = requireDocument(sourceId, documentId);
         if (!Boolean.TRUE.equals(source.getIsActive()) || !"已完成".equals(document.getParsedStatus()))
@@ -696,21 +729,40 @@ public class KnowledgeService {
         if (document.getEffectiveDate() != null && document.getEffectiveDate().isAfter(today)
                 || document.getExpiryDate() != null && document.getExpiryDate().isBefore(today))
             throw BusinessException.unprocessable("知识文档不在有效日期内");
-        if (!List.of("规范依据", "事实依据", "写法参考").contains(usageType)
-                || !usageType.equals(document.getUsageType()))
+        if (!List.of("规范依据", "事实依据", "写法参考").contains(usageType) || !usageType.equals(document.getUsageType()))
             throw BusinessException.unprocessable("请先核对文档写作用途");
         if ("规范依据".equals(usageType) && !"现行".equals(document.getValidityStatus()))
             throw BusinessException.unprocessable("规范依据尚未核验为现行有效");
         KnowledgeChunkEntity chunk = chunkMapper.selectById(chunkId);
         if (chunk == null || !documentId.equals(chunk.getDocumentId())) throw BusinessException.notFound("原文切片不存在");
-        return new WritingExcerpt(sourceId, source.getSourceName(), documentId, document.getDocumentTitle(),
-                document.getDocumentVersion(), chunkId, chunk.getChunkText(), document.getOriginalFileHash(),
-                usageType, document.getCompleteness(), document.getVerificationStatus(), document.getValidityStatus());
+        return new WritingExcerpt(
+                sourceId,
+                source.getSourceName(),
+                documentId,
+                document.getDocumentTitle(),
+                document.getDocumentVersion(),
+                chunkId,
+                chunk.getChunkText(),
+                document.getOriginalFileHash(),
+                usageType,
+                document.getCompleteness(),
+                document.getVerificationStatus(),
+                document.getValidityStatus());
     }
 
-    public record WritingExcerpt(String sourceId, String sourceName, String documentId, String documentTitle,
-            int documentVersion, String chunkId, String text, String fileHash, String usageType,
-            String completeness, String verificationStatus, String validityStatus) {}
+    public record WritingExcerpt(
+            String sourceId,
+            String sourceName,
+            String documentId,
+            String documentTitle,
+            int documentVersion,
+            String chunkId,
+            String text,
+            String fileHash,
+            String usageType,
+            String completeness,
+            String verificationStatus,
+            String validityStatus) {}
 
     private String sha256(byte[] value) {
         try {

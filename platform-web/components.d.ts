@@ -12,8 +12,11 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppShell: typeof import('./src/components/AppShell.vue')['default']
+    DocumentAssistDialog: typeof import('./src/components/DocumentAssistDialog.vue')['default']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCheckboxGroup: typeof import('element-plus/es')['ElCheckboxGroup']
+    ElCollapse: typeof import('element-plus/es')['ElCollapse']
+    ElCollapseItem: typeof import('element-plus/es')['ElCollapseItem']
     ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
     ElDialog: typeof import('element-plus/es')['ElDialog']
     ElDrawer: typeof import('element-plus/es')['ElDrawer']

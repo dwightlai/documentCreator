@@ -1,14 +1,14 @@
 package cn.gov.document.platform.review.api;
 
 import cn.gov.document.platform.common.api.ApiResponse;
-import cn.gov.document.platform.review.application.ReviewService;
 import cn.gov.document.platform.review.application.ReviewDocumentService;
+import cn.gov.document.platform.review.application.ReviewService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,19 +47,25 @@ public class ReviewController {
                 file.getBytes()));
     }
 
+    @PostMapping(value = "/detect-type", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ApiResponse<String> detectType(@RequestPart("file") MultipartFile file) throws IOException {
+        return ApiResponse.success(service.detectDocumentType(file.getOriginalFilename(), file.getBytes()));
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ApiResponse<ReviewDtos.TaskResponse> upload(
-            @RequestParam String documentTypeCode,
+            @RequestParam(required = false) String documentTypeCode,
             @RequestParam(required = false) String reviewPlanId,
             @RequestParam(required = false) String outputTemplateId,
-            @RequestPart("file") MultipartFile file) throws IOException {
+            @RequestPart("file") MultipartFile file)
+            throws IOException {
         return ApiResponse.success(service.createStandaloneDocx(
                 documentTypeCode, reviewPlanId, outputTemplateId, file.getOriginalFilename(), file.getBytes()));
     }
 
     @PostMapping(value = "/{taskId}/re-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ApiResponse<ReviewDtos.TaskResponse> reUpload(
-            @PathVariable String taskId, @RequestPart("file") MultipartFile file) throws IOException {
+    ApiResponse<ReviewDtos.TaskResponse> reUpload(@PathVariable String taskId, @RequestPart("file") MultipartFile file)
+            throws IOException {
         return ApiResponse.success(service.replaceStandaloneDocx(taskId, file.getOriginalFilename(), file.getBytes()));
     }
 
@@ -84,7 +90,9 @@ public class ReviewController {
         return ApiResponse.success(documents.edit(taskId, request));
     }
 
-    @GetMapping(value = "/{taskId}/edited-document", produces = "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    @GetMapping(
+            value = "/{taskId}/edited-document",
+            produces = "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     ResponseEntity<byte[]> editedDocument(@PathVariable String taskId) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=review-edited.docx")

@@ -1,8 +1,8 @@
 package cn.gov.document.platform;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -37,23 +37,40 @@ class OutputTemplateApiIntegrationTest {
 
     @Test
     void previewsOriginalFileAndDeletesUnusedTemplate() throws Exception {
-        MockMultipartFile metadata = new MockMultipartFile("metadata", "metadata.json", MediaType.APPLICATION_JSON_VALUE,
+        MockMultipartFile metadata = new MockMultipartFile(
+                "metadata",
+                "metadata.json",
+                MediaType.APPLICATION_JSON_VALUE,
                 """
                 {"templateCode":"PREVIEW-DELETE","templateName":"预览删除测试","documentTypeCode":"请示",
                  "hasRedHeader":true,"hasFooterMark":false,"direction":"上行","description":"测试"}
-                """.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                """
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
         byte[] original = template();
-        MockMultipartFile file = new MockMultipartFile("file", "preview.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", original);
-        String body = mockMvc.perform(multipart("/api/v1/output-templates").file(metadata).file(file)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "template-admin"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "preview.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                original);
+        String body = mockMvc.perform(multipart("/api/v1/output-templates")
+                        .file(metadata)
+                        .file(file)
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "template-admin"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         String id = objectMapper.readTree(body).path("data").path("id").asText();
         mockMvc.perform(get("/api/v1/output-templates/{id}/preview", id).header("X-Tenant-Id", TENANT))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].text").exists());
-        byte[] downloaded = mockMvc.perform(get("/api/v1/output-templates/{id}/file", id)
-                        .header("X-Tenant-Id", TENANT))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].text").exists());
+        byte[] downloaded = mockMvc.perform(
+                        get("/api/v1/output-templates/{id}/file", id).header("X-Tenant-Id", TENANT))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray();
         assertThat(downloaded).isEqualTo(original);
         mockMvc.perform(delete("/api/v1/output-templates/{id}", id).header("X-Tenant-Id", TENANT))
                 .andExpect(status().isOk());
@@ -212,7 +229,8 @@ class OutputTemplateApiIntegrationTest {
         String writingTaskId =
                 objectMapper.readTree(writingTaskBody).path("data").path("id").asText();
         mockMvc.perform(delete("/api/v1/output-templates/{id}", templateId)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "template-admin"))
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "template-admin"))
                 .andExpect(status().isConflict());
 
         byte[] reviewDocumentBytes = deviatingDocument();
@@ -277,25 +295,38 @@ class OutputTemplateApiIntegrationTest {
 
     @Test
     void reviewsStandaloneUploadedDocxAndKeepsReuploadHistory() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "本地请示.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", deviatingDocument());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "本地请示.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                deviatingDocument());
         String firstBody = mockMvc.perform(multipart("/api/v1/review-tasks/upload")
-                        .file(file).param("documentTypeCode", "请示")
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
+                        .file(file)
+                        .param("documentTypeCode", "请示")
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sourceSystem").value("upload"))
                 .andExpect(jsonPath("$.data.sourceFileName").value("本地请示.docx"))
                 .andExpect(jsonPath("$.data.writingTaskId").doesNotExist())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         var first = objectMapper.readTree(firstBody).path("data");
         String firstId = first.path("id").asText();
         assertThat(first.path("businessId").asText()).isEqualTo(firstId);
         mockMvc.perform(get("/api/v1/review-tasks/{id}/issues", firstId)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
                 .andExpect(status().isOk());
         String secondBody = mockMvc.perform(multipart("/api/v1/review-tasks/{id}/re-upload", firstId)
-                        .file(file).header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                        .file(file)
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         var second = objectMapper.readTree(secondBody).path("data");
         assertThat(second.path("id").asText()).isNotEqualTo(firstId);
         assertThat(second.path("businessId").asText()).isEqualTo(firstId);
@@ -304,7 +335,8 @@ class OutputTemplateApiIntegrationTest {
     @Test
     void editsUploadedDocxInPlaceAndReReviewsLatestVersion() throws Exception {
         byte[] original;
-        try (XWPFDocument word = new XWPFDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+        try (XWPFDocument word = new XWPFDocument();
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             var title = word.createParagraph();
             title.setAlignment(org.apache.poi.xwpf.usermodel.ParagraphAlignment.CENTER);
             title.createRun().setText("关于平台建设的请示");
@@ -320,15 +352,24 @@ class OutputTemplateApiIntegrationTest {
             word.write(output);
             original = output.toByteArray();
         }
-        var file = new MockMultipartFile("file", "待审请示.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", original);
-        String uploaded = mockMvc.perform(multipart("/api/v1/review-tasks/upload").file(file)
+        var file = new MockMultipartFile(
+                "file",
+                "待审请示.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                original);
+        String uploaded = mockMvc.perform(multipart("/api/v1/review-tasks/upload")
+                        .file(file)
                         .param("documentTypeCode", "请示")
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         String id = objectMapper.readTree(uploaded).path("data").path("id").asText();
         String contentBody = mockMvc.perform(get("/api/v1/review-tasks/{id}/content", id)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.blocks[0].kind").value("title"))
                 .andExpect(jsonPath("$.data.blocks[0].style.alignment").value("CENTER"))
@@ -337,12 +378,15 @@ class OutputTemplateApiIntegrationTest {
                 .andExpect(jsonPath("$.data.blocks[2].kind").value("tableRow"))
                 .andExpect(jsonPath("$.data.blocks[2].paragraphNumber").value(4))
                 .andExpect(jsonPath("$.data.blocks[3].currentText").value("表后说明。"))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         var blocks = objectMapper.readTree(contentBody).path("data").path("blocks");
         String paragraphAnchor = blocks.get(1).path("anchor").asText();
         String tableAnchor = blocks.get(2).path("anchor").asText();
         mockMvc.perform(put("/api/v1/review-tasks/{id}/content", id)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "anchor", paragraphAnchor, "text", "截至目前，项目正在推进。", "expectedVersion", 0))))
@@ -350,26 +394,36 @@ class OutputTemplateApiIntegrationTest {
                 .andExpect(jsonPath("$.data.currentVersion").value(1))
                 .andExpect(jsonPath("$.data.needsReview").value(true));
         mockMvc.perform(put("/api/v1/review-tasks/{id}/content", id)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer")
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "anchor", tableAnchor, "text", "事项\t新值", "expectedVersion", 1))))
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of("anchor", tableAnchor, "text", "事项\t新值", "expectedVersion", 1))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.currentVersion").value(2));
         byte[] edited = mockMvc.perform(get("/api/v1/review-tasks/{id}/edited-document", id)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray();
         try (XWPFDocument word = new XWPFDocument(new ByteArrayInputStream(edited))) {
             assertThat(word.getParagraphs().get(1).getText()).isEqualTo("截至目前，项目正在推进。");
             assertThat(word.getParagraphs().get(1).getRuns().get(1).getText(0)).isEqualTo("项目正在推进。");
             assertThat(word.getTables().get(0).getRow(0).getCell(1).getText()).isEqualTo("新值");
         }
         String rerun = mockMvc.perform(post("/api/v1/review-tasks/{id}/re-review", id)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         String nextId = objectMapper.readTree(rerun).path("data").path("id").asText();
         mockMvc.perform(get("/api/v1/review-tasks/{id}/content", nextId)
-                        .header("X-Tenant-Id", TENANT).header("X-User-Id", "reviewer"))
+                        .header("X-Tenant-Id", TENANT)
+                        .header("X-User-Id", "reviewer"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.blocks[1].currentText").value("截至目前，项目正在推进。"))
                 .andExpect(jsonPath("$.data.needsReview").value(false));

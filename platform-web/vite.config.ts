@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
   const proxy = {
     '/api': { target: proxyTarget, changeOrigin: true },
     '/actuator': { target: proxyTarget, changeOrigin: true },
+    '/v3/api-docs': { target: proxyTarget, changeOrigin: true },
+    '/swagger-ui': { target: proxyTarget, changeOrigin: true },
+    '/swagger-ui.html': { target: proxyTarget, changeOrigin: true },
   }
   return {
   plugins: [vue(), Components({ resolvers: [ElementPlusResolver()] })],

@@ -168,12 +168,13 @@ public class PromptTemplateService {
                 .selectList(new LambdaQueryWrapper<PromptTemplateEntity>()
                         .eq(PromptTemplateEntity::getApplicableScene, scene)
                         .eq(PromptTemplateEntity::getLifecycleStatus, "生效")
-                        .and(StringUtils.hasText(documentTypeCode), q -> q.and(w -> w.eq(
-                                        PromptTemplateEntity::getDocumentTypeCode, documentTypeCode)
-                                .or()
-                                .isNull(PromptTemplateEntity::getDocumentTypeCode)
-                                .or()
-                                .eq(PromptTemplateEntity::getDocumentTypeCode, "")))
+                        .and(
+                                StringUtils.hasText(documentTypeCode),
+                                q -> q.and(w -> w.eq(PromptTemplateEntity::getDocumentTypeCode, documentTypeCode)
+                                        .or()
+                                        .isNull(PromptTemplateEntity::getDocumentTypeCode)
+                                        .or()
+                                        .eq(PromptTemplateEntity::getDocumentTypeCode, "")))
                         .orderByDesc(PromptTemplateEntity::getDocumentTypeCode))
                 .stream()
                 .filter(e -> readList(e.getApplicableModels()).isEmpty()
@@ -200,7 +201,8 @@ public class PromptTemplateService {
         e.setTemplateCode(r.templateCode().trim());
         e.setTemplateName(r.templateName().trim());
         e.setApplicableScene(r.applicableScene());
-        e.setDocumentTypeCode(StringUtils.hasText(r.documentTypeCode()) ? r.documentTypeCode().trim() : null);
+        e.setDocumentTypeCode(
+                StringUtils.hasText(r.documentTypeCode()) ? r.documentTypeCode().trim() : null);
         e.setApplicableModels(write(r.applicableModels() == null ? List.of() : r.applicableModels()));
         e.setSystemRole(r.systemRole());
         e.setDocumentTypeMethod(r.documentTypeMethod());

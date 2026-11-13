@@ -30,14 +30,16 @@ public final class ReviewCategory {
     }
 
     public static Set<String> levels(List<String> categories) {
-        return categories.stream().flatMap(category -> switch (category) {
-            case POLITICAL -> List.of("L7").stream();
-            case FACT -> List.of("L5").stream();
-            case DOCUMENT -> List.of("L3", "L7").stream();
-            case FORMAT -> List.of("L3", "L4").stream();
-            case LOGIC -> List.of("L6").stream();
-            case LANGUAGE -> List.of("L1", "L2").stream();
-            default -> throw new IllegalArgumentException("未定义审校业务分类: " + category);
-        }).collect(Collectors.toSet());
+        return categories.stream()
+                .flatMap(category -> switch (category) {
+                    case POLITICAL -> List.of("L7").stream();
+                    case FACT -> List.of("L5").stream();
+                    case DOCUMENT -> List.of("L3", "L7").stream();
+                    case FORMAT -> List.of("L3", "L4").stream();
+                    case LOGIC -> List.of("L6").stream();
+                    case LANGUAGE -> List.of("L1", "L2").stream();
+                    default -> throw new IllegalArgumentException("未定义审校业务分类: " + category);
+                })
+                .collect(Collectors.toSet());
     }
 }

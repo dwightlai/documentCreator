@@ -13,17 +13,19 @@ import org.springframework.web.bind.annotation.*;
 public class WritingKnowledgeController {
     private final WritingKnowledgeService service;
 
-    public WritingKnowledgeController(WritingKnowledgeService service) { this.service = service; }
+    public WritingKnowledgeController(WritingKnowledgeService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    ApiResponse<List<WritingKnowledgeDtos.SelectionResponse>> list(@PathVariable String taskId,
-            @RequestParam(required = false) String outlineNodeId) {
+    ApiResponse<List<WritingKnowledgeDtos.SelectionResponse>> list(
+            @PathVariable String taskId, @RequestParam(required = false) String outlineNodeId) {
         return ApiResponse.success(service.list(taskId, outlineNodeId));
     }
 
     @PostMapping
-    ApiResponse<WritingKnowledgeDtos.SelectionResponse> select(@PathVariable String taskId,
-            @Valid @RequestBody WritingKnowledgeDtos.SelectRequest request) {
+    ApiResponse<WritingKnowledgeDtos.SelectionResponse> select(
+            @PathVariable String taskId, @Valid @RequestBody WritingKnowledgeDtos.SelectRequest request) {
         return ApiResponse.success(service.select(taskId, request));
     }
 

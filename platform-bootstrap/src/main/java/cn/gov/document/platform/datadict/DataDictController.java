@@ -30,28 +30,21 @@ public class DataDictController {
     private static final Map<String, SeedType> DEFAULTS = new LinkedHashMap<>();
 
     static {
-        DEFAULTS.put("document_direction", seed("document_direction", "行文方向", 10,
-                "上行", "下行", "平行", "内部"));
-        DEFAULTS.put("security_level", seed("security_level", "密级/数据权限", 20,
-                "公开", "内部", "秘密", "机密"));
-        DEFAULTS.put("material_authority", seed("material_authority", "材料权威级别", 30,
-                "正式公文", "权威资料", "内部资料", "参考资料"));
-        DEFAULTS.put("material_usage_mode", seed("material_usage_mode", "材料使用方式", 40,
-                "全文参考", "指定片段", "仅作背景"));
-        DEFAULTS.put("material_citation_purpose", seed("material_citation_purpose", "材料引用目的", 50,
-                "事实依据", "政策依据", "案例参考", "表达参考"));
-        DEFAULTS.put("knowledge_usage_type", seed("knowledge_usage_type", "知识写作用途", 60,
-                "待分类", "规范依据", "事实依据", "写法参考"));
-        DEFAULTS.put("knowledge_completeness", seed("knowledge_completeness", "入库完整性", 70,
-                "本地原文可用", "原文摘录", "来源索引"));
-        DEFAULTS.put("knowledge_verification", seed("knowledge_verification", "内容核验状态", 80,
-                "待整理", "待审核", "待核验", "已核验", "退回"));
-        DEFAULTS.put("document_category", seed("document_category", "文种分类", 90,
-                "法定公文", "事务文书"));
-        DEFAULTS.put("model_data_level", seed("model_data_level", "模型数据级别", 100,
-                "普通", "内部", "敏感"));
-        DEFAULTS.put("model_scene", seed("model_scene", "模型调用场景", 110,
-                "段落生成", "文本改写"));
+        DEFAULTS.put("document_direction", seed("document_direction", "行文方向", 10, "上行", "下行", "平行", "内部"));
+        DEFAULTS.put("security_level", seed("security_level", "密级/数据权限", 20, "公开", "内部", "秘密", "机密"));
+        DEFAULTS.put("material_authority", seed("material_authority", "材料权威级别", 30, "正式公文", "权威资料", "内部资料", "参考资料"));
+        DEFAULTS.put("material_usage_mode", seed("material_usage_mode", "材料使用方式", 40, "全文参考", "指定片段", "仅作背景"));
+        DEFAULTS.put(
+                "material_citation_purpose",
+                seed("material_citation_purpose", "材料引用目的", 50, "事实依据", "政策依据", "案例参考", "表达参考"));
+        DEFAULTS.put("knowledge_usage_type", seed("knowledge_usage_type", "知识写作用途", 60, "待分类", "规范依据", "事实依据", "写法参考"));
+        DEFAULTS.put("knowledge_completeness", seed("knowledge_completeness", "入库完整性", 70, "本地原文可用", "原文摘录", "来源索引"));
+        DEFAULTS.put(
+                "knowledge_verification",
+                seed("knowledge_verification", "内容核验状态", 80, "待整理", "待审核", "待核验", "已核验", "退回"));
+        DEFAULTS.put("document_category", seed("document_category", "文种分类", 90, "法定公文", "事务文书"));
+        DEFAULTS.put("model_data_level", seed("model_data_level", "模型数据级别", 100, "普通", "内部", "敏感"));
+        DEFAULTS.put("model_scene", seed("model_scene", "模型调用场景", 110, "段落生成", "文本改写"));
     }
 
     private final JdbcTemplate jdbc;
@@ -60,10 +53,15 @@ public class DataDictController {
         this.jdbc = jdbc;
     }
 
-    public record TypeInput(@NotBlank String typeCode, @NotBlank String typeName, String description,
-            Integer sortOrder, Boolean enabled) {}
+    public record TypeInput(
+            @NotBlank String typeCode,
+            @NotBlank String typeName,
+            String description,
+            Integer sortOrder,
+            Boolean enabled) {}
 
-    public record ItemInput(@NotBlank String itemCode, @NotBlank String itemLabel, Integer sortOrder, Boolean enabled) {}
+    public record ItemInput(
+            @NotBlank String itemCode, @NotBlank String itemLabel, Integer sortOrder, Boolean enabled) {}
 
     @GetMapping
     public ApiResponse<List<Map<String, Object>>> listTypes() {
@@ -83,13 +81,14 @@ public class DataDictController {
             @PathVariable String typeCode, @RequestParam(required = false, defaultValue = "true") boolean enabledOnly) {
         ensureDefaults();
         requireType(typeCode);
-        String sql = """
+        String sql =
+                """
                 SELECT id, type_code, item_code, item_label, sort_order, enabled, lock_version
                 FROM ai_data_dict_item
                 WHERE tenant_id=? AND type_code=? AND is_deleted=FALSE
                 """
-                + (enabledOnly ? " AND enabled=TRUE" : "")
-                + " ORDER BY sort_order, item_code";
+                        + (enabledOnly ? " AND enabled=TRUE" : "")
+                        + " ORDER BY sort_order, item_code";
         return ApiResponse.success(jdbc.queryForList(sql, tenant(), typeCode.trim()));
     }
 
@@ -107,9 +106,17 @@ public class DataDictController {
                 (id,tenant_id,type_code,type_name,description,sort_order,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,FALSE,0)
                 """,
-                id, tenant(), code, input.typeName().trim(), blank(input.description()),
+                id,
+                tenant(),
+                code,
+                input.typeName().trim(),
+                blank(input.description()),
                 input.sortOrder() == null ? 999 : input.sortOrder(),
-                input.enabled() == null || input.enabled(), now(), now(), user(), user());
+                input.enabled() == null || input.enabled(),
+                now(),
+                now(),
+                user(),
+                user());
         return ApiResponse.success(type(id));
     }
 
@@ -127,13 +134,23 @@ public class DataDictController {
                 SET type_code=?, type_name=?, description=?, sort_order=?, enabled=?, updated_at=?, updated_by=?, lock_version=lock_version+1
                 WHERE id=? AND tenant_id=? AND is_deleted=FALSE
                 """,
-                code, input.typeName().trim(), blank(input.description()),
+                code,
+                input.typeName().trim(),
+                blank(input.description()),
                 input.sortOrder() == null ? 0 : input.sortOrder(),
-                input.enabled() == null || input.enabled(), now(), user(), id, tenant());
+                input.enabled() == null || input.enabled(),
+                now(),
+                user(),
+                id,
+                tenant());
         if (!oldCode.equals(code)) {
             jdbc.update(
                     "UPDATE ai_data_dict_item SET type_code=?, updated_at=?, updated_by=? WHERE tenant_id=? AND type_code=? AND is_deleted=FALSE",
-                    code, now(), user(), tenant(), oldCode);
+                    code,
+                    now(),
+                    user(),
+                    tenant(),
+                    oldCode);
         }
         return ApiResponse.success(type(id));
     }
@@ -146,17 +163,24 @@ public class DataDictController {
         String code = String.valueOf(existing.get("type_code"));
         jdbc.update(
                 "UPDATE ai_data_dict_item SET is_deleted=TRUE, updated_at=?, updated_by=? WHERE tenant_id=? AND type_code=? AND is_deleted=FALSE",
-                now(), user(), tenant(), code);
+                now(),
+                user(),
+                tenant(),
+                code);
         jdbc.update(
                 "UPDATE ai_data_dict_type SET is_deleted=TRUE, updated_at=?, updated_by=? WHERE id=? AND tenant_id=?",
-                now(), user(), id, tenant());
+                now(),
+                user(),
+                id,
+                tenant());
         return ApiResponse.success(null);
     }
 
     @PostMapping("/{typeCode}/items")
     @PreAuthorize("hasRole('platform.admin')")
     @Transactional
-    public ApiResponse<Map<String, Object>> createItem(@PathVariable String typeCode, @Valid @RequestBody ItemInput input) {
+    public ApiResponse<Map<String, Object>> createItem(
+            @PathVariable String typeCode, @Valid @RequestBody ItemInput input) {
         ensureDefaults();
         requireType(typeCode);
         String code = input.itemCode().trim();
@@ -168,9 +192,17 @@ public class DataDictController {
                 (id,tenant_id,type_code,item_code,item_label,sort_order,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,FALSE,0)
                 """,
-                id, tenant(), typeCode.trim(), code, input.itemLabel().trim(),
+                id,
+                tenant(),
+                typeCode.trim(),
+                code,
+                input.itemLabel().trim(),
                 input.sortOrder() == null ? 999 : input.sortOrder(),
-                input.enabled() == null || input.enabled(), now(), now(), user(), user());
+                input.enabled() == null || input.enabled(),
+                now(),
+                now(),
+                user(),
+                user());
         return ApiResponse.success(item(id));
     }
 
@@ -188,8 +220,14 @@ public class DataDictController {
                 SET item_code=?, item_label=?, sort_order=?, enabled=?, updated_at=?, updated_by=?, lock_version=lock_version+1
                 WHERE id=? AND tenant_id=? AND is_deleted=FALSE
                 """,
-                code, input.itemLabel().trim(), input.sortOrder() == null ? 0 : input.sortOrder(),
-                input.enabled() == null || input.enabled(), now(), user(), id, tenant());
+                code,
+                input.itemLabel().trim(),
+                input.sortOrder() == null ? 0 : input.sortOrder(),
+                input.enabled() == null || input.enabled(),
+                now(),
+                user(),
+                id,
+                tenant());
         return ApiResponse.success(item(id));
     }
 
@@ -200,14 +238,18 @@ public class DataDictController {
         item(id);
         jdbc.update(
                 "UPDATE ai_data_dict_item SET is_deleted=TRUE, updated_at=?, updated_by=? WHERE id=? AND tenant_id=?",
-                now(), user(), id, tenant());
+                now(),
+                user(),
+                id,
+                tenant());
         return ApiResponse.success(null);
     }
 
     private void ensureDefaults() {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM ai_data_dict_type WHERE tenant_id=? AND is_deleted=FALSE",
-                Integer.class, tenant());
+                Integer.class,
+                tenant());
         if (count != null && count > 0) return;
         for (SeedType seed : DEFAULTS.values()) {
             jdbc.update(
@@ -216,7 +258,15 @@ public class DataDictController {
                     (id,tenant_id,type_code,type_name,description,sort_order,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version)
                     VALUES (?,?,?,?,NULL,?,TRUE,?,?,?,?,FALSE,0)
                     """,
-                    id(), tenant(), seed.code(), seed.name(), seed.sort(), now(), now(), user(), user());
+                    id(),
+                    tenant(),
+                    seed.code(),
+                    seed.name(),
+                    seed.sort(),
+                    now(),
+                    now(),
+                    user(),
+                    user());
             int itemOrder = 0;
             for (String label : seed.items()) {
                 jdbc.update(
@@ -225,7 +275,16 @@ public class DataDictController {
                         (id,tenant_id,type_code,item_code,item_label,sort_order,enabled,created_at,updated_at,created_by,updated_by,is_deleted,lock_version)
                         VALUES (?,?,?,?,?,?,TRUE,?,?,?,?,FALSE,0)
                         """,
-                        id(), tenant(), seed.code(), label, label, itemOrder++, now(), now(), user(), user());
+                        id(),
+                        tenant(),
+                        seed.code(),
+                        label,
+                        label,
+                        itemOrder++,
+                        now(),
+                        now(),
+                        user(),
+                        user());
             }
         }
     }
@@ -233,7 +292,8 @@ public class DataDictController {
     private Map<String, Object> requireType(String typeCode) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT id, type_code, type_name FROM ai_data_dict_type WHERE tenant_id=? AND type_code=? AND is_deleted=FALSE",
-                tenant(), typeCode.trim());
+                tenant(),
+                typeCode.trim());
         if (rows.isEmpty()) throw BusinessException.notFound("字典类型不存在");
         return rows.get(0);
     }
@@ -241,7 +301,8 @@ public class DataDictController {
     private Map<String, Object> type(String id) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT id, type_code, type_name, description, sort_order, enabled, lock_version FROM ai_data_dict_type WHERE tenant_id=? AND id=? AND is_deleted=FALSE",
-                tenant(), id);
+                tenant(),
+                id);
         if (rows.isEmpty()) throw BusinessException.notFound("字典类型不存在");
         return rows.get(0);
     }
@@ -249,7 +310,8 @@ public class DataDictController {
     private Map<String, Object> item(String id) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT id, type_code, item_code, item_label, sort_order, enabled, lock_version FROM ai_data_dict_item WHERE tenant_id=? AND id=? AND is_deleted=FALSE",
-                tenant(), id);
+                tenant(),
+                id);
         if (rows.isEmpty()) throw BusinessException.notFound("字典项不存在");
         return rows.get(0);
     }
@@ -258,10 +320,15 @@ public class DataDictController {
         Integer count = excludeId == null
                 ? jdbc.queryForObject(
                         "SELECT COUNT(*) FROM ai_data_dict_type WHERE tenant_id=? AND type_code=? AND is_deleted=FALSE",
-                        Integer.class, tenant(), code)
+                        Integer.class,
+                        tenant(),
+                        code)
                 : jdbc.queryForObject(
                         "SELECT COUNT(*) FROM ai_data_dict_type WHERE tenant_id=? AND type_code=? AND id<>? AND is_deleted=FALSE",
-                        Integer.class, tenant(), code, excludeId);
+                        Integer.class,
+                        tenant(),
+                        code,
+                        excludeId);
         return count != null && count > 0;
     }
 
@@ -269,10 +336,17 @@ public class DataDictController {
         Integer count = excludeId == null
                 ? jdbc.queryForObject(
                         "SELECT COUNT(*) FROM ai_data_dict_item WHERE tenant_id=? AND type_code=? AND item_code=? AND is_deleted=FALSE",
-                        Integer.class, tenant(), typeCode, code)
+                        Integer.class,
+                        tenant(),
+                        typeCode,
+                        code)
                 : jdbc.queryForObject(
                         "SELECT COUNT(*) FROM ai_data_dict_item WHERE tenant_id=? AND type_code=? AND item_code=? AND id<>? AND is_deleted=FALSE",
-                        Integer.class, tenant(), typeCode, code, excludeId);
+                        Integer.class,
+                        tenant(),
+                        typeCode,
+                        code,
+                        excludeId);
         return count != null && count > 0;
     }
 

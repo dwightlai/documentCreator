@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class OfficialReviewPackController {
     private final OfficialReviewPackService service;
 
-    public OfficialReviewPackController(OfficialReviewPackService service) { this.service = service; }
+    public OfficialReviewPackController(OfficialReviewPackService service) {
+        this.service = service;
+    }
 
     @GetMapping
     public ApiResponse<OfficialReviewPackService.PackInfo> info() {

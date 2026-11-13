@@ -22,8 +22,11 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 class OaReviewIntegrationTest {
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper json;
+    @Autowired
+    MockMvc mockMvc;
+
+    @Autowired
+    ObjectMapper json;
 
     @Test
     void oaCanUploadDocxAndReadItsOwnResultWithoutCreatingDuplicates() throws Exception {
@@ -37,7 +40,10 @@ class OaReviewIntegrationTest {
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "oa-system")
                         .header("Idempotency-Key", "oa-review-upload-001"))
-                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isAccepted())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         JsonNode created = json.readTree(body).path("data");
         String id = created.path("reviewTask").path("id").asText();
         assertThat(id).isNotBlank();
@@ -72,38 +78,65 @@ class OaReviewIntegrationTest {
                 .andExpect(status().isConflict());
 
         String result = mockMvc.perform(get("/api/v1/integrations/oa/review-tasks/{id}", id)
-                        .param("businessId", businessId).header("X-Tenant-Id", tenant))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(json.readTree(result).path("data").path("reviewTask").path("id").asText()).isEqualTo(id);
+                        .param("businessId", businessId)
+                        .header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(json.readTree(result)
+                        .path("data")
+                        .path("reviewTask")
+                        .path("id")
+                        .asText())
+                .isEqualTo(id);
         String byBusinessId = mockMvc.perform(get("/api/v1/integrations/oa/review-tasks")
-                        .param("businessId", businessId).header("X-Tenant-Id", tenant))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(json.readTree(byBusinessId).path("data").path("reviewTask").path("id").asText())
+                        .param("businessId", businessId)
+                        .header("X-Tenant-Id", tenant))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(json.readTree(byBusinessId)
+                        .path("data")
+                        .path("reviewTask")
+                        .path("id")
+                        .asText())
                 .isEqualTo(id);
         assertThat(json.readTree(result).path("data").path("issues").isArray()).isTrue();
-        assertThat(json.readTree(result).path("data").path("reports").get(0).path("reportVersion").asInt())
+        assertThat(json.readTree(result)
+                        .path("data")
+                        .path("reports")
+                        .get(0)
+                        .path("reportVersion")
+                        .asInt())
                 .isEqualTo(1);
         mockMvc.perform(get("/api/v1/integrations/oa/review-tasks/{id}/reports/1/export", id)
-                        .param("businessId", businessId).param("format", "DOCX")
+                        .param("businessId", businessId)
+                        .param("format", "DOCX")
                         .header("X-Tenant-Id", tenant))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/integrations/oa/review-tasks/{id}", id)
-                        .param("businessId", "wrong").header("X-Tenant-Id", tenant))
+                        .param("businessId", "wrong")
+                        .header("X-Tenant-Id", tenant))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/integrations/oa/review-tasks/{id}", id)
-                        .param("businessId", businessId).header("X-Tenant-Id", "other-tenant"))
+                        .param("businessId", businessId)
+                        .header("X-Tenant-Id", "other-tenant"))
                 .andExpect(status().isNotFound());
     }
 
     private static MockMultipartFile file(byte[] bytes) {
-        return new MockMultipartFile("file", "待审请示.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes);
+        return new MockMultipartFile(
+                "file", "待审请示.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes);
     }
 
     private static byte[] docx(String... paragraphs) throws Exception {
-        try (XWPFDocument word = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            for (String paragraph : paragraphs) word.createParagraph().createRun().setText(paragraph);
+        try (XWPFDocument word = new XWPFDocument();
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (String paragraph : paragraphs)
+                word.createParagraph().createRun().setText(paragraph);
             word.write(out);
             return out.toByteArray();
         }

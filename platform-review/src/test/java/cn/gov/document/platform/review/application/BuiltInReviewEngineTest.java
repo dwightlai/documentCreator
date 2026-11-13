@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 class BuiltInReviewEngineTest {
     private final EffectiveReviewRuleProvider provider = mock(EffectiveReviewRuleProvider.class);
-    private final BuiltInReviewEngine engine = new BuiltInReviewEngine(provider);
+    private final BuiltInReviewEngine engine = new BuiltInReviewEngine(provider, mock(OfflineEvidenceService.class));
 
     @Test
     void appliesConfiguredLevelsAndRiskThreshold() {
@@ -77,19 +77,17 @@ class BuiltInReviewEngineTest {
         DocumentParagraphEntity termParagraph = paragraph("term", 1, "其他");
         when(provider.inspect("通知", "其他"))
                 .thenReturn(List.of(new EffectiveReviewRuleProvider.Match(
-                        "DICT:term", "常见误用", "一般", 0, 2, "其他", "其它", "用词提示", "词语依据",
-                        "词库", new BigDecimal("0.95"))));
+                        "DICT:term", "常见误用", "一般", 0, 2, "其他", "其它", "用词提示", "词语依据", "词库", new BigDecimal("0.95"))));
         var termIssues = engine.inspect("通知", List.of(termParagraph), Set.of("L2"), "一般");
         assertThat(termIssues).singleElement().satisfies(issue -> {
             assertThat(issue.level()).isEqualTo("L2");
-            assertThat(issue.source()).isEqualTo("标准词库");
+            assertThat(issue.source()).isEqualTo("标准词库:DICT:term");
         });
 
         DocumentParagraphEntity ruleParagraph = paragraph("rule", 1, "某项");
         when(provider.inspect("通知", "某项"))
                 .thenReturn(List.of(new EffectiveReviewRuleProvider.Match(
-                        "STD-CUSTOM", "行文规则", "一般", 0, 2, "某项", null, "规则提示", "公文依据",
-                        "规则", new BigDecimal("0.96"))));
+                        "STD-CUSTOM", "行文规则", "一般", 0, 2, "某项", null, "规则提示", "公文依据", "规则", new BigDecimal("0.96"))));
         var ruleIssues = engine.inspect("通知", List.of(ruleParagraph), Set.of("L3"), "一般");
         assertThat(ruleIssues).singleElement().satisfies(issue -> {
             assertThat(issue.level()).isEqualTo("L3");

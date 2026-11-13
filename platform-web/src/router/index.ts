@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { sessionToken, usesOidc } from '@/auth/identity'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { title: '登录', public: true } },
     { path: '/', redirect: '/writing' },
     {
       path: '/writing',
@@ -28,8 +30,16 @@ const router = createRouter({
     { path: '/templates', name: 'templates', component: () => import('@/views/TemplateCenterView.vue'), meta: { title: '输出模板中心' } },
     { path: '/governance', name: 'governance', component: () => import('@/views/GovernanceConsoleView.vue'), meta: { title: '模型与配置治理' } },
     { path: '/data-dicts', name: 'data-dicts', component: () => import('@/views/DataDictView.vue'), meta: { title: '数据字典' } },
+    { path: '/open-api', name: 'open-api', component: () => import('@/views/OpenApiDocsView.vue'), meta: { title: '开放 API 文档' } },
+    { path: '/open-apps', name: 'open-apps', component: () => import('@/views/OpenAppsView.vue'), meta: { title: '第三方应用' } },
     { path: '/identity', name: 'identity', component: () => import('@/views/IdentityDirectoryView.vue'), meta: { title: '用户与权限' } },
   ],
+})
+
+router.beforeEach(to => {
+  if (usesOidc() || to.meta.public) return true
+  if (!sessionToken()) return { path: '/login', query: { redirect: to.fullPath } }
+  return true
 })
 
 router.afterEach((to) => {

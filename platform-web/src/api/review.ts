@@ -113,11 +113,15 @@ export async function initiateReview(writingTaskId: string, reviewPlanId?: strin
   const response = await http.post<ApiEnvelope<ReviewTask>>(`/writing-tasks/${writingTaskId}/initiate-review`, reviewPlanId ? { reviewPlanId } : undefined)
   return response.data.data
 }
-export async function uploadReviewDocument(file: File, documentTypeCode: string, reviewPlanId?: string, outputTemplateId?: string) {
+export async function detectReviewDocumentType(file: File) {
   const form = new FormData()
   form.append('file', file)
-  form.append('documentTypeCode', documentTypeCode)
-  if (reviewPlanId) form.append('reviewPlanId', reviewPlanId)
+  const response = await http.post<ApiEnvelope<string>>('/review-tasks/detect-type', form)
+  return response.data.data
+}
+export async function uploadReviewDocument(file: File, outputTemplateId?: string) {
+  const form = new FormData()
+  form.append('file', file)
   if (outputTemplateId) form.append('outputTemplateId', outputTemplateId)
   const response = await http.post<ApiEnvelope<ReviewTask>>('/review-tasks/upload', form)
   return response.data.data

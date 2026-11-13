@@ -20,6 +20,6 @@ public class WritingReviewController {
         return ApiResponse.success(service.create(new ReviewDtos.CreateRequest(writingTaskId, planId, null)));
     }
 
-    /** 可选指定审校方案；未指定时使用默认“公文规范审校”。 */
+    /** 可选指定审校方案；未指定时使用默认“内容安全审校”。 */
     record InitiateRequest(String reviewPlanId) {}
 }

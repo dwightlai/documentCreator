@@ -17,9 +17,13 @@ public final class CitationDtos {
             @NotNull @Min(0) Integer positionStart,
             @NotNull @Min(1) Integer positionEnd,
             String displayMode) {}
-    public record ConfirmKnowledgeRequest(@NotBlank String citedFragment,
-            @NotBlank String sourceExcerpt, @NotNull @Min(0) Integer positionStart,
-            @NotNull @Min(1) Integer positionEnd, boolean confirmed) {}
+
+    public record ConfirmKnowledgeRequest(
+            @NotBlank String citedFragment,
+            @NotBlank String sourceExcerpt,
+            @NotNull @Min(0) Integer positionStart,
+            @NotNull @Min(1) Integer positionEnd,
+            boolean confirmed) {}
 
     public record Response(
             String id,
@@ -47,8 +51,13 @@ public final class CitationDtos {
                     e.getCitedFragment(),
                     e.getPositionStart(),
                     e.getPositionEnd(),
-                    e.getDisplayMode(), e.getKnowledgeDocumentId(), e.getKnowledgeChunkId(),
-                    e.getKnowledgeDocumentVersion(), e.getSourceFileHash(), e.getSourceExcerpt(), e.getReviewStatus());
+                    e.getDisplayMode(),
+                    e.getKnowledgeDocumentId(),
+                    e.getKnowledgeChunkId(),
+                    e.getKnowledgeDocumentVersion(),
+                    e.getSourceFileHash(),
+                    e.getSourceExcerpt(),
+                    e.getReviewStatus());
         }
     }
 }

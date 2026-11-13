@@ -70,9 +70,8 @@ public class ReviewPlanService {
     public void delete(String id) {
         ReviewPlanEntity entity = require(id);
         if (!Boolean.TRUE.equals(entity.getIsCustom())) throw BusinessException.conflict("内置审校方案不可删除");
-        if (taskMapper.selectCount(new LambdaQueryWrapper<ReviewTaskEntity>()
-                        .eq(ReviewTaskEntity::getReviewPlanId, id)) > 0)
-            throw BusinessException.conflict("该审校方案已被审校记录使用，不能删除");
+        if (taskMapper.selectCount(new LambdaQueryWrapper<ReviewTaskEntity>().eq(ReviewTaskEntity::getReviewPlanId, id))
+                > 0) throw BusinessException.conflict("该审校方案已被审校记录使用，不能删除");
         mapper.deleteById(id);
     }
 
@@ -80,7 +79,7 @@ public class ReviewPlanService {
     public String defaultPlanId() {
         ensureBuiltIns();
         ReviewPlanEntity entity = mapper.selectOne(
-                new LambdaQueryWrapper<ReviewPlanEntity>().eq(ReviewPlanEntity::getPlanCode, "OFFICIAL"));
+                new LambdaQueryWrapper<ReviewPlanEntity>().eq(ReviewPlanEntity::getPlanCode, "SECURITY"));
         return entity.getId();
     }
 
@@ -97,20 +96,45 @@ public class ReviewPlanService {
     private void ensureBuiltIns() {
         for (ReviewPlanEntity existing : mapper.selectList(new LambdaQueryWrapper<ReviewPlanEntity>()
                 .in(ReviewPlanEntity::getPlanCode, List.of("QUICK", "OFFICIAL", "DEEP", "SECURITY")))) {
-            if (!Boolean.TRUE.equals(existing.getIsCustom()) && read(existing.getReviewLevels()).stream().anyMatch(v -> v.startsWith("L"))) {
-                List<String> categories = switch (existing.getPlanCode()) {
-                    case "QUICK" -> List.of(ReviewCategory.LANGUAGE);
-                    case "OFFICIAL" -> List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT);
-                    case "DEEP" -> List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT, ReviewCategory.FACT, ReviewCategory.LOGIC);
-                    default -> ReviewCategory.ALL;
-                };
+            if (!Boolean.TRUE.equals(existing.getIsCustom())
+                    && read(existing.getReviewLevels()).stream().anyMatch(v -> v.startsWith("L"))) {
+                List<String> categories =
+                        switch (existing.getPlanCode()) {
+                            case "QUICK" -> List.of(ReviewCategory.LANGUAGE);
+                            case "OFFICIAL" -> List.of(
+                                    ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT);
+                            case "DEEP" -> List.of(
+                                    ReviewCategory.LANGUAGE,
+                                    ReviewCategory.DOCUMENT,
+                                    ReviewCategory.FORMAT,
+                                    ReviewCategory.FACT,
+                                    ReviewCategory.LOGIC);
+                            default -> ReviewCategory.ALL;
+                        };
                 existing.setReviewLevels(write(categories));
                 mapper.updateById(existing);
             }
         }
         insertBuiltIn("QUICK", "快速校对", "日常材料", List.of(ReviewCategory.LANGUAGE), "一般", false);
-        insertBuiltIn("OFFICIAL", "公文规范审校", "正式公文拟稿", List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT), "一般", false);
-        insertBuiltIn("DEEP", "深度内容审校", "领导讲话、报告", List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT, ReviewCategory.FACT, ReviewCategory.LOGIC), "提示", false);
+        insertBuiltIn(
+                "OFFICIAL",
+                "公文规范审校",
+                "正式公文拟稿",
+                List.of(ReviewCategory.LANGUAGE, ReviewCategory.DOCUMENT, ReviewCategory.FORMAT),
+                "一般",
+                false);
+        insertBuiltIn(
+                "DEEP",
+                "深度内容审校",
+                "领导讲话、报告",
+                List.of(
+                        ReviewCategory.LANGUAGE,
+                        ReviewCategory.DOCUMENT,
+                        ReviewCategory.FORMAT,
+                        ReviewCategory.FACT,
+                        ReviewCategory.LOGIC),
+                "提示",
+                false);
         insertBuiltIn("SECURITY", "内容安全审校", "对外发布材料", ReviewCategory.ALL, "提示", false);
     }
 

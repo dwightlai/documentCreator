@@ -72,6 +72,12 @@ public class RuleController {
         return ApiResponse.success(service.deactivate(ruleId));
     }
 
+    @PatchMapping("/{ruleId}/reactivate")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<RuleDtos.Response> reactivate(@PathVariable String ruleId) {
+        return ApiResponse.success(service.reactivate(ruleId));
+    }
+
     @GetMapping("/{ruleId}/versions")
     ApiResponse<List<RuleDtos.VersionResponse>> versions(@PathVariable String ruleId) {
         return ApiResponse.success(service.versions(ruleId));

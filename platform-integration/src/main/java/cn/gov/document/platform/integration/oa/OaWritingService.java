@@ -161,11 +161,13 @@ public class OaWritingService {
             body.put("reviewTaskId", gate.reviewTaskId());
             body.put("reviewStatus", "提交门禁已通过");
             String statusBase = "/api/v1/integrations/oa/writing-tasks/" + writingTaskId;
-            String businessQuery = "?businessId=" + java.net.URLEncoder.encode(
-                    task.getBusinessId(), java.nio.charset.StandardCharsets.UTF_8);
+            String businessQuery = "?businessId="
+                    + java.net.URLEncoder.encode(task.getBusinessId(), java.nio.charset.StandardCharsets.UTF_8);
             body.put(
                     "reportUrl",
-                    gate.reviewTaskId() == null ? null : statusBase + "/reviews/" + gate.reviewTaskId() + "/reports" + businessQuery);
+                    gate.reviewTaskId() == null
+                            ? null
+                            : statusBase + "/reviews/" + gate.reviewTaskId() + "/reports" + businessQuery);
             body.put("documentUrl", statusBase + "/document/versions/" + version + businessQuery);
             body.put("aiGenerated", disclosure.aiGeneratedRatio().signum() > 0);
             body.put("aiGeneratedRatio", disclosure.aiGeneratedRatio());
@@ -186,8 +188,9 @@ public class OaWritingService {
                 .eq(DocumentSubmissionEntity::getWritingTaskId, writingTaskId)
                 .orderByDesc(DocumentSubmissionEntity::getSubmittedAt)
                 .last("LIMIT 1"));
-        return latest == null ? null : new OaIntegrationDtos.SubmissionProgress(
-                latest.getDocumentVersion(), latest.getSubmittedAt());
+        return latest == null
+                ? null
+                : new OaIntegrationDtos.SubmissionProgress(latest.getDocumentVersion(), latest.getSubmittedAt());
     }
 
     public OaIntegrationDtos.WritingStatus status(String writingTaskId, String businessId) {
@@ -210,9 +213,10 @@ public class OaWritingService {
     public boolean isSubmittedVersion(String writingTaskId, String businessId, int version) {
         status(writingTaskId, businessId);
         return submissionMapper.selectCount(new LambdaQueryWrapper<DocumentSubmissionEntity>()
-                .eq(DocumentSubmissionEntity::getWritingTaskId, writingTaskId)
-                .eq(DocumentSubmissionEntity::getBusinessId, businessId)
-                .eq(DocumentSubmissionEntity::getTargetSystem, SOURCE_SYSTEM)
-                .eq(DocumentSubmissionEntity::getDocumentVersion, version)) > 0;
+                        .eq(DocumentSubmissionEntity::getWritingTaskId, writingTaskId)
+                        .eq(DocumentSubmissionEntity::getBusinessId, businessId)
+                        .eq(DocumentSubmissionEntity::getTargetSystem, SOURCE_SYSTEM)
+                        .eq(DocumentSubmissionEntity::getDocumentVersion, version))
+                > 0;
     }
 }

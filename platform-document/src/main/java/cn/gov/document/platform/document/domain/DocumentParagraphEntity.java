@@ -74,8 +74,13 @@ public class DocumentParagraphEntity extends BaseEntity {
         sourceMaterialIds = value;
     }
 
-    public String getSourceKnowledgeIds() { return sourceKnowledgeIds; }
-    public void setSourceKnowledgeIds(String value) { sourceKnowledgeIds = value; }
+    public String getSourceKnowledgeIds() {
+        return sourceKnowledgeIds;
+    }
+
+    public void setSourceKnowledgeIds(String value) {
+        sourceKnowledgeIds = value;
+    }
 
     public Boolean getIsLocked() {
         return isLocked;

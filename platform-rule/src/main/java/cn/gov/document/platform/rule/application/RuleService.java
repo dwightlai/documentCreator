@@ -3,11 +3,11 @@ package cn.gov.document.platform.rule.application;
 import cn.gov.document.platform.common.context.RequestContext;
 import cn.gov.document.platform.common.error.BusinessException;
 import cn.gov.document.platform.rule.api.RuleDtos;
+import cn.gov.document.platform.rule.domain.ReviewDictionaryEntity;
 import cn.gov.document.platform.rule.domain.ReviewRuleEntity;
 import cn.gov.document.platform.rule.domain.RuleVersionEntity;
-import cn.gov.document.platform.rule.persistence.ReviewRuleMapper;
 import cn.gov.document.platform.rule.persistence.ReviewDictionaryMapper;
-import cn.gov.document.platform.rule.domain.ReviewDictionaryEntity;
+import cn.gov.document.platform.rule.persistence.ReviewRuleMapper;
 import cn.gov.document.platform.rule.persistence.RuleVersionMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,7 +32,11 @@ public class RuleService {
     private final RuleVersionMapper versionMapper;
     private final ObjectMapper objectMapper;
 
-    public RuleService(ReviewRuleMapper ruleMapper, ReviewDictionaryMapper dictionaryMapper, RuleVersionMapper versionMapper, ObjectMapper objectMapper) {
+    public RuleService(
+            ReviewRuleMapper ruleMapper,
+            ReviewDictionaryMapper dictionaryMapper,
+            RuleVersionMapper versionMapper,
+            ObjectMapper objectMapper) {
         this.ruleMapper = ruleMapper;
         this.dictionaryMapper = dictionaryMapper;
         this.versionMapper = versionMapper;
@@ -89,7 +93,8 @@ public class RuleService {
     @Transactional
     public RuleDtos.Response update(String id, RuleDtos.UpdateRequest request) {
         ReviewRuleEntity e = require(id);
-        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus())) throw BusinessException.conflict("只有草稿、测试或停用状态的规则可以编辑");
+        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus()))
+            throw BusinessException.conflict("只有草稿、测试或停用状态的规则可以编辑");
         validateDates(request.effectiveDate(), request.expiryDate());
         validateRisk(request.riskLevel());
         validateCategory(request.category());
@@ -117,7 +122,8 @@ public class RuleService {
     @Transactional
     public void delete(String id) {
         ReviewRuleEntity e = require(id);
-        if (List.of("生效", "审核").contains(e.getLifecycleStatus())) throw BusinessException.conflict("规则正在生效或审核，请先停用或完成审核");
+        if (List.of("生效", "审核").contains(e.getLifecycleStatus()))
+            throw BusinessException.conflict("规则正在生效或审核，请先停用或完成审核");
         ruleMapper.deleteById(id);
     }
 
@@ -193,6 +199,20 @@ public class RuleService {
         return get(id);
     }
 
+    @Transactional
+    public RuleDtos.Response reactivate(String id) {
+        ReviewRuleEntity e = require(id);
+        if (!"停用".equals(e.getLifecycleStatus())) throw BusinessException.conflict("只有停用规则可以重新启用");
+        RuleVersionEntity version = requireVersion(e.getId(), e.getCurrentVersion());
+        if (version.getApprovedAt() == null) throw BusinessException.conflict("当前版本尚未审核发布，请编辑后重新测试和提交审核");
+        if (e.getExpiryDate() != null && e.getExpiryDate().isBefore(java.time.LocalDate.now()))
+            throw BusinessException.conflict("规则已过失效日期，请更新规则并重新审核发布");
+        e.setLifecycleStatus("生效");
+        e.setEnabled(true);
+        ruleMapper.updateById(e);
+        return get(id);
+    }
+
     public List<RuleDtos.VersionResponse> versions(String id) {
         require(id);
         return versionMapper
@@ -264,9 +284,10 @@ public class RuleService {
 
     private void validateDictionaryReference(String method, String expression) {
         if (!"词库".equals(method)) return;
-        if (expression == null || dictionaryMapper.selectCount(new LambdaQueryWrapper<ReviewDictionaryEntity>()
-                .eq(ReviewDictionaryEntity::getDictCode, expression.trim())) == 0)
-            throw BusinessException.unprocessable("引用的标准词库不存在");
+        if (expression == null
+                || dictionaryMapper.selectCount(new LambdaQueryWrapper<ReviewDictionaryEntity>()
+                                .eq(ReviewDictionaryEntity::getDictCode, expression.trim()))
+                        == 0) throw BusinessException.unprocessable("引用的标准词库不存在");
     }
 
     private void validateRisk(String risk) {

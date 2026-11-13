@@ -97,9 +97,12 @@ public class OpenAiCompatibleModelClient {
                 || proxy.getUserInfo() != null) {
             throw BusinessException.unprocessable("模型代理须配置为不含凭据的 HTTP 地址及端口");
         }
-        HttpClient client = HttpClient.create()
-                .proxy(spec -> spec.type(ProxyProvider.Proxy.HTTP).host(proxy.getHost()).port(proxy.getPort()));
-        return builder.clone().clientConnector(new ReactorClientHttpConnector(client)).build();
+        HttpClient client = HttpClient.create().proxy(spec -> spec.type(ProxyProvider.Proxy.HTTP)
+                .host(proxy.getHost())
+                .port(proxy.getPort()));
+        return builder.clone()
+                .clientConnector(new ReactorClientHttpConnector(client))
+                .build();
     }
 
     private boolean bypassProxy(String host) {

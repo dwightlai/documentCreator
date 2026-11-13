@@ -1,0 +1,1700 @@
+{
+  "title": "成语和固定词组误写",
+  "note": "成语、惯用语的通行写法；不因语义易误用而标记正确词形",
+  "groups": [
+    {
+      "preferred": "唉声叹气",
+      "variants": [
+        "哀声叹气"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "爱屋及乌",
+      "variants": [
+        "爱乌及屋"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "安分守己",
+      "variants": [
+        "安份守己"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "按部就班",
+      "variants": [
+        "按步就班"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "暗度陈仓",
+      "variants": [
+        "暗渡陈仓"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "白璧微瑕",
+      "variants": [
+        "白壁微瑕"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "白璧无瑕",
+      "variants": [
+        "白壁无瑕"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "百尺竿头",
+      "variants": [
+        "百尺杆头"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "百无聊赖",
+      "variants": [
+        "百无聊懒"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "百战不殆",
+      "variants": [
+        "百战不贻"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "半途而废",
+      "variants": [
+        "半途而费"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "包罗万象",
+      "variants": [
+        "包罗万项"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "饱经沧桑",
+      "variants": [
+        "饱经苍桑"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "暴殄天物",
+      "variants": [
+        "暴珍天物"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "卑躬屈膝",
+      "variants": [
+        "卑恭屈膝"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "背道而驰",
+      "variants": [
+        "背道而弛"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "敝帚自珍",
+      "variants": [
+        "蔽帚自珍"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "变本加厉",
+      "variants": [
+        "变本加利"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "别出心裁",
+      "variants": [
+        "别出新裁"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "彬彬有礼",
+      "variants": [
+        "宾宾有礼"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "彬彬有礼",
+      "variants": [
+        "彬彬有理"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "兵荒马乱",
+      "variants": [
+        "兵慌马乱"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "并行不悖",
+      "variants": [
+        "并行不背"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "病入膏肓",
+      "variants": [
+        "病入膏盲"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不计其数",
+      "variants": [
+        "不记其数"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不骄不躁",
+      "variants": [
+        "不骄不燥"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不胫而走",
+      "variants": [
+        "不径而走"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不可思议",
+      "variants": [
+        "不可思义"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不稂不莠",
+      "variants": [
+        "不粮不莠"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不落窠臼",
+      "variants": [
+        "不落巢臼"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不求甚解",
+      "variants": [
+        "不求深解"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "不知所措",
+      "variants": [
+        "不知所错"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "步入正轨",
+      "variants": [
+        "步入正规"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "惨无人道",
+      "variants": [
+        "残无人道"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "沧海一粟",
+      "variants": [
+        "沧海一栗"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "草菅人命",
+      "variants": [
+        "草管人命"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "层峦叠嶂",
+      "variants": [
+        "层峦叠障"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "歧路亡羊",
+      "variants": [
+        "岔路亡羊"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "沉湎",
+      "variants": [
+        "沉缅"
+      ],
+      "note": "“沉湎”为规范词形。"
+    },
+    {
+      "preferred": "陈词滥调",
+      "variants": [
+        "陈词烂调"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "称心如意",
+      "variants": [
+        "趁心如意"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "承上启下",
+      "variants": [
+        "承上起下"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "惩前毖后",
+      "variants": [
+        "惩前毙后"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "惩一儆百",
+      "variants": [
+        "惩一禁百"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "叱咤风云",
+      "variants": [
+        "叱诧风云"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "崇论闳议",
+      "variants": [
+        "崇论宏议"
+      ],
+      "note": "“崇论闳议”为通行词形。"
+    },
+    {
+      "preferred": "出类拔萃",
+      "variants": [
+        "出类拔粹"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "出奇制胜",
+      "variants": [
+        "出奇致胜"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "出人头地",
+      "variants": [
+        "出人投地"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "川流不息",
+      "variants": [
+        "穿流不息"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "唇枪舌剑",
+      "variants": [
+        "唇枪舌箭"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "粗制滥造",
+      "variants": [
+        "粗制烂造"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "大材小用",
+      "variants": [
+        "大才小用"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "大放厥词",
+      "variants": [
+        "大放獗词"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "待价而沽",
+      "variants": [
+        "待价而估"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "殚精竭虑",
+      "variants": [
+        "弹精竭虑"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "得陇望蜀",
+      "variants": [
+        "得垄望蜀"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "地大物博",
+      "variants": [
+        "地大物搏"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "颠沛流离",
+      "variants": [
+        "颠波流离"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "雕虫小技",
+      "variants": [
+        "凋虫小技"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "掉以轻心",
+      "variants": [
+        "吊以轻心"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "丢三落四",
+      "variants": [
+        "丢三拉四"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "动辄得咎",
+      "variants": [
+        "动辙得咎"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "独当一面",
+      "variants": [
+        "独挡一面"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "断章取义",
+      "variants": [
+        "断章取意"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "发愤图强",
+      "variants": [
+        "发奋图强"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "法不责众",
+      "variants": [
+        "罚不责众"
+      ],
+      "note": "“法不责众”为通行词形。"
+    },
+    {
+      "preferred": "翻来覆去",
+      "variants": [
+        "翻来复去"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "反复无常",
+      "variants": [
+        "反覆无常"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "防患于未然",
+      "variants": [
+        "防患未然"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "飞扬跋扈",
+      "variants": [
+        "飞扬拔扈"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "分道扬镳",
+      "variants": [
+        "分道扬镖"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "纷至沓来",
+      "variants": [
+        "纷至踏来"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "风尘仆仆",
+      "variants": [
+        "风尘扑扑"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "风靡一时",
+      "variants": [
+        "风糜一时"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "风声鹤唳",
+      "variants": [
+        "风声鹤泪"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "蜂拥而至",
+      "variants": [
+        "蜂拥而致"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "凤毛麟角",
+      "variants": [
+        "凤毛鳞角"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "奉为圭臬",
+      "variants": [
+        "奉为圭皋"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "浮想联翩",
+      "variants": [
+        "浮想联篇"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "釜底抽薪",
+      "variants": [
+        "斧底抽薪"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "俯首帖耳",
+      "variants": [
+        "俯首贴耳"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "付诸东流",
+      "variants": [
+        "付之东流"
+      ],
+      "note": "推荐用“付诸东流”。"
+    },
+    {
+      "preferred": "负隅顽抗",
+      "variants": [
+        "负偶顽抗"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "改邪归正",
+      "variants": [
+        "改斜归正"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "甘拜下风",
+      "variants": [
+        "甘败下风"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "心甘情愿",
+      "variants": [
+        "甘心情愿"
+      ],
+      "note": "“甘心情愿”宜作“心甘情愿”。"
+    },
+    {
+      "preferred": "刚愎自用",
+      "variants": [
+        "刚腹自用"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "功亏一篑",
+      "variants": [
+        "功亏一匮"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "钩心斗角",
+      "variants": [
+        "勾心斗角"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "故步自封",
+      "variants": [
+        "固步自封"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "归根结底",
+      "variants": [
+        "归根结蒂"
+      ],
+      "note": "推荐词形为“归根结底”。"
+    },
+    {
+      "preferred": "鬼斧神工",
+      "variants": [
+        "鬼斧神功"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "鬼蜮伎俩",
+      "variants": [
+        "鬼域伎俩"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "过犹不及",
+      "variants": [
+        "过尤不及"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "含辛茹苦",
+      "variants": [
+        "含辛如苦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "汗流浃背",
+      "variants": [
+        "汗流夹背"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "好高骛远",
+      "variants": [
+        "好高鹜远"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "和蔼可亲",
+      "variants": [
+        "和霭可亲"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "和颜悦色",
+      "variants": [
+        "和言悦色"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "胡作非为",
+      "variants": [
+        "胡做非为"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "虎视眈眈",
+      "variants": [
+        "虎视耽耽"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "欢度春节",
+      "variants": [
+        "欢渡春节"
+      ],
+      "note": "“欢渡”不是规范词形。"
+    },
+    {
+      "preferred": "黄粱美梦",
+      "variants": [
+        "黄梁美梦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "黄粱一梦",
+      "variants": [
+        "黄梁一梦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "回光返照",
+      "variants": [
+        "回光反照"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "毁家纾难",
+      "variants": [
+        "毁家抒难"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "浑浑噩噩",
+      "variants": [
+        "浑浑恶恶"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "混淆视听",
+      "variants": [
+        "混肴视听"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "活灵活现",
+      "variants": [
+        "活龙活现"
+      ],
+      "note": "推荐用“活灵活现”。"
+    },
+    {
+      "preferred": "饥肠辘辘",
+      "variants": [
+        "饥肠漉漉"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "急流勇退",
+      "variants": [
+        "激流勇退"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "记忆犹新",
+      "variants": [
+        "记忆尤新"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "既往不咎",
+      "variants": [
+        "既往不究"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "艰苦卓绝",
+      "variants": [
+        "坚苦卓绝"
+      ],
+      "note": "“艰苦卓绝”为通行词形。"
+    },
+    {
+      "preferred": "坚韧不拔",
+      "variants": [
+        "坚忍不拔"
+      ],
+      "note": "“坚韧不拔”为通行词形。"
+    },
+    {
+      "preferred": "矫揉造作",
+      "variants": [
+        "矫柔造作"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "截长补短",
+      "variants": [
+        "接长补短"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "揭竿而起",
+      "variants": [
+        "揭杆而起"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "戒骄戒躁",
+      "variants": [
+        "戒骄戒燥"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "金榜题名",
+      "variants": [
+        "金榜提名"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "金碧辉煌",
+      "variants": [
+        "金壁辉煌"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "金刚不坏",
+      "variants": [
+        "金钢不坏"
+      ],
+      "note": "“金刚”为通行词形。"
+    },
+    {
+      "preferred": "九霄云外",
+      "variants": [
+        "九宵云外"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "绝无仅有",
+      "variants": [
+        "决无仅有"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "开门揖盗",
+      "variants": [
+        "开门缉盗"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "口干舌燥",
+      "variants": [
+        "口干舌躁"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "口蜜腹剑",
+      "variants": [
+        "口密腹剑"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "苦思冥想",
+      "variants": [
+        "苦思瞑想"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "宽宏大量",
+      "variants": [
+        "宽洪大量"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "滥竽充数",
+      "variants": [
+        "滥芋充数"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "老生常谈",
+      "variants": [
+        "老生长谈"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "雷厉风行",
+      "variants": [
+        "雷励风行"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "礼尚往来",
+      "variants": [
+        "礼上往来"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "良莠不齐",
+      "variants": [
+        "良秀不齐"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "龙盘虎踞",
+      "variants": [
+        "龙盘虎据"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "碌碌无为",
+      "variants": [
+        "录录无为"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "满腹经纶",
+      "variants": [
+        "满腹经伦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "美轮美奂",
+      "variants": [
+        "美仑美奂"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "门庭若市",
+      "variants": [
+        "门廷若市"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "梦寐以求",
+      "variants": [
+        "梦昧以求"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "弥天大谎",
+      "variants": [
+        "迷天大谎"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "勉为其难",
+      "variants": [
+        "免为其难"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "面黄肌瘦",
+      "variants": [
+        "面黄饥瘦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "民生凋敝",
+      "variants": [
+        "民生凋蔽"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "名副其实",
+      "variants": [
+        "名符其实"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "名副其实",
+      "variants": [
+        "名负其实"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "明火执仗",
+      "variants": [
+        "明火执杖"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "模棱两可",
+      "variants": [
+        "摸棱两可"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "墨守成规",
+      "variants": [
+        "默守成规"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "能屈能伸",
+      "variants": [
+        "能曲能伸"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "蹑手蹑脚",
+      "variants": [
+        "捏手捏脚"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "浓妆艳抹",
+      "variants": [
+        "浓装艳抹"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "呕心沥血",
+      "variants": [
+        "呕心呖血"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "旁征博引",
+      "variants": [
+        "旁证博引"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "漂泊不定",
+      "variants": [
+        "飘泊不定"
+      ],
+      "note": "“漂泊”为通行词形。"
+    },
+    {
+      "preferred": "评头论足",
+      "variants": [
+        "品头论足"
+      ],
+      "note": "通行亦作“品头论足”，推荐“评头论足”。"
+    },
+    {
+      "preferred": "气势汹汹",
+      "variants": [
+        "其势凶凶"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "气势汹汹",
+      "variants": [
+        "其势汹汹"
+      ],
+      "note": "推荐用“气势汹汹”。"
+    },
+    {
+      "preferred": "气势汹汹",
+      "variants": [
+        "气势凶凶"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "千钧一发",
+      "variants": [
+        "千均一发"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "前仆后继",
+      "variants": [
+        "前扑后继"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "潸然泪下",
+      "variants": [
+        "潜然泪下"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "青出于蓝",
+      "variants": [
+        "青出于兰"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "轻歌曼舞",
+      "variants": [
+        "轻歌慢舞"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "罄竹难书",
+      "variants": [
+        "磬竹难书"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "穷途末路",
+      "variants": [
+        "穷途没路"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "趋之若鹜",
+      "variants": [
+        "趋之若骛"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "取精用弘",
+      "variants": [
+        "取精用宏"
+      ],
+      "note": "“取精用弘”为通行词形。"
+    },
+    {
+      "preferred": "人才荟萃",
+      "variants": [
+        "人才荟翠"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "人情世故",
+      "variants": [
+        "人情事故"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "人心惶惶",
+      "variants": [
+        "人心慌慌"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "融会贯通",
+      "variants": [
+        "融汇贯通"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "如火如荼",
+      "variants": [
+        "如火如茶"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "三番五次",
+      "variants": [
+        "三翻五次"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "煞费苦心",
+      "variants": [
+        "煞废苦心"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "山清水秀",
+      "variants": [
+        "山青水秀"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "舍生取义",
+      "variants": [
+        "舍身取义"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "声名狼藉",
+      "variants": [
+        "声名狼籍"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "始终不渝",
+      "variants": [
+        "始终不逾"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "世外桃源",
+      "variants": [
+        "世外桃园"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "势不可当",
+      "variants": [
+        "势不可挡"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "首屈一指",
+      "variants": [
+        "手屈一指"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "水泄不通",
+      "variants": [
+        "水泻不通"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "谈笑风生",
+      "variants": [
+        "谈笑风声"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "叹为观止",
+      "variants": [
+        "叹为观之"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "提纲挈领",
+      "variants": [
+        "提纲契领"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "天翻地覆",
+      "variants": [
+        "天翻地复"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "通宵达旦",
+      "variants": [
+        "通霄达旦"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "同仇敌忾",
+      "variants": [
+        "同仇敌慨"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "图穷匕见",
+      "variants": [
+        "图穷匕现"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "追本溯源",
+      "variants": [
+        "推本溯源"
+      ],
+      "note": "推荐用“追本溯源”。"
+    },
+    {
+      "preferred": "脱颖而出",
+      "variants": [
+        "脱颍而出"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "剜肉补疮",
+      "variants": [
+        "挖肉补疮"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "完璧归赵",
+      "variants": [
+        "完壁归赵"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "威逼利诱",
+      "variants": [
+        "威迫利诱"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "唯利是图",
+      "variants": [
+        "惟利是图"
+      ],
+      "note": "现代汉语推荐用“唯利是图”。"
+    },
+    {
+      "preferred": "唯命是从",
+      "variants": [
+        "惟命是从"
+      ],
+      "note": "现代汉语推荐用“唯命是从”。"
+    },
+    {
+      "preferred": "萎靡不振",
+      "variants": [
+        "委靡不振"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "委曲求全",
+      "variants": [
+        "委屈求全"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "无精打采",
+      "variants": [
+        "无精打彩"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "无所适从",
+      "variants": [
+        "无所是从"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "毋庸讳言",
+      "variants": [
+        "无庸讳言"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "相形见绌",
+      "variants": [
+        "相形见拙"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "销声匿迹",
+      "variants": [
+        "消声匿迹"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "心旷神怡",
+      "variants": [
+        "心旷神贻"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "兴高采烈",
+      "variants": [
+        "兴高彩烈"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "凶相毕露",
+      "variants": [
+        "凶象毕露"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "喧宾夺主",
+      "variants": [
+        "宣宾夺主"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "悬梁刺股",
+      "variants": [
+        "悬梁刺骨"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "循规蹈矩",
+      "variants": [
+        "循规蹈距"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "言简意赅",
+      "variants": [
+        "言简意骇"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "一曝十寒",
+      "variants": [
+        "一暴十寒"
+      ],
+      "note": "推荐用“一曝十寒”。"
+    },
+    {
+      "preferred": "一筹莫展",
+      "variants": [
+        "一愁莫展"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "一诺千金",
+      "variants": [
+        "一诺千斤"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "一如既往",
+      "variants": [
+        "一如继往"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "一厢情愿",
+      "variants": [
+        "一相情愿"
+      ],
+      "note": "推荐词形为“一厢情愿”。"
+    },
+    {
+      "preferred": "一枕黄粱",
+      "variants": [
+        "一枕黄梁"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "贻笑大方",
+      "variants": [
+        "遗笑大方"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "阴差阳错",
+      "variants": [
+        "阴错阳差"
+      ],
+      "note": "推荐用“阴差阳错”。"
+    },
+    {
+      "preferred": "饮鸩止渴",
+      "variants": [
+        "饮鸠止渴"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "原形毕露",
+      "variants": [
+        "原形必露"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "再接再厉",
+      "variants": [
+        "再接再励"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "连篇累牍",
+      "variants": [
+        "长篇累牍"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "长吁短叹",
+      "variants": [
+        "长嘘短叹"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "招摇撞骗",
+      "variants": [
+        "招摇装骗"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "振聋发聩",
+      "variants": [
+        "振聋发馈"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "振聋发聩",
+      "variants": [
+        "震聋发聩"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "忐忑不安",
+      "variants": [
+        "志忈不安"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "置若罔闻",
+      "variants": [
+        "置若惘闻"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "中流砥柱",
+      "variants": [
+        "中流抵柱"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "重蹈覆辙",
+      "variants": [
+        "重蹈复辙"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "珠联璧合",
+      "variants": [
+        "珠连璧合"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "助纣为虐",
+      "variants": [
+        "助桀为虐"
+      ],
+      "note": "通行亦作“助桀为虐”，推荐“助纣为虐”。"
+    },
+    {
+      "preferred": "专横跋扈",
+      "variants": [
+        "专横拔扈"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "专心致志",
+      "variants": [
+        "专心一志"
+      ],
+      "note": "推荐用“专心致志”。"
+    },
+    {
+      "preferred": "专心致志",
+      "variants": [
+        "专心至志"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "锱铢必较",
+      "variants": [
+        "缁铢必较"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "自暴自弃",
+      "variants": [
+        "自抱自弃"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "走投无路",
+      "variants": [
+        "走头无路"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "坐地分赃",
+      "variants": [
+        "坐地分脏"
+      ],
+      "note": "成语通行写法。"
+    },
+    {
+      "preferred": "坐收渔利",
+      "variants": [
+        "坐收鱼利"
+      ],
+      "note": "成语通行写法。"
+    }
+  ]
+}

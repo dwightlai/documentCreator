@@ -22,13 +22,35 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReviewDocumentService {
-    public record Block(String anchor, String kind, int paragraphNumber, String originalText,
-                        String currentText, boolean locked, BlockStyle style) {}
-    public record BlockStyle(String alignment, int firstLineTwips, int leftTwips,
-                             int beforeTwips, int afterTwips, String fontFamily,
-                             int fontPt, boolean bold, boolean italic, String color) {}
-    public record Content(String sourceSystem, String title, int reviewVersion, int currentVersion,
-                          boolean needsReview, List<Block> blocks) {}
+    public record Block(
+            String anchor,
+            String kind,
+            int paragraphNumber,
+            String originalText,
+            String currentText,
+            boolean locked,
+            BlockStyle style) {}
+
+    public record BlockStyle(
+            String alignment,
+            int firstLineTwips,
+            int leftTwips,
+            int beforeTwips,
+            int afterTwips,
+            String fontFamily,
+            int fontPt,
+            boolean bold,
+            boolean italic,
+            String color) {}
+
+    public record Content(
+            String sourceSystem,
+            String title,
+            int reviewVersion,
+            int currentVersion,
+            boolean needsReview,
+            List<Block> blocks) {}
+
     public record EditRequest(String anchor, String text, Integer expectedVersion) {}
 
     private final ReviewTaskMapper tasks;
@@ -49,17 +71,35 @@ public class ReviewDocumentService {
         int reviewed = task.getDocumentVersion() == null ? current.currentVersion() : task.getDocumentVersion();
         DocumentDtos.DocumentResponse snapshot = documents.version(task.getWritingTaskId(), reviewed);
         List<Block> blocks = new ArrayList<>();
-        blocks.add(new Block("title", "title", 0,
-                task.getReviewTitle() == null ? snapshot.title() : task.getReviewTitle(), current.title(), false, null));
+        blocks.add(new Block(
+                "title",
+                "title",
+                0,
+                task.getReviewTitle() == null ? snapshot.title() : task.getReviewTitle(),
+                current.title(),
+                false,
+                null));
         for (var old : snapshot.paragraphs()) {
             var now = current.paragraphs().stream()
-                    .filter(p -> p.paragraphOrder() == old.paragraphOrder()).findFirst().orElse(null);
-            blocks.add(new Block("paragraph-" + old.paragraphOrder(), "paragraph", old.paragraphOrder(),
-                    old.plainText(), now == null ? old.plainText() : now.plainText(),
-                    now == null || now.locked(), null));
+                    .filter(p -> p.paragraphOrder() == old.paragraphOrder())
+                    .findFirst()
+                    .orElse(null);
+            blocks.add(new Block(
+                    "paragraph-" + old.paragraphOrder(),
+                    "paragraph",
+                    old.paragraphOrder(),
+                    old.plainText(),
+                    now == null ? old.plainText() : now.plainText(),
+                    now == null || now.locked(),
+                    null));
         }
-        return new Content(task.getSourceSystem(), current.title(), reviewed, current.currentVersion(),
-                current.currentVersion() != reviewed, blocks);
+        return new Content(
+                task.getSourceSystem(),
+                current.title(),
+                reviewed,
+                current.currentVersion(),
+                current.currentVersion() != reviewed,
+                blocks);
     }
 
     @Transactional
@@ -79,11 +119,14 @@ public class ReviewDocumentService {
         } else {
             int order = paragraphOrder(edit.anchor());
             var paragraph = current.paragraphs().stream()
-                    .filter(p -> p.paragraphOrder() == order).findFirst()
+                    .filter(p -> p.paragraphOrder() == order)
+                    .findFirst()
                     .orElseThrow(() -> BusinessException.notFound("段落不存在，请刷新原文"));
             if (paragraph.locked()) throw BusinessException.conflict("该段落已锁定");
             if (!Objects.equals(paragraph.plainText(), edit.text()))
-                documents.updateParagraph(writingId, paragraph.id(),
+                documents.updateParagraph(
+                        writingId,
+                        paragraph.id(),
                         new DocumentDtos.UpdateParagraphRequest(edit.text(), paragraph.lockVersion(), "审校中修改原文"));
         }
         return content(taskId);
@@ -91,33 +134,46 @@ public class ReviewDocumentService {
 
     public byte[] download(String taskId) {
         ReviewTaskEntity task = require(taskId);
-        if (!"upload".equals(task.getSourceSystem()))
-            throw BusinessException.unprocessable("智能写作文稿请在正文工作区导出 DOCX");
+        if (!"upload".equals(task.getSourceSystem())) throw BusinessException.unprocessable("智能写作文稿请在正文工作区导出 DOCX");
         return storage.read(task.getEditedFileId() == null ? task.getDocumentFileId() : task.getEditedFileId());
     }
 
     private Content uploadedContent(ReviewTaskEntity task) {
         List<DocxBlock> old = readBlocks(storage.read(task.getDocumentFileId()));
-        List<DocxBlock> latest = task.getEditedFileId() == null ? old : readBlocks(storage.read(task.getEditedFileId()));
+        List<DocxBlock> latest =
+                task.getEditedFileId() == null ? old : readBlocks(storage.read(task.getEditedFileId()));
         List<Block> blocks = new ArrayList<>();
         for (DocxBlock original : old) {
-            DocxBlock now = latest.stream().filter(b -> b.anchor.equals(original.anchor)).findFirst().orElse(null);
-            blocks.add(new Block(original.anchor, original.kind, original.paragraphNumber, original.text,
-                    now == null ? original.text : now.text, now == null, now == null ? original.style : now.style));
+            DocxBlock now = latest.stream()
+                    .filter(b -> b.anchor.equals(original.anchor))
+                    .findFirst()
+                    .orElse(null);
+            blocks.add(new Block(
+                    original.anchor,
+                    original.kind,
+                    original.paragraphNumber,
+                    original.text,
+                    now == null ? original.text : now.text,
+                    now == null,
+                    now == null ? original.style : now.style));
         }
         int version = task.getEditVersion() == null ? 0 : task.getEditVersion();
-        String title = blocks.isEmpty() ? task.getSourceFileName() : blocks.get(0).currentText();
+        String title =
+                blocks.isEmpty() ? task.getSourceFileName() : blocks.get(0).currentText();
         return new Content("upload", title, 0, version, version > 0, blocks);
     }
 
     private Content editUpload(ReviewTaskEntity task, EditRequest edit) {
         int version = task.getEditVersion() == null ? 0 : task.getEditVersion();
         if (version != edit.expectedVersion()) throw BusinessException.conflict("文件已有新版本，请刷新后重试");
-        byte[] source = storage.read(task.getEditedFileId() == null ? task.getDocumentFileId() : task.getEditedFileId());
+        byte[] source =
+                storage.read(task.getEditedFileId() == null ? task.getDocumentFileId() : task.getEditedFileId());
         try (XWPFDocument word = new XWPFDocument(new ByteArrayInputStream(source));
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             List<DocxBlock> blocks = blocks(word);
-            DocxBlock target = blocks.stream().filter(b -> b.anchor.equals(edit.anchor())).findFirst()
+            DocxBlock target = blocks.stream()
+                    .filter(b -> b.anchor.equals(edit.anchor()))
+                    .findFirst()
                     .orElseThrow(() -> BusinessException.notFound("原文位置不存在，请刷新后重试"));
             if (target.paragraph != null) replaceText(target.paragraph, edit.text());
             else {
@@ -128,14 +184,17 @@ public class ReviewDocumentService {
                     var cell = target.row.getCell(i);
                     if (cell.getParagraphs().isEmpty()) cell.addParagraph();
                     replaceText(cell.getParagraphs().get(0), cells[i]);
-                    for (int j = 1; j < cell.getParagraphs().size(); j++) replaceText(cell.getParagraphs().get(j), "");
+                    for (int j = 1; j < cell.getParagraphs().size(); j++)
+                        replaceText(cell.getParagraphs().get(j), "");
                 }
             }
             word.write(output);
             int next = version + 1;
-            String key = RequestContext.tenantId() + "/review-edits/" + task.getId()
-                    + "/v" + next + "-" + java.util.UUID.randomUUID() + ".docx";
-            storage.put(key, output.toByteArray(),
+            String key = RequestContext.tenantId() + "/review-edits/" + task.getId() + "/v" + next + "-"
+                    + java.util.UUID.randomUUID() + ".docx";
+            storage.put(
+                    key,
+                    output.toByteArray(),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
             task.setEditedFileId(key);
             task.setEditVersion(next);
@@ -148,17 +207,23 @@ public class ReviewDocumentService {
 
     private static void replaceText(XWPFParagraph paragraph, String text) {
         List<XWPFRun> runs = paragraph.getRuns();
-        if (runs.isEmpty()) { paragraph.createRun().setText(text); return; }
+        if (runs.isEmpty()) {
+            paragraph.createRun().setText(text);
+            return;
+        }
         String old = paragraph.getText();
-        List<String> chunks = runs.stream().map(run -> run.getText(0) == null ? "" : run.getText(0)).toList();
+        List<String> chunks = runs.stream()
+                .map(run -> run.getText(0) == null ? "" : run.getText(0))
+                .toList();
         if (chunks.stream().allMatch(value -> !value.isEmpty())
                 && runs.stream().allMatch(run -> run.getCTR().sizeOfTArray() == 1)
                 && String.join("", chunks).equals(old)) {
             int prefix = 0;
-            while (prefix < old.length() && prefix < text.length()
-                    && old.charAt(prefix) == text.charAt(prefix)) prefix++;
+            while (prefix < old.length() && prefix < text.length() && old.charAt(prefix) == text.charAt(prefix))
+                prefix++;
             int suffix = 0;
-            while (suffix < old.length() - prefix && suffix < text.length() - prefix
+            while (suffix < old.length() - prefix
+                    && suffix < text.length() - prefix
                     && old.charAt(old.length() - 1 - suffix) == text.charAt(text.length() - 1 - suffix)) suffix++;
             int end = old.length() - suffix;
             String inserted = text.substring(prefix, text.length() - suffix);
@@ -167,7 +232,8 @@ public class ReviewDocumentService {
             for (int i = 0; i < runs.size(); i++) {
                 String chunk = chunks.get(i);
                 int next = position + chunk.length();
-                String before = position < prefix ? chunk.substring(0, Math.min(chunk.length(), prefix - position)) : "";
+                String before =
+                        position < prefix ? chunk.substring(0, Math.min(chunk.length(), prefix - position)) : "";
                 String after = next > end ? chunk.substring(Math.max(0, end - position)) : "";
                 if (!insertedOnce && (next > prefix || i == runs.size() - 1)) {
                     before += inserted;
@@ -183,12 +249,20 @@ public class ReviewDocumentService {
         for (int i = 1; i < runs.size(); i++) runs.get(i).setText("", 0);
     }
 
-    private record DocxBlock(String anchor, String kind, int paragraphNumber, String text,
-                             XWPFParagraph paragraph, XWPFTableRow row, BlockStyle style) {}
+    private record DocxBlock(
+            String anchor,
+            String kind,
+            int paragraphNumber,
+            String text,
+            XWPFParagraph paragraph,
+            XWPFTableRow row,
+            BlockStyle style) {}
 
     private static List<DocxBlock> readBlocks(byte[] bytes) {
         try (XWPFDocument word = new XWPFDocument(new ByteArrayInputStream(bytes))) {
-            return blocks(word).stream().map(b -> new DocxBlock(b.anchor, b.kind, b.paragraphNumber, b.text, null, null, b.style)).toList();
+            return blocks(word).stream()
+                    .map(b -> new DocxBlock(b.anchor, b.kind, b.paragraphNumber, b.text, null, null, b.style))
+                    .toList();
         } catch (IOException e) {
             throw BusinessException.unprocessable("DOCX 文件无法读取");
         }
@@ -204,17 +278,28 @@ public class ReviewDocumentService {
             String value = paragraph.getText().trim();
             if (!value.isBlank()) {
                 number++;
-                paragraphs.put(paragraph, new DocxBlock("p-" + i, number == 1 ? "title" : "paragraph",
-                        number, value, paragraph, null, style(paragraph)));
+                paragraphs.put(
+                        paragraph,
+                        new DocxBlock(
+                                "p-" + i,
+                                number == 1 ? "title" : "paragraph",
+                                number,
+                                value,
+                                paragraph,
+                                null,
+                                style(paragraph)));
             }
         }
         for (int t = 0; t < word.getTables().size(); t++) {
             var rows = word.getTables().get(t).getRows();
             for (int r = 0; r < rows.size(); r++) {
                 XWPFTableRow row = rows.get(r);
-                String value = row.getTableCells().stream().map(c -> c.getText()).collect(java.util.stream.Collectors.joining("\t"));
-                if (!value.isBlank()) rowsByTable.put(row,
-                        new DocxBlock("table-" + t + "-" + r, "tableRow", ++number, value, null, row, null));
+                String value = row.getTableCells().stream()
+                        .map(c -> c.getText())
+                        .collect(java.util.stream.Collectors.joining("\t"));
+                if (!value.isBlank())
+                    rowsByTable.put(
+                            row, new DocxBlock("table-" + t + "-" + r, "tableRow", ++number, value, null, row, null));
             }
         }
         List<DocxBlock> result = new ArrayList<>();
@@ -230,18 +315,31 @@ public class ReviewDocumentService {
     private static BlockStyle style(XWPFParagraph paragraph) {
         XWPFRun run = paragraph.getRuns().stream()
                 .filter(item -> item.getText(0) != null && !item.getText(0).isBlank())
-                .findFirst().orElse(null);
-        String alignment = paragraph.getAlignment() == null ? "LEFT" : paragraph.getAlignment().name();
-        return new BlockStyle(alignment, paragraph.getIndentationFirstLine(), paragraph.getIndentationLeft(),
-                paragraph.getSpacingBefore(), paragraph.getSpacingAfter(),
-                run == null ? null : run.getFontFamily(), run == null ? 0 : run.getFontSize(),
-                run != null && run.isBold(), run != null && run.isItalic(), run == null ? null : run.getColor());
+                .findFirst()
+                .orElse(null);
+        String alignment = paragraph.getAlignment() == null
+                ? "LEFT"
+                : paragraph.getAlignment().name();
+        return new BlockStyle(
+                alignment,
+                paragraph.getIndentationFirstLine(),
+                paragraph.getIndentationLeft(),
+                paragraph.getSpacingBefore(),
+                paragraph.getSpacingAfter(),
+                run == null ? null : run.getFontFamily(),
+                run == null ? 0 : run.getFontSize(),
+                run != null && run.isBold(),
+                run != null && run.isItalic(),
+                run == null ? null : run.getColor());
     }
 
     private static int paragraphOrder(String anchor) {
         if (anchor == null || !anchor.startsWith("paragraph-")) throw BusinessException.unprocessable("原文定位无效");
-        try { return Integer.parseInt(anchor.substring("paragraph-".length())); }
-        catch (NumberFormatException e) { throw BusinessException.unprocessable("原文定位无效"); }
+        try {
+            return Integer.parseInt(anchor.substring("paragraph-".length()));
+        } catch (NumberFormatException e) {
+            throw BusinessException.unprocessable("原文定位无效");
+        }
     }
 
     private ReviewTaskEntity require(String taskId) {

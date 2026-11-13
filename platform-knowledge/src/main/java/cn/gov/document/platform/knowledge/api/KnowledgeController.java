@@ -70,7 +70,8 @@ public class KnowledgeController {
     @PutMapping("/sources/{sourceId}/documents/{documentId}")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<KnowledgeDtos.DocumentResponse> updateDocument(
-            @PathVariable String sourceId, @PathVariable String documentId,
+            @PathVariable String sourceId,
+            @PathVariable String documentId,
             @Valid @RequestBody KnowledgeDtos.UpdateDocumentRequest request) {
         return ApiResponse.success(service.updateDocument(sourceId, documentId, request));
     }
@@ -84,7 +85,8 @@ public class KnowledgeController {
 
     @GetMapping("/sources/{sourceId}/documents/{documentId}/chunks")
     @PreAuthorize("hasRole('platform.admin')")
-    ApiResponse<List<KnowledgeDtos.ChunkResponse>> chunks(@PathVariable String sourceId, @PathVariable String documentId) {
+    ApiResponse<List<KnowledgeDtos.ChunkResponse>> chunks(
+            @PathVariable String sourceId, @PathVariable String documentId) {
         return ApiResponse.success(service.chunks(sourceId, documentId));
     }
 
@@ -96,14 +98,17 @@ public class KnowledgeController {
 
     @GetMapping("/sources/{sourceId}/documents/{documentId}/revisions")
     @PreAuthorize("hasAnyRole('platform.admin','platform.writer')")
-    ApiResponse<List<KnowledgeDtos.RevisionResponse>> revisions(@PathVariable String sourceId, @PathVariable String documentId) {
+    ApiResponse<List<KnowledgeDtos.RevisionResponse>> revisions(
+            @PathVariable String sourceId, @PathVariable String documentId) {
         return ApiResponse.success(service.revisions(sourceId, documentId));
     }
 
     @PutMapping("/sources/{sourceId}/documents/{documentId}/chunks/{chunkId}")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<KnowledgeDtos.ChunkResponse> updateChunk(
-            @PathVariable String sourceId, @PathVariable String documentId, @PathVariable String chunkId,
+            @PathVariable String sourceId,
+            @PathVariable String documentId,
+            @PathVariable String chunkId,
             @Valid @RequestBody KnowledgeDtos.UpdateChunkRequest request) {
         return ApiResponse.success(service.updateChunk(sourceId, documentId, chunkId, request));
     }

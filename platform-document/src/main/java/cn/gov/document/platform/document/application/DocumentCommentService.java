@@ -76,13 +76,13 @@ public class DocumentCommentService {
     }
 
     @Transactional
-    public DocumentCommentDtos.CommentResponse update(String documentId, String commentId, DocumentCommentDtos.UpdateRequest request) {
+    public DocumentCommentDtos.CommentResponse update(
+            String documentId, String commentId, DocumentCommentDtos.UpdateRequest request) {
         DocumentEntity document = requireDocument(documentId);
         DocumentCommentEntity entity = requireComment(documentId, commentId);
         if (!RequestContext.userId().equals(entity.getCommenterId()))
             throw new BusinessException("FORBIDDEN", "只能编辑自己的批注", org.springframework.http.HttpStatus.FORBIDDEN);
-        if (Boolean.TRUE.equals(entity.getIsResolved()))
-            throw BusinessException.conflict("已解决的批注不能编辑");
+        if (Boolean.TRUE.equals(entity.getIsResolved())) throw BusinessException.conflict("已解决的批注不能编辑");
         entity.setCommentText(request.commentText().trim());
         commentMapper.updateById(entity);
         return withCurrentParagraphs(document, List.of(entity)).get(0);

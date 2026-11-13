@@ -35,7 +35,8 @@ public class DocumentCommentController {
 
     @PutMapping("/comments/{commentId}")
     ApiResponse<DocumentCommentDtos.CommentResponse> update(
-            @PathVariable String documentId, @PathVariable String commentId,
+            @PathVariable String documentId,
+            @PathVariable String commentId,
             @Valid @RequestBody DocumentCommentDtos.UpdateRequest request) {
         return ApiResponse.success(service.update(documentId, commentId, request));
     }

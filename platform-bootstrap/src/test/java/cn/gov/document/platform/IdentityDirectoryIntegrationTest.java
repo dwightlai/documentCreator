@@ -19,50 +19,75 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class IdentityDirectoryIntegrationTest {
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    ObjectMapper json;
 
     @Test
     void organizationRoleAndUserArePersistedAndTenantScoped() throws Exception {
-        String orgId = create("/api/v1/identity/organizations", "{\"orgCode\":\"office\",\"orgName\":\"办公室\",\"enabled\":true}");
-        String roleId = create("/api/v1/identity/roles", "{\"roleCode\":\"platform.reviewer\",\"roleName\":\"核稿人员\",\"enabled\":true}");
-        String userId = create("/api/v1/identity/users", "{\"username\":\"reviewer\",\"displayName\":\"张三\",\"orgId\":\"" + orgId + "\",\"roleIds\":[\"" + roleId + "\"],\"enabled\":true}");
-        mvc.perform(get("/api/v1/identity/users").with(admin("other-tenant"))).andExpect(status().isOk())
+        String orgId = create(
+                "/api/v1/identity/organizations", "{\"orgCode\":\"office\",\"orgName\":\"办公室\",\"enabled\":true}");
+        String roleId = create(
+                "/api/v1/identity/roles",
+                "{\"roleCode\":\"platform.reviewer\",\"roleName\":\"核稿人员\",\"enabled\":true}");
+        String userId = create(
+                "/api/v1/identity/users",
+                "{\"username\":\"reviewer\",\"displayName\":\"张三\",\"orgId\":\"" + orgId + "\",\"roleIds\":[\"" + roleId
+                        + "\"],\"enabled\":true}");
+        mvc.perform(get("/api/v1/identity/users").with(admin("other-tenant")))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
-        mvc.perform(get("/api/v1/identity/users").with(admin("identity-test"))).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/identity/users").with(admin("identity-test")))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].roleIds[0]").value(roleId));
-        mvc.perform(delete("/api/v1/identity/roles/{id}", roleId).with(admin("identity-test"))).andExpect(status().isConflict());
-        mvc.perform(delete("/api/v1/identity/users/{id}", userId).with(admin("identity-test"))).andExpect(status().isOk());
-        mvc.perform(delete("/api/v1/identity/roles/{id}", roleId).with(admin("identity-test"))).andExpect(status().isOk());
-        mvc.perform(delete("/api/v1/identity/organizations/{id}", orgId).with(admin("identity-test"))).andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/identity/roles/{id}", roleId).with(admin("identity-test")))
+                .andExpect(status().isConflict());
+        mvc.perform(delete("/api/v1/identity/users/{id}", userId).with(admin("identity-test")))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/identity/roles/{id}", roleId).with(admin("identity-test")))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/identity/organizations/{id}", orgId).with(admin("identity-test")))
+                .andExpect(status().isOk());
     }
 
     @Test
     void ordinaryUserCannotManageDirectory() throws Exception {
-        mvc.perform(post("/api/v1/identity/roles").with(jwt().jwt(token -> token.subject("u").claim("tenant_id", "identity-test"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_platform.user")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"roleCode\":\"x\",\"roleName\":\"X\",\"enabled\":true}"))
+        mvc.perform(post("/api/v1/identity/roles")
+                        .with(jwt().jwt(token -> token.subject("u").claim("tenant_id", "identity-test"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_platform.user")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"x\",\"roleName\":\"X\",\"enabled\":true}"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void localHeadersUseStoredAssignmentsAndRejectUnknownUsers() throws Exception {
         mvc.perform(get("/api/v1/identity/me")
-                        .header("X-Tenant-Id", "local-government").header("X-User-Id", "local-user"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.roles[0]").value("platform.admin"));
+                        .header("X-Tenant-Id", "local-government")
+                        .header("X-User-Id", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roles[0]").value("platform.admin"));
         mvc.perform(get("/api/v1/identity/users")
-                        .header("X-Tenant-Id", "local-government").header("X-User-Id", "missing-user"))
-                .andExpect(status().isForbidden());
+                        .header("X-Tenant-Id", "local-government")
+                        .header("X-User-Id", "missing-user"))
+                .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/writing-tasks")
-                        .header("X-Tenant-Id", "local-government").header("X-User-Id", "missing-user"))
-                .andExpect(status().isForbidden());
+                        .header("X-Tenant-Id", "local-government")
+                        .header("X-User-Id", "missing-user"))
+                .andExpect(status().isUnauthorized());
     }
 
     private String create(String path, String body) throws Exception {
-        String response = mvc.perform(post(path).with(admin("identity-test"))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String response = mvc.perform(post(path)
+                        .with(admin("identity-test"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         return json.readTree(response).path("data").path("id").asText();
     }
 

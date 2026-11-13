@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import {
-  createDictionary, createRule, createTerm, deactivateRule, deleteDictionary, deleteRule, deleteTerm, exportDictionariesJson, exportRulesJson, importDictionariesJson, importRulesJson, importTerms, listDictionaries, listRules, listTerms, getOfficialReviewPack, installOfficialReviewPack, type OfficialReviewPackInfo, type RuleImportResult,
+  createDictionary, createRule, createTerm, deactivateRule, reactivateRule, deleteDictionary, deleteRule, deleteTerm, exportDictionariesJson, exportRulesJson, importDictionariesJson, importRulesJson, importTerms, listDictionaries, listRules, listTerms, getOfficialReviewPack, installOfficialReviewPack, type OfficialReviewPackInfo, type RuleImportResult,
   publishRule, submitRule, testRule, updateDictionary, updateRule, updateTerm, type Dictionary, type DictionaryTerm, type ReviewRule,
 } from '@/api/rule'
 
@@ -12,6 +12,8 @@ const loading = ref(false)
 const rules = ref<ReviewRule[]>([])
 const dictionaries = ref<Dictionary[]>([])
 const terms = ref<DictionaryTerm[]>([])
+const ruleTerms = ref<DictionaryTerm[]>([])
+const ruleTermQuery = ref('')
 const officialPack = ref<OfficialReviewPackInfo>()
 const selectedRuleId = ref('')
 const selectedDictionaryId = ref('')
@@ -23,6 +25,9 @@ const editingDictionaryId = ref('')
 const editingTermId = ref('')
 const testText = ref('')
 const expectedCount = ref(1)
+const testRunning = ref(false)
+const testFeedback = ref<{ passed: boolean; actual: number; expected: number; matches: string[] } | null>(null)
+const testError = ref('')
 const ruleDetailOpen = ref(false)
 const ruleQuery = ref('')
 const ruleCategory = ref('全部')
@@ -53,6 +58,11 @@ const visibleRules = computed(() => {
 const rulePageCount = computed(() => Math.max(1, Math.ceil(visibleRules.value.length / rulePageSize)))
 const pagedRules = computed(() => visibleRules.value.slice((rulePage.value - 1) * rulePageSize, rulePage.value * rulePageSize))
 const selectedRule = computed(() => rules.value.find(item => item.id === selectedRuleId.value))
+const visibleRuleTerms = computed(() => {
+  const query = ruleTermQuery.value.trim()
+  if (!query) return ruleTerms.value
+  return ruleTerms.value.filter(term => term.termText.includes(query) || (term.standardForm || '').includes(query) || term.aliases.some(alias => alias.includes(query)))
+})
 const selectedDictionary = computed(() => dictionaries.value.find(item => item.id === selectedDictionaryId.value))
 const sourceUrl = (basis?: string) => basis?.match(/https?:\/\/[^；\s]+/)?.[0]
 
@@ -162,7 +172,7 @@ async function saveRule() {
     ruleCategory.value = changed.category || '未分类'
     ruleStatus.value = '全部'
     ruleQuery.value = ''
-    await load(); selectedRuleId.value = changed.id; ruleDetailOpen.value = true; ruleDialog.value = false
+    await load(); selectedRuleId.value = changed.id; testFeedback.value = null; testError.value = ''; ruleDetailOpen.value = true; ruleDialog.value = false
     ElMessage.success(existing ? '规则已更新，请重新测试后提交审核' : '规则草稿已建立')
   } catch (reason) { message(reason, '规则保存失败') }
 }
@@ -177,21 +187,27 @@ async function removeRule() {
 }
 
 async function runTest() {
-  if (!selectedRule.value || !testText.value) { ElMessage.warning('请录入测试文本'); return }
+  if (!selectedRule.value) return
+  testFeedback.value = null
+  testError.value = ''
+  if (!testText.value.trim()) { testError.value = '请录入测试文本'; return }
+  testRunning.value = true
   try {
     const result = await testRule(selectedRule.value.id, testText.value, expectedCount.value)
-    ElMessage[result.passed ? 'success' : 'warning'](result.passed ? '测试通过，规则可提交审核' : '实际命中数与预期不一致')
+    const sample = result.results[0]
+    testFeedback.value = { passed: result.passed, actual: sample.actualMatchCount, expected: sample.expectedMatchCount, matches: sample.matches }
     await load()
-  } catch (reason) { message(reason, '规则测试失败') }
+  } catch (reason) { testError.value = reason instanceof Error ? reason.message : '规则测试失败' }
+  finally { testRunning.value = false }
 }
 
-async function transition(action: 'submit' | 'publish' | 'deactivate') {
+async function transition(action: 'submit' | 'publish' | 'deactivate' | 'reactivate') {
   if (!selectedRule.value) return
   try {
-    const handlers = { submit: submitRule, publish: publishRule, deactivate: deactivateRule }
+    const handlers = { submit: submitRule, publish: publishRule, deactivate: deactivateRule, reactivate: reactivateRule }
     const changed = await handlers[action](selectedRule.value.id)
     rules.value = rules.value.map(item => item.id === changed.id ? changed : item)
-    ElMessage.success({ submit: '已提交审核', publish: '规则已发布并即时进入审校引擎', deactivate: '规则已停用' }[action])
+    ElMessage.success({ submit: '已提交审核', publish: '规则已发布并即时进入审校引擎', deactivate: '规则已停用，后续审校不再使用', reactivate: '规则已重新启用，后续审校将使用此版本' }[action])
   } catch (reason) { message(reason, '规则状态变更失败') }
 }
 
@@ -255,10 +271,25 @@ async function loadTerms(id: string) {
 }
 
 watch(selectedDictionaryId, id => loadTerms(id).catch(reason => message(reason, '词条加载失败')))
+watch([testText, expectedCount], () => { testFeedback.value = null; testError.value = '' })
 watch([ruleQuery, ruleCategory, ruleStatus], () => { rulePage.value = 1 })
 watch(rulePageCount, count => { if (rulePage.value > count) rulePage.value = count })
 watch(mode, value => { if (value !== 'rules') ruleDetailOpen.value = false })
-function showRule(rule: ReviewRule) { selectedRuleId.value = rule.id; ruleDetailOpen.value = true }
+async function showRule(rule: ReviewRule) {
+  selectedRuleId.value = rule.id
+  testText.value = ''
+  expectedCount.value = 1
+  testFeedback.value = null
+  testError.value = ''
+  ruleTerms.value = []
+  ruleTermQuery.value = ''
+  ruleDetailOpen.value = true
+  if (rule.detectionMethod !== '词库') return
+  const dictionary = dictionaries.value.find(item => item.dictCode === rule.ruleExpression)
+  if (!dictionary) return
+  try { ruleTerms.value = await listTerms(dictionary.id) }
+  catch (reason) { message(reason, '词条加载失败') }
+}
 onMounted(load)
 </script>
 
@@ -327,19 +358,37 @@ onMounted(load)
             <div><small>适用文种</small><strong>{{ selectedRule.applicableDocumentTypes.join('、') || '全部' }}</strong></div>
             <div><small>规则版本</small><strong>V{{ selectedRule.currentVersion }}</strong></div>
           </div>
-          <section class="expression-sheet"><span>{{ selectedRule.detectionMethod === '人工核验' ? '核验要点' : '规则表达式' }}</span><code>{{ selectedRule.ruleExpression }}</code><p>{{ selectedRule.basis || '未填写规则依据' }}</p><a v-if="sourceUrl(selectedRule.basis)" :href="sourceUrl(selectedRule.basis)" target="_blank" rel="noopener noreferrer">查看规范原文</a></section>
-          <section v-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod)" class="rule-test-bed">
-            <header><div><h4>命中测试</h4></div><small>发布前必须通过</small></header>
-            <textarea v-model="testText" placeholder="粘贴一段包含或不包含目标表达的测试文本…" />
-            <div><label>预期命中 <el-input-number v-model="expectedCount" :min="0" :max="100" /></label><button class="secondary-button" type="button" @click="runTest">运行测试</button></div>
+          <section class="expression-sheet"><span>{{ selectedRule.detectionMethod === '人工核验' ? '核验要点' : selectedRule.detectionMethod === '词库' ? '引用词库' : '规则表达式' }}</span><code>{{ selectedRule.ruleExpression }}</code><p>{{ selectedRule.basis || '未填写规则依据' }}</p><a v-if="sourceUrl(selectedRule.basis)" :href="sourceUrl(selectedRule.basis)" target="_blank" rel="noopener noreferrer">查看规范原文</a></section>
+          <section v-if="selectedRule.detectionMethod === '词库'" class="rule-term-sheet">
+            <header><span>具体词条</span><small>{{ visibleRuleTerms.length }} / {{ ruleTerms.length }}</small></header>
+            <input v-model="ruleTermQuery" type="search" placeholder="搜索词条或规范写法" />
+            <div class="rule-term-list">
+              <div v-for="term in visibleRuleTerms" :key="term.id" class="rule-term-row"><strong>{{ term.termText }}</strong><span>→</span><span>{{ term.standardForm && term.standardForm !== term.termText ? term.standardForm : '仅提示' }}</span></div>
+              <p v-if="!ruleTerms.length">该词库暂无词条。</p>
+              <p v-else-if="!visibleRuleTerms.length">没有匹配的词条。</p>
+            </div>
           </section>
+          <section v-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod) && ['草稿', '测试'].includes(selectedRule.lifecycleStatus)" class="rule-test-bed">
+            <header><div><h4>命中测试</h4></div><small>发布前必须通过</small></header>
+            <textarea v-model="testText" :disabled="testRunning" placeholder="粘贴测试文本；例如半角 : 与全角 ： 会得到不同结果" />
+            <div><label>预期命中 <el-input-number v-model="expectedCount" :min="0" :max="100" /></label><button class="secondary-button" type="button" :disabled="testRunning" @click="runTest">{{ testRunning ? '测试中…' : '运行测试' }}</button></div>
+            <p v-if="testError" class="rule-test-feedback error" role="alert">测试失败：{{ testError }}</p>
+            <div v-if="testFeedback" class="rule-test-feedback" :class="testFeedback.passed ? 'passed' : 'failed'" role="status">
+              <strong>{{ testFeedback.passed ? '测试通过' : '未通过：实际命中与预期不一致' }}</strong>
+              <span>预期 {{ testFeedback.expected }} 处，实际 {{ testFeedback.actual }} 处。</span>
+              <span v-if="testFeedback.matches.length">命中内容：{{ testFeedback.matches.slice(0, 10).join('、') }}{{ testFeedback.matches.length > 10 ? '…' : '' }}</span>
+              <span v-else>没有找到匹配内容。请检查测试文本中的字符以及规则表达式。</span>
+            </div>
+          </section>
+          <p v-else-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod)" class="rule-test-note">当前状态无需运行命中测试。修改规则会产生草稿版本，届时可重新测试。</p>
           <footer class="lifecycle-actions">
             <button v-if="['草稿', '测试', '停用'].includes(selectedRule.lifecycleStatus)" class="secondary-button" type="button" @click="openRule(selectedRule)">编辑规则</button>
             <button v-if="['草稿', '测试', '停用'].includes(selectedRule.lifecycleStatus)" class="secondary-button" type="button" @click="removeRule">删除规则</button>
             <button v-if="selectedRule.lifecycleStatus === '测试' || (['人工核验', '词库'].includes(selectedRule.detectionMethod) && selectedRule.lifecycleStatus === '草稿')" class="primary-button" type="button" @click="transition('submit')">提交审核</button>
             <button v-if="selectedRule.lifecycleStatus === '审核'" class="primary-button" type="button" @click="transition('publish')">批准并发布</button>
             <button v-if="selectedRule.lifecycleStatus === '生效'" class="secondary-button" type="button" @click="transition('deactivate')">停用规则</button>
-            <span>草稿 → 测试 → 审核 → 生效</span>
+            <button v-if="selectedRule.lifecycleStatus === '停用'" class="primary-button" type="button" @click="transition('reactivate')">重新启用</button>
+            <span>{{ selectedRule.lifecycleStatus === '停用' ? '重新启用将恢复当前已审核版本；编辑规则后须重新测试、审核和发布。' : '草稿 → 测试 → 审核 → 生效' }}</span>
           </footer>
         </article>
         </el-drawer>
@@ -392,6 +441,13 @@ onMounted(load)
 .expression-sheet code { color: #1d2939; font-family: inherit; font-weight: 500; white-space: pre-wrap; }
 .expression-sheet p { color: #475467; line-height: 1.6; }
 .expression-sheet a, .rule-drawer-content .expression-sheet a { display: inline-block; margin-top: 7px; color: var(--red); }
+.rule-term-sheet { margin-top: 14px; }
+.rule-term-sheet header { display: flex; justify-content: space-between; margin-bottom: 8px; color: #667085; font-size: 12px; }
+.rule-term-sheet input { width: 100%; margin-bottom: 8px; padding: 8px 10px; border: 1px solid #e1e4ea; border-radius: 8px; }
+.rule-term-list { max-height: 420px; overflow: auto; border: 1px solid #e1e4ea; border-radius: 8px; background: #fff; }
+.rule-term-row { display: grid; grid-template-columns: 1fr 16px 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid #eef0f3; font-size: 13px; }
+.rule-term-row:first-child { border-top: 0; }
+.rule-term-list p { margin: 0; padding: 12px; color: #667085; }
 .rule-exchange-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .exchange-file { min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; color: var(--red); background: #fff; border: 1px solid #e8aaa6; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 13px; }
 .exchange-file:hover { background: #fff1f0; }
@@ -444,6 +500,10 @@ onMounted(load)
 .rule-drawer-content .expression-sheet { overflow-wrap: anywhere; }
 .rule-drawer-content .lifecycle-actions { flex-wrap: wrap; }
 .rule-drawer-content .lifecycle-actions span { width: 100%; margin-left: 0; }
+.rule-test-feedback { display: flex !important; align-items: flex-start !important; flex-direction: column; gap: 5px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid #f0c9a2; border-radius: 6px; background: #fff8ee; color: #87520d; font-size: 13px; line-height: 1.5; }
+.rule-test-feedback.passed { border-color: #b7dbc2; background: #f1faf3; color: #17663c; }
+.rule-test-feedback.error { border-color: #e9b5b2; background: #fff4f3; color: #a52a21; }
+.rule-test-note { margin: 18px 0 0; color: #667085; font-size: 13px; }
 :deep(.rule-detail-drawer .el-drawer__body) { padding: 4px 20px 20px; }
 :deep(.rule-detail-drawer) { max-width: 100vw; }
 .official-pack-banner { margin: 14px 0 2px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fff; border: 1px solid #e0e3e8; border-radius: 10px; }

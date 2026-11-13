@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 public class LocalPublicSourcePackBootstrap implements ApplicationRunner {
     private final PublicSourcePackService service;
 
-    public LocalPublicSourcePackBootstrap(PublicSourcePackService service) { this.service = service; }
+    public LocalPublicSourcePackBootstrap(PublicSourcePackService service) {
+        this.service = service;
+    }
 
     @Override
     public void run(ApplicationArguments args) {

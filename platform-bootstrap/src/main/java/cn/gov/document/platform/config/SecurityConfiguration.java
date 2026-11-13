@@ -1,20 +1,28 @@
 package cn.gov.document.platform.config;
 
 import cn.gov.document.platform.common.context.RequestContextFilter;
+import cn.gov.document.platform.identity.AuthSessionService;
 import cn.gov.document.platform.job.web.IdempotencyFilter;
+import cn.gov.document.platform.openapp.OpenAppAuthenticationFilter;
+import cn.gov.document.platform.openapp.OpenAppService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -23,10 +31,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -38,11 +43,16 @@ public class SecurityConfiguration {
     RequestContextFilter platformRequestContextFilter(
             @Value("${platform.security.local-header-enabled:false}") boolean localHeadersEnabled,
             @Value("${platform.security.local-directory-roles:false}") boolean localDirectoryRoles,
-            JdbcTemplate jdbc) {
-        if (!localDirectoryRoles) return new RequestContextFilter(localHeadersEnabled);
-        return new RequestContextFilter(localHeadersEnabled, (tenant, user) -> jdbc.queryForList(
-                "SELECT r.role_code FROM platform_user u JOIN platform_user_role ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN platform_role r ON r.tenant_id=ur.tenant_id AND r.id=ur.role_id WHERE u.tenant_id=? AND u.username=? AND u.enabled=TRUE AND r.enabled=TRUE",
-                String.class, tenant, user));
+            JdbcTemplate jdbc,
+            AuthSessionService sessions) {
+        BiFunction<String, String, java.util.List<String>> roles = !localDirectoryRoles
+                ? (tenant, user) -> java.util.List.of("platform.user", "platform.reviewer", "platform.admin")
+                : (tenant, user) -> jdbc.queryForList(
+                        "SELECT r.role_code FROM platform_user u JOIN platform_user_role ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN platform_role r ON r.tenant_id=ur.tenant_id AND r.id=ur.role_id WHERE u.tenant_id=? AND u.username=? AND u.enabled=TRUE AND r.enabled=TRUE",
+                        String.class,
+                        tenant,
+                        user);
+        return new RequestContextFilter(localHeadersEnabled, roles, sessions::resolve);
     }
 
     @Bean
@@ -52,15 +62,41 @@ public class SecurityConfiguration {
             IdempotencyFilter idempotencyFilter,
             JwtAuthenticationConverter jwtConverter,
             @Value("${platform.security.local-header-enabled:false}") boolean localMode,
-            @Value("${platform.integration.oa.allowed-client-ids:}") List<String> oaClientIds)
+            @Value("${platform.integration.oa.allowed-client-ids:}") List<String> oaClientIds,
+            OpenAppService openApps)
             throws Exception {
+        OpenAppAuthenticationFilter openAppFilter = new OpenAppAuthenticationFilter(openApps, oaClientIds);
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         if (localMode) {
-            http.authorizeHttpRequests(auth -> auth
-                            .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/api/v1/onlyoffice/files/*", "/api/v1/onlyoffice/callback/*").permitAll()
-                            .anyRequest().authenticated())
+            http.exceptionHandling(handling -> handling.authenticationEntryPoint(
+                                    (request, response, exception) -> writeUnauthenticated(response))
+                            .accessDeniedHandler((request, response, exception) -> {
+                                var authentication =
+                                        org.springframework.security.core.context.SecurityContextHolder.getContext()
+                                                .getAuthentication();
+                                if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
+                                    writeUnauthenticated(response);
+                                else response.setStatus(403);
+                            }))
+                    .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
+                            .permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/auth/tenants")
+                            .permitAll()
+                            .requestMatchers(
+                                    "/actuator/health",
+                                    "/actuator/health/**",
+                                    "/actuator/info",
+                                    "/api/v1/onlyoffice/files/*",
+                                    "/api/v1/onlyoffice/callback/*")
+                            .permitAll()
+                            .requestMatchers("/swagger-ui.html", "/swagger-ui/**")
+                            .permitAll()
+                            .anyRequest()
+                            .authenticated())
+                    .addFilterBefore(openAppFilter, AnonymousAuthenticationFilter.class)
                     .addFilterAfter(contextFilter, AnonymousAuthenticationFilter.class)
                     .addFilterAfter(idempotencyFilter, RequestContextFilter.class);
         } else {
@@ -70,20 +106,31 @@ public class SecurityConfiguration {
                                     // ONLYOFFICE 文档服务器拉取文件与保存回调：不经登录认证，由平台签发的访问令牌校验身份
                                     .requestMatchers("/api/v1/onlyoffice/files/*", "/api/v1/onlyoffice/callback/*")
                                     .permitAll()
-                                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**")
+                                    .requestMatchers("/swagger-ui.html", "/swagger-ui/**")
+                                    .permitAll()
+                                    .requestMatchers("/v3/api-docs/**")
                                     .hasRole("platform.admin")
                                     .requestMatchers("/api/v1/integrations/oa/**")
-                                    .access((authentication, context) -> new AuthorizationDecision(
-                                            oaClientAllowed(authentication.get(), oaClientIds)))
+                                    .access((authentication, context) ->
+                                            new AuthorizationDecision(openAppAllowed(authentication.get())
+                                                    || oaClientAllowed(authentication.get(), oaClientIds)))
                                     .anyRequest()
-                                    .access((authentication, context) -> new AuthorizationDecision(
-                                            normalApiAllowed(authentication.get()))))
+                                    .access((authentication, context) ->
+                                            new AuthorizationDecision(normalApiAllowed(authentication.get()))))
                     .oauth2ResourceServer(resource -> resource.bearerTokenResolver(platformBearerTokens())
                             .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
+                    .addFilterBefore(openAppFilter, BearerTokenAuthenticationFilter.class)
                     .addFilterAfter(contextFilter, BearerTokenAuthenticationFilter.class)
                     .addFilterAfter(idempotencyFilter, RequestContextFilter.class);
         }
         return http.build();
+    }
+
+    private static void writeUnauthenticated(jakarta.servlet.http.HttpServletResponse response)
+            throws java.io.IOException {
+        response.setStatus(401);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":401,\"message\":\"请先登录\"}");
     }
 
     /** ONLYOFFICE 文档服务器的请求自带其签名的 Bearer 令牌，不是平台登录令牌，交由接口自行校验，不按 OIDC 令牌解析。 */
@@ -95,22 +142,32 @@ public class SecurityConfiguration {
                 : resolver.resolve(request);
     }
 
-    static boolean oaClientAllowed(Authentication authentication, List<String> allowedClientIds) {
+    public static boolean oaClientAllowed(Authentication authentication, List<String> allowedClientIds) {
         if (!(authentication instanceof JwtAuthenticationToken token) || !token.isAuthenticated()) return false;
         String clientId = token.getToken().getClaimAsString("azp");
         if (clientId == null) clientId = token.getToken().getClaimAsString("client_id");
         String resolvedClientId = clientId;
         return org.springframework.util.StringUtils.hasText(token.getToken().getClaimAsString("tenant_id"))
                 && allowedClientIds.stream().anyMatch(id -> !id.isBlank() && id.equals(resolvedClientId))
-                && token.getAuthorities().stream().anyMatch(authority ->
-                        "SCOPE_oa.integration".equals(authority.getAuthority()));
+                && token.getAuthorities().stream()
+                        .anyMatch(authority -> "SCOPE_oa.integration".equals(authority.getAuthority()));
     }
 
     static boolean normalApiAllowed(Authentication authentication) {
-        return authentication != null && authentication.isAuthenticated()
+        return authentication != null
+                && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken)
-                && authentication.getAuthorities().stream().noneMatch(authority ->
-                        "SCOPE_oa.integration".equals(authority.getAuthority()));
+                && authentication.getAuthorities().stream()
+                        .noneMatch(authority -> "SCOPE_oa.integration".equals(authority.getAuthority())
+                                || "ROLE_open.app".equals(authority.getAuthority()));
+    }
+
+    static boolean openAppAllowed(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_open.app".equals(authority.getAuthority()));
     }
 
     @Bean
@@ -128,9 +185,13 @@ public class SecurityConfiguration {
             }
             String tenant = jwt.getClaimAsString("tenant_id");
             if (tenant != null && jwt.getSubject() != null) {
-                jdbc.queryForList(
-                        "SELECT r.role_code FROM platform_user u JOIN platform_user_role ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN platform_role r ON r.tenant_id=ur.tenant_id AND r.id=ur.role_id WHERE u.tenant_id=? AND u.username=? AND u.enabled=TRUE AND r.enabled=TRUE",
-                        String.class, tenant, jwt.getSubject()).stream()
+                jdbc
+                        .queryForList(
+                                "SELECT r.role_code FROM platform_user u JOIN platform_user_role ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN platform_role r ON r.tenant_id=ur.tenant_id AND r.id=ur.role_id WHERE u.tenant_id=? AND u.username=? AND u.enabled=TRUE AND r.enabled=TRUE",
+                                String.class,
+                                tenant,
+                                jwt.getSubject())
+                        .stream()
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                         .forEach(authorities::add);
             }
@@ -155,7 +216,13 @@ public class SecurityConfiguration {
                 "If-Match",
                 "X-Tenant-Id",
                 "X-User-Id",
-                "X-Request-Id"));
+                "X-Request-Id",
+                "X-Open-App-Code",
+                "X-Open-Api-Key",
+                "X-Open-User-Id",
+                "X-Open-Unit-Id",
+                "X-Open-Department-Id",
+                "X-Open-Role-Ids"));
         configuration.setExposedHeaders(List.of("X-Request-Id", "Location", "ETag", "Idempotency-Replayed"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

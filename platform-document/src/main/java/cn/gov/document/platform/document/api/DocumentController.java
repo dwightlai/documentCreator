@@ -44,14 +44,14 @@ public class DocumentController {
     }
 
     @PostMapping("/knowledge-drafts")
-    ApiResponse<DocumentDtos.KnowledgeDraftResponse> previewKnowledgeDraft(@PathVariable String taskId,
-            @Valid @RequestBody DocumentDtos.KnowledgeDraftRequest request) {
+    ApiResponse<DocumentDtos.KnowledgeDraftResponse> previewKnowledgeDraft(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.KnowledgeDraftRequest request) {
         return ApiResponse.success(service.previewKnowledgeDraft(taskId, request));
     }
 
     @PostMapping("/knowledge-insertions")
-    ApiResponse<DocumentDtos.DocumentResponse> insertKnowledge(@PathVariable String taskId,
-            @Valid @RequestBody DocumentDtos.KnowledgeInsertionRequest request) {
+    ApiResponse<DocumentDtos.DocumentResponse> insertKnowledge(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.KnowledgeInsertionRequest request) {
         return ApiResponse.success(service.insertKnowledge(taskId, request));
     }
 
@@ -101,7 +101,8 @@ public class DocumentController {
     }
 
     @DeleteMapping("/paragraphs/{paragraphId}")
-    ApiResponse<DocumentDtos.DocumentResponse> deleteParagraph(@PathVariable String taskId, @PathVariable String paragraphId) {
+    ApiResponse<DocumentDtos.DocumentResponse> deleteParagraph(
+            @PathVariable String taskId, @PathVariable String paragraphId) {
         return ApiResponse.success(service.deleteParagraph(taskId, paragraphId));
     }
 

@@ -1,0 +1,279 @@
+[
+  {
+    "rule": "STD-ISSUE-YEAR-BRACKETS",
+    "positive": "某办发（2026）12号",
+    "negative": "某办发〔2026〕12号",
+    "replacement": "〔2026〕"
+  },
+  {
+    "rule": "STD-ISSUE-ORDER-LEADING-ZERO",
+    "positive": "某办发〔2026〕012号",
+    "negative": "某办发〔2026〕12号",
+    "replacement": "〔2026〕12号"
+  },
+  {
+    "rule": "STD-ISSUE-ORDER-DI",
+    "positive": "某办发〔2026〕第12号",
+    "negative": "某办发〔2026〕12号",
+    "replacement": "〔2026〕12号"
+  },
+  {
+    "rule": "STD-DATE-MONTH-LEADING-ZERO",
+    "positive": "2026年09月12日",
+    "negative": "2026年9月12日",
+    "replacement": "2026年9月"
+  },
+  {
+    "rule": "STD-DATE-DAY-LEADING-ZERO",
+    "positive": "2026年9月02日",
+    "negative": "2026年9月2日",
+    "replacement": "2026年9月2日"
+  },
+  {
+    "rule": "STD-PUNCT-ELLIPSIS",
+    "positive": "事项...请核对",
+    "negative": "事项……请核对",
+    "replacement": "……"
+  },
+  {
+    "rule": "STD-PUNCT-REPEATED-COMMA",
+    "positive": "请办理，，并反馈",
+    "negative": "请办理，并反馈",
+    "replacement": "，"
+  },
+  {
+    "rule": "STD-PUNCT-REPEATED-PERIOD",
+    "positive": "请办理。。",
+    "negative": "请办理。",
+    "replacement": "。"
+  },
+  {
+    "rule": "STD-PUNCT-ELLIPSIS-REDUNDANT-WORD",
+    "positive": "事项……等",
+    "negative": "事项……，请核对"
+  },
+  {
+    "rule": "STD-PUNCT-ELLIPSIS-OVERLONG",
+    "positive": "事项……………………请核对",
+    "negative": "事项…………请核对"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-COMMA-BETWEEN-HAN",
+    "positive": "请办理,并反馈",
+    "negative": "请办理，并反馈",
+    "replacement": "，"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-COLON-BETWEEN-HAN",
+    "positive": "说明:完成",
+    "negative": "说明：完成",
+    "replacement": "："
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-SEMICOLON",
+    "positive": "办理;反馈",
+    "negative": "办理；反馈",
+    "replacement": "；"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-QUESTION",
+    "positive": "是否办结?请回复",
+    "negative": "是否办结？请回复",
+    "replacement": "？"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-EXCLAMATION",
+    "positive": "立即办理!不得延误",
+    "negative": "立即办理！不得延误",
+    "replacement": "！"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-DOT-BETWEEN-HAN",
+    "positive": "李.明",
+    "negative": "李·明"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-PARENS",
+    "positive": "办法(试行)稿",
+    "negative": "办法（试行）稿",
+    "replacement": "（试行）"
+  },
+  {
+    "rule": "STD-PUNCT-ASCII-QUOTES",
+    "positive": "称为\"高效办成一件事\"工作",
+    "negative": "称为“高效办成一件事”工作",
+    "replacement": "“高效办成一件事”"
+  },
+  {
+    "rule": "STD-PUNCT-REPEATED-EXCLAMATION",
+    "positive": "请立即办理！！",
+    "negative": "请立即办理！",
+    "replacement": "！"
+  },
+  {
+    "rule": "STD-PUNCT-REPEATED-QUESTION",
+    "positive": "是否办结？？",
+    "negative": "是否办结？",
+    "replacement": "？"
+  },
+  {
+    "rule": "STD-PUNCT-REPEATED-DUNHAO",
+    "positive": "事项、、请核对",
+    "negative": "事项、请核对",
+    "replacement": "、"
+  },
+  {
+    "rule": "STD-PUNCT-SPACE-BEFORE",
+    "positive": "请办理 ，并反馈",
+    "negative": "请办理，并反馈",
+    "replacement": "，"
+  },
+  {
+    "rule": "STD-PUNCT-HAN-HYPHEN",
+    "positive": "事项--说明",
+    "negative": "事项——说明",
+    "replacement": "——"
+  },
+  {
+    "rule": "STD-PUNCT-YEAR-RANGE",
+    "positive": "2020-2026年",
+    "negative": "2020—2026年",
+    "replacement": "2020—2026"
+  },
+  {
+    "rule": "STD-PUNCT-BOOK-TITLE-ANGLE",
+    "positive": "〈党政机关公文处理工作条例〉",
+    "negative": "《党政机关公文处理工作条例》",
+    "replacement": "《党政机关公文处理工作条例》"
+  },
+  {
+    "rule": "STD-NUM-YEAR-THOUSANDS",
+    "positive": "2,026年",
+    "negative": "2026年",
+    "replacement": "2026"
+  },
+  {
+    "rule": "STD-DATE-DOTTED",
+    "positive": "2026.03.09",
+    "negative": "2026年3月9日",
+    "replacement": "2026年3月9日"
+  },
+  {
+    "rule": "STD-DATE-CHINESE-NUMERAL",
+    "positive": "二〇二六年三月",
+    "negative": "2026年3月"
+  },
+  {
+    "rule": "STD-ISSUE-YEAR-TWO-DIGIT",
+    "positive": "某办发〔26〕12号",
+    "negative": "某办发〔2026〕12号"
+  },
+  {
+    "rule": "STD-ISSUE-INNER-SPACE",
+    "positive": "某办发〔2026〕 12号",
+    "negative": "某办发〔2026〕12号"
+  },
+  {
+    "rule": "STD-ISSUE-FULLWIDTH-YEAR",
+    "positive": "某办发〔２０２６〕12号",
+    "negative": "某办发〔2026〕12号"
+  },
+  {
+    "rule": "STD-ATTACHMENT-NUMBERED",
+    "positive": "附件1：名册",
+    "negative": "附件：名册"
+  },
+  {
+    "rule": "STD-COPY-NUMBER-SHORT",
+    "positive": "份号：12345",
+    "negative": "份号：000001"
+  },
+  {
+    "rule": "STD-COPY-NUMBER-LONG",
+    "positive": "份号：0000001",
+    "negative": "份号：000001"
+  },
+  {
+    "rule": "STD-URGENCY-PINGJI",
+    "positive": "紧急程度：平急",
+    "negative": "紧急程度：特急"
+  },
+  {
+    "rule": "STD-SECURITY-INTERNAL",
+    "positive": "密级：内部",
+    "negative": "密级：秘密"
+  },
+  {
+    "rule": "STD-DOC-TYPE-REQUEST-REPORT",
+    "positive": "关于经费的请示报告",
+    "negative": "关于经费的请示"
+  },
+  {
+    "rule": "STD-LAW-REPEALED-CIVIL",
+    "positive": "《中华人民共和国合同法》",
+    "negative": "《中华人民共和国民法典》"
+  },
+  {
+    "rule": "STD-AGENCY-SUPERSEDED-2018",
+    "positive": "原国土资源部职责",
+    "negative": "环境保护部门继续履职"
+  },
+  {
+    "rule": "STD-ADVERB-DE",
+    "positive": "认真的落实",
+    "negative": "认真的态度已经说明",
+    "replacement": "认真地"
+  },
+  {
+    "rule": "STD-APPROX-DUNHAO",
+    "positive": "三、四个问题",
+    "negative": "一、工作安排已经三四个",
+    "replacement": "三四"
+  },
+  {
+    "rule": "STD-REDUNDANT-DAYUE",
+    "positive": "大约三天左右",
+    "negative": "大约三天",
+    "replacement": "大约三天"
+  },
+  {
+    "rule": "STD-REDUNDANT-CHAOGUO",
+    "positive": "超过三天以上",
+    "negative": "超过三天",
+    "replacement": "超过三天"
+  },
+  {
+    "rule": "STD-REDUNDANT-JIEYU",
+    "positive": "介于三至五之间",
+    "negative": "介于三至五",
+    "replacement": "介于三至五"
+  },
+  {
+    "rule": "STD-REDUNDANT-YUANYIN",
+    "positive": "原因是因为材料不全",
+    "negative": "原因是材料不全",
+    "replacement": "原因是"
+  },
+  {
+    "rule": "STD-REDUNDANT-MUDI",
+    "positive": "目的是为了提高效率",
+    "negative": "目的是提高效率",
+    "replacement": "目的是"
+  },
+  {
+    "rule": "STD-PERCENT-SPACE",
+    "positive": "完成80 %",
+    "negative": "完成80%",
+    "replacement": "0%"
+  },
+  {
+    "rule": "STD-ABSOLUTE-PROMISE",
+    "positive": "绝对保证完成",
+    "negative": "原则上完成"
+  },
+  {
+    "rule": "STD-UNIT-NONLEGAL-PROMPT",
+    "positive": "约3英寸",
+    "negative": "约3厘米"
+  }
+]

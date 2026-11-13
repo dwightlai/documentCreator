@@ -1,0 +1,76 @@
+{
+  "title": "非法定计量单位名称",
+  "note": "与法定单位同义、可以替换名称的旧称",
+  "groups": [
+    {
+      "preferred": "米",
+      "variants": [
+        "公尺"
+      ],
+      "note": "法定单位名称为米。"
+    },
+    {
+      "preferred": "吨",
+      "variants": [
+        "公吨"
+      ],
+      "note": "法定单位名称为吨。"
+    },
+    {
+      "preferred": "厘米",
+      "variants": [
+        "公分"
+      ],
+      "note": "法定单位名称为厘米。公分不是法定单位。"
+    },
+    {
+      "preferred": "毫米",
+      "variants": [
+        "公厘"
+      ],
+      "note": "法定单位名称为毫米。"
+    },
+    {
+      "preferred": "升",
+      "variants": [
+        "公升"
+      ],
+      "note": "法定单位名称为升。"
+    },
+    {
+      "preferred": "立方米",
+      "variants": [
+        "立方公尺"
+      ],
+      "note": "法定单位名称为立方米。"
+    },
+    {
+      "preferred": "立方厘米",
+      "variants": [
+        "立方公分"
+      ],
+      "note": "法定单位名称为立方厘米。"
+    },
+    {
+      "preferred": "升",
+      "variants": [
+        "立升"
+      ],
+      "note": "法定单位名称为升。"
+    },
+    {
+      "preferred": "平方米",
+      "variants": [
+        "平方公尺"
+      ],
+      "note": "法定单位名称为平方米。"
+    },
+    {
+      "preferred": "平方厘米",
+      "variants": [
+        "平方公分"
+      ],
+      "note": "法定单位名称为平方厘米。"
+    }
+  ]
+}

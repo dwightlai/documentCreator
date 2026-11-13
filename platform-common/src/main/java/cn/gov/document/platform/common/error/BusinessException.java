@@ -31,4 +31,8 @@ public class BusinessException extends RuntimeException {
     public static BusinessException unprocessable(String message) {
         return new BusinessException("BUSINESS_VALIDATION_FAILED", message, HttpStatus.UNPROCESSABLE_ENTITY);
     }
+
+    public static BusinessException unauthorized(String message) {
+        return new BusinessException("UNAUTHENTICATED", message, HttpStatus.UNAUTHORIZED);
+    }
 }

@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicSourcePackController {
     private final PublicSourcePackService service;
 
-    public PublicSourcePackController(PublicSourcePackService service) { this.service = service; }
+    public PublicSourcePackController(PublicSourcePackService service) {
+        this.service = service;
+    }
 
     @GetMapping
     public ApiResponse<PublicSourcePackService.PackInfo> info() {

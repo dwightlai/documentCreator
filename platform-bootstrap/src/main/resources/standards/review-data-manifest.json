@@ -1,0 +1,76 @@
+{
+  "packVersion": "2026.11.04-1",
+  "checkedOn": "2026-11-04",
+  "resources": [
+    {
+      "path": "gf1001-2001-variants.json",
+      "standard": "GF 1001—2001《第一批异形词整理表》",
+      "publisher": "教育部、国家语言文字工作委员会",
+      "publicSource": "https://www.moe.gov.cn/ewebeditor/uploadfile/2015/01/12/20150112165927212.pdf",
+      "groups": 338,
+      "variants": 362,
+      "sha256": "bebe16660fffde55b6b74d9c21d5cb9935526d2e8162ede9a2bf77408afe2308",
+      "verification": "结构、重复词形和文件指纹自动校验；逐条对照标准原文仍需复核"
+    },
+    {
+      "path": "lexicon-confusable.json",
+      "standard": "公文高频易错词",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "公文高频错写中字形可以判定的推荐写法。不是国家标准词表，也不是商业词库复制。权利/权力、截止/截至、制定/制订、反应/反映等两可词不收录，不自动替换。",
+      "groups": 768,
+      "variants": 768,
+      "sha256": "e12db743f3b9b24e1bc06f43268be99cf671d16938e4679bedf56d0823f44be2",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    },
+    {
+      "path": "lexicon-idiom.json",
+      "standard": "成语和固定词组误写",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "成语和固定词组的通行写法。只收录字形或语序可以判定的误写；语义易误用但字形正确的条目不收录。",
+      "groups": 242,
+      "variants": 242,
+      "sha256": "e078e2286d528ec7f73f7a85ca8a65691d406f2044125e1995ab49a944c7c7dc",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    },
+    {
+      "path": "lexicon-agency.json",
+      "standard": "机关名称易错写法",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "《国务院关于机构设置的通知》（国发〔2023〕5号），https://app.www.gov.cn/govdata/gov/202303/20/498124/article.html",
+      "groups": 24,
+      "variants": 24,
+      "sha256": "c4da46e2d5a540d2a9942affa5a6fc5d43717efbe8071dcaf435d1c7d532fd14",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    },
+    {
+      "path": "lexicon-division.json",
+      "standard": "行政区划易错写法",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "现行行政区划全称。民政部全国行政区划信息：https://www.mca.gov.cn/",
+      "groups": 77,
+      "variants": 77,
+      "sha256": "31f01ac5d62e966f8d1061be402ae913604a04e934bfc921542dba96cc20d015",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    },
+    {
+      "path": "lexicon-unit.json",
+      "standard": "非法定计量单位旧称",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "《中华人民共和国计量法》及国务院《关于在我国统一实行法定计量单位的命令》（1984年）。只收录与法定单位同义的旧称，不收录公斤、公里、亩。",
+      "groups": 10,
+      "variants": 10,
+      "sha256": "57ec91c4ff090ae7e170485dc848163fcd5e23525b77fe989600a47faadd3471",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    },
+    {
+      "path": "lexicon-proper.json",
+      "standard": "专名和固定表述错字",
+      "publisher": "项目依据公开资料整理，不是标准全文转录",
+      "publicSource": "领导人姓名和固定表述中可以判定的错字。只提示字形，不评价政策内容。",
+      "groups": 10,
+      "variants": 10,
+      "sha256": "eed7eba8088e5a7f658ff5d4f06ffd21935da427cb958abfae78b986ce9f2fa7",
+      "verification": "结构、重复词形、跨库包含关系和文件指纹自动校验；逐条人工复核仍未完成，不能宣称准确率"
+    }
+  ]
+}

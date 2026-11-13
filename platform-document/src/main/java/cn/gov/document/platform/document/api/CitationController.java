@@ -27,7 +27,9 @@ public class CitationController {
     }
 
     @PostMapping("/{citationId}/confirm-knowledge")
-    ApiResponse<CitationDtos.Response> confirmKnowledge(@PathVariable String taskId, @PathVariable String citationId,
+    ApiResponse<CitationDtos.Response> confirmKnowledge(
+            @PathVariable String taskId,
+            @PathVariable String citationId,
             @Valid @RequestBody CitationDtos.ConfirmKnowledgeRequest request) {
         return ApiResponse.success(service.confirmKnowledge(taskId, citationId, request));
     }

@@ -11,7 +11,6 @@ public final class OaIntegrationDtos {
             @NotBlank @Size(max = 100) String businessId,
             @NotBlank @Size(max = 32) String writingTaskId,
             @Size(max = 100) String documentFileId,
-            @Size(max = 32) String reviewPlanId,
             @Size(max = 500) String callbackUrl) {}
 
     /** §31.1 OA 发起写作传入的业务上下文；材料以文本片段传入，不接受外部文件地址以避免 SSRF。 */
@@ -27,6 +26,12 @@ public final class OaIntegrationDtos {
             @Size(max = 20) String securityLevel,
             @Size(max = 20) java.util.List<@jakarta.validation.Valid Material> materials,
             @Size(max = 500) String callbackUrl) {}
+
+    /** 第三方 OA 直接提交的正文。文种按标题识别。平台不保存文稿，也不按业务单据编号查找本地任务。 */
+    public record SubmittedDocument(@NotBlank @Size(max = 20000) String text) {}
+
+    /** 第三方 OA 直接提交待审正文。文种按标题识别，审校固定为内容安全审校。 */
+    public record SubmittedReview(@NotBlank @Size(max = 20000) String text) {}
 
     public record Material(
             @NotBlank @Size(max = 500) String materialName,

@@ -76,6 +76,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: platform-web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: node ../tools/verify-review-data.mjs
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

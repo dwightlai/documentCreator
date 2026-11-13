@@ -1,0 +1,5382 @@
+{
+  "title": "公文高频易错词",
+  "note": "现代汉语通行推荐写法中可判定的错写，不含权利/权力等两可词",
+  "groups": [
+    {
+      "preferred": "安详",
+      "variants": [
+        "安祥"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详从容",
+      "variants": [
+        "安祥从容"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详地",
+      "variants": [
+        "安祥地"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详地回答",
+      "variants": [
+        "安祥地回答"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详地坐着",
+      "variants": [
+        "安祥地坐着"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详的目光",
+      "variants": [
+        "安祥的目光"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详的神情",
+      "variants": [
+        "安祥的神情"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详神态",
+      "variants": [
+        "安祥神态"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安详微笑",
+      "variants": [
+        "安祥微笑"
+      ],
+      "note": "神态用“安详”。"
+    },
+    {
+      "preferred": "安排",
+      "variants": [
+        "按排"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排就绪",
+      "variants": [
+        "按排就绪"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排人员",
+      "variants": [
+        "按排人员"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排时间",
+      "variants": [
+        "按排时间"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排时间节点",
+      "variants": [
+        "按排时间节点"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排妥当",
+      "variants": [
+        "按排妥当"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安排行程",
+      "variants": [
+        "按排行程"
+      ],
+      "note": "“按排”不是规范词形。"
+    },
+    {
+      "preferred": "安装",
+      "variants": [
+        "按装"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装调试",
+      "variants": [
+        "按装调试"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装队",
+      "variants": [
+        "按装队"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装工程",
+      "variants": [
+        "按装工程"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装工程完工",
+      "variants": [
+        "按装工程完工"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装设备",
+      "variants": [
+        "按装设备"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装完毕",
+      "variants": [
+        "按装完毕"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装完成",
+      "variants": [
+        "按装完成"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "安装位置",
+      "variants": [
+        "按装位置"
+      ],
+      "note": "“按装”不是规范词形。"
+    },
+    {
+      "preferred": "报销",
+      "variants": [
+        "报消"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销标准",
+      "variants": [
+        "报消标准"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销单据",
+      "variants": [
+        "报消单据"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销单据粘贴",
+      "variants": [
+        "报消单据粘贴"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销费",
+      "variants": [
+        "报消费"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销费用",
+      "variants": [
+        "报消费用"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销流程",
+      "variants": [
+        "报消流程"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "报销票据",
+      "variants": [
+        "报消票据"
+      ],
+      "note": "“报消”不是规范词形。"
+    },
+    {
+      "preferred": "被誉为",
+      "variants": [
+        "被誉为是"
+      ],
+      "note": "“被誉为”不必再加“是”。"
+    },
+    {
+      "preferred": "被誉为榜样",
+      "variants": [
+        "被誉为是榜样"
+      ],
+      "note": "“被誉为”不必再加“是”。"
+    },
+    {
+      "preferred": "被誉为典型",
+      "variants": [
+        "被誉为是典型"
+      ],
+      "note": "“被誉为”不必再加“是”。"
+    },
+    {
+      "preferred": "必需品",
+      "variants": [
+        "必须品"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品保障",
+      "variants": [
+        "必须品保障"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品保障方案",
+      "variants": [
+        "必须品保障方案"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品储备",
+      "variants": [
+        "必须品储备"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品供应",
+      "variants": [
+        "必须品供应"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品目录",
+      "variants": [
+        "必须品目录"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必需品清单",
+      "variants": [
+        "必须品清单"
+      ],
+      "note": "不可缺少的物品用“必需”。"
+    },
+    {
+      "preferred": "必须",
+      "variants": [
+        "必须要"
+      ],
+      "note": "“必须”不必再加“要”。"
+    },
+    {
+      "preferred": "必须完成",
+      "variants": [
+        "必须要完成"
+      ],
+      "note": "“必须”不必再加“要”。"
+    },
+    {
+      "preferred": "必须抓紧",
+      "variants": [
+        "必须要抓紧"
+      ],
+      "note": "“必须”不必再加“要”。"
+    },
+    {
+      "preferred": "部署",
+      "variants": [
+        "布署"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署到位",
+      "variants": [
+        "布署到位"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署方案",
+      "variants": [
+        "布署方案"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署工作",
+      "variants": [
+        "布署工作"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署工作要求",
+      "variants": [
+        "布署工作要求"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署会",
+      "variants": [
+        "布署会"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署会议",
+      "variants": [
+        "布署会议"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署会议纪要",
+      "variants": [
+        "布署会议纪要"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署检查",
+      "variants": [
+        "布署检查"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署落实",
+      "variants": [
+        "布署落实"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署任务",
+      "variants": [
+        "布署任务"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署实施",
+      "variants": [
+        "布署实施"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署要求",
+      "variants": [
+        "布署要求"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署周密",
+      "variants": [
+        "布署周密"
+      ],
+      "note": "公文中安排工作用“部署”。"
+    },
+    {
+      "preferred": "部署",
+      "variants": [
+        "部置"
+      ],
+      "note": "“部置”不是规范词形。"
+    },
+    {
+      "preferred": "部署工作",
+      "variants": [
+        "部置工作"
+      ],
+      "note": "“部置”不是规范词形。"
+    },
+    {
+      "preferred": "沉湎酒色",
+      "variants": [
+        "沉缅酒色"
+      ],
+      "note": "“沉湎”为规范词形。"
+    },
+    {
+      "preferred": "沉湎其中",
+      "variants": [
+        "沉缅其中"
+      ],
+      "note": "“沉湎”为规范词形。"
+    },
+    {
+      "preferred": "沉湎于",
+      "variants": [
+        "沉缅于"
+      ],
+      "note": "“沉湎”为规范词形。"
+    },
+    {
+      "preferred": "成分比例",
+      "variants": [
+        "成份比例"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分变化",
+      "variants": [
+        "成份变化"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分分析",
+      "variants": [
+        "成份分析"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分分析结果",
+      "variants": [
+        "成份分析结果"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分构成",
+      "variants": [
+        "成份构成"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分股",
+      "variants": [
+        "成份股"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分检验",
+      "variants": [
+        "成份检验"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "成分鉴定",
+      "variants": [
+        "成份鉴定"
+      ],
+      "note": "推荐词形为“成分”。"
+    },
+    {
+      "preferred": "处分",
+      "variants": [
+        "处份"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分建议",
+      "variants": [
+        "处份建议"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分决定",
+      "variants": [
+        "处份决定"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分决定书",
+      "variants": [
+        "处份决定书"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分决定已经作出",
+      "variants": [
+        "处份决定已经作出"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分文件",
+      "variants": [
+        "处份文件"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "处分依据",
+      "variants": [
+        "处份依据"
+      ],
+      "note": "“处份”不是规范词形。"
+    },
+    {
+      "preferred": "凑合",
+      "variants": [
+        "凑和"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合度日",
+      "variants": [
+        "凑和度日"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合使用",
+      "variants": [
+        "凑和使用"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合事",
+      "variants": [
+        "凑和事"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合一下",
+      "variants": [
+        "凑和一下"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合着",
+      "variants": [
+        "凑和着"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合着办",
+      "variants": [
+        "凑和着办"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合着完成任务",
+      "variants": [
+        "凑和着完成任务"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "凑合着用",
+      "variants": [
+        "凑和着用"
+      ],
+      "note": "“凑和”不是规范词形。"
+    },
+    {
+      "preferred": "大约三天完成",
+      "variants": [
+        "大约三天左右完成"
+      ],
+      "note": "“大约”与“左右”重复。"
+    },
+    {
+      "preferred": "当否，请批示",
+      "variants": [
+        "当否请批示"
+      ],
+      "note": "请示结束语通行写法在中间用逗号。"
+    },
+    {
+      "preferred": "当否，请批示为盼",
+      "variants": [
+        "当否请批示为盼"
+      ],
+      "note": "请示结束语通行写法在中间用逗号。"
+    },
+    {
+      "preferred": "倒霉蛋",
+      "variants": [
+        "倒楣蛋"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "倒霉的事情",
+      "variants": [
+        "倒楣的事情"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "倒霉事",
+      "variants": [
+        "倒楣事"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "倒霉事情",
+      "variants": [
+        "倒楣事情"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "倒霉透顶",
+      "variants": [
+        "倒楣透顶"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "倒霉运气",
+      "variants": [
+        "倒楣运气"
+      ],
+      "note": "“倒楣”不是规范词形。"
+    },
+    {
+      "preferred": "登录窗口",
+      "variants": [
+        "登陆窗口"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录平台",
+      "variants": [
+        "登陆平台"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录平台办理",
+      "variants": [
+        "登陆平台办理"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录入口",
+      "variants": [
+        "登陆入口"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录系统",
+      "variants": [
+        "登陆系统"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录系统失败",
+      "variants": [
+        "登陆系统失败"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录验证",
+      "variants": [
+        "登陆验证"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录页面",
+      "variants": [
+        "登陆页面"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录账号",
+      "variants": [
+        "登陆账号"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "登录账号密码",
+      "variants": [
+        "登陆账号密码"
+      ],
+      "note": "进入信息系统用“登录”。"
+    },
+    {
+      "preferred": "首选",
+      "variants": [
+        "第一首选"
+      ],
+      "note": "“首选”已是第一。"
+    },
+    {
+      "preferred": "首选方案",
+      "variants": [
+        "第一首选方案"
+      ],
+      "note": "“首选”已是第一。"
+    },
+    {
+      "preferred": "首选项目",
+      "variants": [
+        "第一首选项目"
+      ],
+      "note": "“首选”已是第一。"
+    },
+    {
+      "preferred": "栋梁",
+      "variants": [
+        "栋粱"
+      ],
+      "note": "比喻人才用“梁”。"
+    },
+    {
+      "preferred": "栋梁之才",
+      "variants": [
+        "栋粱之才"
+      ],
+      "note": "比喻人才用“梁”。"
+    },
+    {
+      "preferred": "栋梁之材",
+      "variants": [
+        "栋粱之材"
+      ],
+      "note": "比喻人才用“梁”。"
+    },
+    {
+      "preferred": "度假",
+      "variants": [
+        "渡假"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假安排",
+      "variants": [
+        "渡假安排"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假安排通知",
+      "variants": [
+        "渡假安排通知"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假村",
+      "variants": [
+        "渡假村"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假村建设",
+      "variants": [
+        "渡假村建设"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假村项目",
+      "variants": [
+        "渡假村项目"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假区",
+      "variants": [
+        "渡假区"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假申请",
+      "variants": [
+        "渡假申请"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "度假制度",
+      "variants": [
+        "渡假制度"
+      ],
+      "note": "“渡假”不是规范词形。"
+    },
+    {
+      "preferred": "端详",
+      "variants": [
+        "端祥"
+      ],
+      "note": "仔细看用“端详”。"
+    },
+    {
+      "preferred": "端详来人",
+      "variants": [
+        "端祥来人"
+      ],
+      "note": "仔细看用“端详”。"
+    },
+    {
+      "preferred": "端详良久",
+      "variants": [
+        "端祥良久"
+      ],
+      "note": "仔细看用“端详”。"
+    },
+    {
+      "preferred": "端详片刻",
+      "variants": [
+        "端祥片刻"
+      ],
+      "note": "仔细看用“端详”。"
+    },
+    {
+      "preferred": "端详许久",
+      "variants": [
+        "端祥许久"
+      ],
+      "note": "仔细看用“端详”。"
+    },
+    {
+      "preferred": "锻炼",
+      "variants": [
+        "锻练"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼队伍",
+      "variants": [
+        "锻练队伍"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼队伍办法",
+      "variants": [
+        "锻练队伍办法"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼计划",
+      "variants": [
+        "锻练计划"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼计划表",
+      "variants": [
+        "锻练计划表"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼身体",
+      "variants": [
+        "锻练身体"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼项目",
+      "variants": [
+        "锻练项目"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "锻炼效果",
+      "variants": [
+        "锻练效果"
+      ],
+      "note": "“锻练”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍",
+      "variants": [
+        "防碍"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍观瞻",
+      "variants": [
+        "防碍观瞻"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍交通",
+      "variants": [
+        "防碍交通"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍施工",
+      "variants": [
+        "防碍施工"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍施工进度",
+      "variants": [
+        "防碍施工进度"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍通行",
+      "variants": [
+        "防碍通行"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍执行",
+      "variants": [
+        "防碍执行"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨碍执行公务",
+      "variants": [
+        "防碍执行公务"
+      ],
+      "note": "“防碍”不是规范词形。"
+    },
+    {
+      "preferred": "妨害",
+      "variants": [
+        "防害"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害公共安全",
+      "variants": [
+        "防害公共安全"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害公务",
+      "variants": [
+        "防害公务"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害结果",
+      "variants": [
+        "防害结果"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害结果发生",
+      "variants": [
+        "防害结果发生"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害社会秩序",
+      "variants": [
+        "防害社会秩序"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害市容",
+      "variants": [
+        "防害市容"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "妨害秩序",
+      "variants": [
+        "防害秩序"
+      ],
+      "note": "“防害”不是规范词形。"
+    },
+    {
+      "preferred": "分量比较",
+      "variants": [
+        "份量比较"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量不足",
+      "variants": [
+        "份量不足"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量不足的问题",
+      "variants": [
+        "份量不足的问题"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量很重",
+      "variants": [
+        "份量很重"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量评估",
+      "variants": [
+        "份量评估"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量十足",
+      "variants": [
+        "份量十足"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "分量掌握",
+      "variants": [
+        "份量掌握"
+      ],
+      "note": "推荐词形为“分量”。"
+    },
+    {
+      "preferred": "辐射",
+      "variants": [
+        "幅射"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射安全",
+      "variants": [
+        "幅射安全"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射范围",
+      "variants": [
+        "幅射范围"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射防护",
+      "variants": [
+        "幅射防护"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射剂量",
+      "variants": [
+        "幅射剂量"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射监测",
+      "variants": [
+        "幅射监测"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射监测数据",
+      "variants": [
+        "幅射监测数据"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射影响",
+      "variants": [
+        "幅射影响"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "辐射源",
+      "variants": [
+        "幅射源"
+      ],
+      "note": "“幅射”不是规范词形。"
+    },
+    {
+      "preferred": "付诸",
+      "variants": [
+        "付诸于"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "付诸实施",
+      "variants": [
+        "付诸于实施"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "付诸行动",
+      "variants": [
+        "付诸于行动"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "覆盖范围",
+      "variants": [
+        "复盖范围"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖范围说明",
+      "variants": [
+        "复盖范围说明"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖率",
+      "variants": [
+        "复盖率"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖面",
+      "variants": [
+        "复盖面"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖面广",
+      "variants": [
+        "复盖面广"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖面积",
+      "variants": [
+        "复盖面积"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖全市",
+      "variants": [
+        "复盖全市"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "覆盖人群",
+      "variants": [
+        "复盖人群"
+      ],
+      "note": "“复盖”不是规范词形。"
+    },
+    {
+      "preferred": "高粱",
+      "variants": [
+        "高梁"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱产地",
+      "variants": [
+        "高梁产地"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱产区",
+      "variants": [
+        "高梁产区"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱地",
+      "variants": [
+        "高梁地"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱地管护",
+      "variants": [
+        "高梁地管护"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱秆",
+      "variants": [
+        "高梁杆"
+      ],
+      "note": "作物名用“粱”。高粱秆的“秆”另行规范。"
+    },
+    {
+      "preferred": "高粱米",
+      "variants": [
+        "高梁米"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "高粱种植",
+      "variants": [
+        "高梁种植"
+      ],
+      "note": "作物名用“粱”。"
+    },
+    {
+      "preferred": "给予",
+      "variants": [
+        "给于"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予帮助",
+      "variants": [
+        "给于帮助"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予帮助解决",
+      "variants": [
+        "给于帮助解决"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予表彰",
+      "variants": [
+        "给于表彰"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予答复",
+      "variants": [
+        "给于答复"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予鼓励",
+      "variants": [
+        "给于鼓励"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予机会",
+      "variants": [
+        "给于机会"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予解决",
+      "variants": [
+        "给于解决"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予支持",
+      "variants": [
+        "给于支持"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予支持帮助",
+      "variants": [
+        "给于支持帮助"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "给予支持配合",
+      "variants": [
+        "给于支持配合"
+      ],
+      "note": "“给于”不是规范词形。"
+    },
+    {
+      "preferred": "曝光",
+      "variants": [
+        "公开曝光"
+      ],
+      "note": "“曝光”已含公之于众。"
+    },
+    {
+      "preferred": "曝光问题",
+      "variants": [
+        "公开曝光问题"
+      ],
+      "note": "“曝光”已含公之于众。"
+    },
+    {
+      "preferred": "曝光之后",
+      "variants": [
+        "公开曝光之后"
+      ],
+      "note": "“曝光”已含公之于众。"
+    },
+    {
+      "preferred": "公之于众",
+      "variants": [
+        "公诸于众"
+      ],
+      "note": "宜作“公之于众”。"
+    },
+    {
+      "preferred": "公之于众的事项",
+      "variants": [
+        "公诸于众的事项"
+      ],
+      "note": "宜作“公之于众”。"
+    },
+    {
+      "preferred": "协商",
+      "variants": [
+        "共同协商"
+      ],
+      "note": "“协商”已含共同商量。仅作提示。"
+    },
+    {
+      "preferred": "协商解决",
+      "variants": [
+        "共同协商解决"
+      ],
+      "note": "“协商”已含共同商量。仅作提示。"
+    },
+    {
+      "preferred": "协商确定",
+      "variants": [
+        "共同协商确定"
+      ],
+      "note": "“协商”已含共同商量。仅作提示。"
+    },
+    {
+      "preferred": "光彩夺目",
+      "variants": [
+        "光采夺目"
+      ],
+      "note": "推荐词形为“光彩”。"
+    },
+    {
+      "preferred": "光彩依旧",
+      "variants": [
+        "光采依旧"
+      ],
+      "note": "推荐词形为“光彩”。"
+    },
+    {
+      "preferred": "光彩依旧在",
+      "variants": [
+        "光采依旧在"
+      ],
+      "note": "推荐词形为“光彩”。"
+    },
+    {
+      "preferred": "光彩照人",
+      "variants": [
+        "光采照人"
+      ],
+      "note": "推荐词形为“光彩”。"
+    },
+    {
+      "preferred": "光彩照人的表现",
+      "variants": [
+        "光采照人的表现"
+      ],
+      "note": "推荐词形为“光彩”。"
+    },
+    {
+      "preferred": "溺爱",
+      "variants": [
+        "过分溺爱"
+      ],
+      "note": "“溺爱”已含过分。"
+    },
+    {
+      "preferred": "溺爱的结果",
+      "variants": [
+        "过分溺爱的结果"
+      ],
+      "note": "“溺爱”已含过分。"
+    },
+    {
+      "preferred": "溺爱孩子",
+      "variants": [
+        "过分溺爱孩子"
+      ],
+      "note": "“溺爱”已含过分。"
+    },
+    {
+      "preferred": "寒暄",
+      "variants": [
+        "寒喧"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "寒暄几句",
+      "variants": [
+        "寒喧几句"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "寒暄几句后",
+      "variants": [
+        "寒喧几句后"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "寒暄客套",
+      "variants": [
+        "寒喧客套"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "寒暄问候",
+      "variants": [
+        "寒喧问候"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "寒暄之后",
+      "variants": [
+        "寒喧之后"
+      ],
+      "note": "问候用“暄”。"
+    },
+    {
+      "preferred": "好像",
+      "variants": [
+        "好象"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像不行",
+      "variants": [
+        "好象不行"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像不行了",
+      "variants": [
+        "好象不行了"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像可以",
+      "variants": [
+        "好象可以"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像可以办理",
+      "variants": [
+        "好象可以办理"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像如此",
+      "variants": [
+        "好象如此"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像如此而已",
+      "variants": [
+        "好象如此而已"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像是",
+      "variants": [
+        "好象是"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "好像是这样",
+      "variants": [
+        "好象是这样"
+      ],
+      "note": "“好象”不是规范词形。"
+    },
+    {
+      "preferred": "糊涂观念",
+      "variants": [
+        "胡涂观念"
+      ],
+      "note": "“胡涂”不是规范词形。"
+    },
+    {
+      "preferred": "糊涂认识",
+      "variants": [
+        "胡涂认识"
+      ],
+      "note": "“胡涂”不是规范词形。"
+    },
+    {
+      "preferred": "糊涂账",
+      "variants": [
+        "胡涂账"
+      ],
+      "note": "“胡涂”不是规范词形。"
+    },
+    {
+      "preferred": "糊涂账本",
+      "variants": [
+        "胡涂账本"
+      ],
+      "note": "“胡涂”不是规范词形。"
+    },
+    {
+      "preferred": "糊涂账必须理清",
+      "variants": [
+        "胡涂账必须理清"
+      ],
+      "note": "“胡涂”不是规范词形。"
+    },
+    {
+      "preferred": "厮打",
+      "variants": [
+        "互相厮打"
+      ],
+      "note": "“厮”已含互相。"
+    },
+    {
+      "preferred": "厮打的双方",
+      "variants": [
+        "互相厮打的双方"
+      ],
+      "note": "“厮”已含互相。"
+    },
+    {
+      "preferred": "基于调研",
+      "variants": [
+        "基于调研的基础上"
+      ],
+      "note": "“基于”与“基础上”重复。"
+    },
+    {
+      "preferred": "基于调研提出",
+      "variants": [
+        "基于调研的基础上提出"
+      ],
+      "note": "“基于”与“基础上”重复。"
+    },
+    {
+      "preferred": "既然",
+      "variants": [
+        "即然"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然出发",
+      "variants": [
+        "即然出发"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然决定",
+      "variants": [
+        "即然决定"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然来了",
+      "variants": [
+        "即然来了"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然如此",
+      "variants": [
+        "即然如此"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然如此就办",
+      "variants": [
+        "即然如此就办"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然同意",
+      "variants": [
+        "即然同意"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然已经",
+      "variants": [
+        "即然已经"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "既然已经决定",
+      "variants": [
+        "即然已经决定"
+      ],
+      "note": "已成事实用“既然”。"
+    },
+    {
+      "preferred": "亟待",
+      "variants": [
+        "亟待需要"
+      ],
+      "note": "“亟待”已含急切需要。"
+    },
+    {
+      "preferred": "亟待办理",
+      "variants": [
+        "亟待需要办理"
+      ],
+      "note": "“亟待”已含急切需要。"
+    },
+    {
+      "preferred": "亟待解决",
+      "variants": [
+        "亟待需要解决"
+      ],
+      "note": "“亟待”已含急切需要。"
+    },
+    {
+      "preferred": "计划安排",
+      "variants": [
+        "计画安排"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划草案",
+      "variants": [
+        "计画草案"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划方案",
+      "variants": [
+        "计画方案"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划方案已经印发",
+      "variants": [
+        "计画方案已经印发"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划纲要",
+      "variants": [
+        "计画纲要"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划目标",
+      "variants": [
+        "计画目标"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划书",
+      "variants": [
+        "计画书"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "计划执行",
+      "variants": [
+        "计画执行"
+      ],
+      "note": "“计画”不是规范词形。"
+    },
+    {
+      "preferred": "纪念碑",
+      "variants": [
+        "记念碑"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念大会",
+      "variants": [
+        "记念大会"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念馆",
+      "variants": [
+        "记念馆"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念活动",
+      "variants": [
+        "记念活动"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念活动安排",
+      "variants": [
+        "记念活动安排"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念活动方案",
+      "variants": [
+        "记念活动方案"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "纪念邮票",
+      "variants": [
+        "记念邮票"
+      ],
+      "note": "推荐词形为“纪念”。"
+    },
+    {
+      "preferred": "计算",
+      "variants": [
+        "记算"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算错误",
+      "variants": [
+        "记算错误"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算方法",
+      "variants": [
+        "记算方法"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算结果",
+      "variants": [
+        "记算结果"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算结果有误",
+      "variants": [
+        "记算结果有误"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算口径",
+      "variants": [
+        "记算口径"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "计算准确",
+      "variants": [
+        "记算准确"
+      ],
+      "note": "“记算”不是规范词形。"
+    },
+    {
+      "preferred": "即使",
+      "variants": [
+        "既使"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使不能",
+      "variants": [
+        "既使不能"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使不能办理",
+      "variants": [
+        "既使不能办理"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使不行",
+      "variants": [
+        "既使不行"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使成功",
+      "variants": [
+        "既使成功"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使如此",
+      "variants": [
+        "既使如此"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使如此也不行",
+      "variants": [
+        "既使如此也不行"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使失败",
+      "variants": [
+        "既使失败"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "即使条件允许",
+      "variants": [
+        "既使条件允许"
+      ],
+      "note": "假设用“即使”。"
+    },
+    {
+      "preferred": "家具",
+      "variants": [
+        "家俱"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具补贴",
+      "variants": [
+        "家俱补贴"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具采购",
+      "variants": [
+        "家俱采购"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具采购计划",
+      "variants": [
+        "家俱采购计划"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具采购清单",
+      "variants": [
+        "家俱采购清单"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具厂",
+      "variants": [
+        "家俱厂"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具城",
+      "variants": [
+        "家俱城"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具配置",
+      "variants": [
+        "家俱配置"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "家具展销",
+      "variants": [
+        "家俱展销"
+      ],
+      "note": "“家俱”不是规范词形。"
+    },
+    {
+      "preferred": "见诸",
+      "variants": [
+        "见诸于"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "见诸报端",
+      "variants": [
+        "见诸于报端"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "鉴定",
+      "variants": [
+        "鉴订"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定报告",
+      "variants": [
+        "鉴订报告"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定机构",
+      "variants": [
+        "鉴订机构"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定结论",
+      "variants": [
+        "鉴订结论"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定意见",
+      "variants": [
+        "鉴订意见"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定意见书",
+      "variants": [
+        "鉴订意见书"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "鉴定证书",
+      "variants": [
+        "鉴订证书"
+      ],
+      "note": "鉴别评定用“鉴定”。"
+    },
+    {
+      "preferred": "签名",
+      "variants": [
+        "鉴名"
+      ],
+      "note": "本人书写姓名用“签名”。"
+    },
+    {
+      "preferred": "签名确认",
+      "variants": [
+        "鉴名确认"
+      ],
+      "note": "本人书写姓名用“签名”。"
+    },
+    {
+      "preferred": "交代",
+      "variants": [
+        "交待"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "交代工作",
+      "variants": [
+        "交待工作"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "交代清楚",
+      "variants": [
+        "交待清楚"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "交代清楚事项",
+      "variants": [
+        "交待清楚事项"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "交代事项",
+      "variants": [
+        "交待事项"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "交代政策",
+      "variants": [
+        "交待政策"
+      ],
+      "note": "说明、嘱咐用“交代”。"
+    },
+    {
+      "preferred": "截至目前",
+      "variants": [
+        "截止到目前"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至目前的统计",
+      "variants": [
+        "截止到目前的统计"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至目前",
+      "variants": [
+        "截止到目前为止"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至目前",
+      "variants": [
+        "截止目前"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至目前的进展",
+      "variants": [
+        "截止目前的进展"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至目前",
+      "variants": [
+        "截止目前为止"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至现在",
+      "variants": [
+        "截止现在"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "截至现在的数据",
+      "variants": [
+        "截止现在的数据"
+      ],
+      "note": "累计到现在用“截至”。"
+    },
+    {
+      "preferred": "精彩表现",
+      "variants": [
+        "精采表现"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩纷呈",
+      "variants": [
+        "精采纷呈"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩纷呈的节目",
+      "variants": [
+        "精采纷呈的节目"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩节目",
+      "variants": [
+        "精采节目"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩片段",
+      "variants": [
+        "精采片段"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩瞬间",
+      "variants": [
+        "精采瞬间"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "精彩演出",
+      "variants": [
+        "精采演出"
+      ],
+      "note": "推荐词形为“精彩”。"
+    },
+    {
+      "preferred": "凯旋",
+      "variants": [
+        "凯旋归来"
+      ],
+      "note": "“凯旋”已含归来。"
+    },
+    {
+      "preferred": "凯旋的队伍",
+      "variants": [
+        "凯旋归来的队伍"
+      ],
+      "note": "“凯旋”已含归来。"
+    },
+    {
+      "preferred": "堪称",
+      "variants": [
+        "可以堪称"
+      ],
+      "note": "“堪称”不必再加“可以”。"
+    },
+    {
+      "preferred": "堪称典范",
+      "variants": [
+        "可以堪称典范"
+      ],
+      "note": "“堪称”不必再加“可以”。"
+    },
+    {
+      "preferred": "堪称示范",
+      "variants": [
+        "可以堪称示范"
+      ],
+      "note": "“堪称”不必再加“可以”。"
+    },
+    {
+      "preferred": "来自",
+      "variants": [
+        "来自于"
+      ],
+      "note": "公文中“来自”不必加“于”。"
+    },
+    {
+      "preferred": "来自各地",
+      "variants": [
+        "来自于各地"
+      ],
+      "note": "公文中“来自”不必加“于”。"
+    },
+    {
+      "preferred": "来自基层",
+      "variants": [
+        "来自于基层"
+      ],
+      "note": "公文中“来自”不必加“于”。"
+    },
+    {
+      "preferred": "蓝本",
+      "variants": [
+        "兰本"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本材料",
+      "variants": [
+        "兰本材料"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本参照",
+      "variants": [
+        "兰本参照"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本对照",
+      "variants": [
+        "兰本对照"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本对照表",
+      "variants": [
+        "兰本对照表"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本文件",
+      "variants": [
+        "兰本文件"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝本修订",
+      "variants": [
+        "兰本修订"
+      ],
+      "note": "“兰本”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图",
+      "variants": [
+        "兰图"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图稿",
+      "variants": [
+        "兰图稿"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图绘制",
+      "variants": [
+        "兰图绘制"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图绘制完成",
+      "variants": [
+        "兰图绘制完成"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图论证",
+      "variants": [
+        "兰图论证"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图论证会",
+      "variants": [
+        "兰图论证会"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图设计",
+      "variants": [
+        "兰图设计"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "蓝图文本",
+      "variants": [
+        "兰图文本"
+      ],
+      "note": "“兰图”不是规范词形。"
+    },
+    {
+      "preferred": "篮球",
+      "variants": [
+        "蓝球"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "篮球比赛",
+      "variants": [
+        "蓝球比赛"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "篮球场",
+      "variants": [
+        "蓝球场"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "篮球馆",
+      "variants": [
+        "蓝球馆"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "篮球训练",
+      "variants": [
+        "蓝球训练"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "篮球训练馆",
+      "variants": [
+        "蓝球训练馆"
+      ],
+      "note": "“蓝球”不是规范词形。"
+    },
+    {
+      "preferred": "立即",
+      "variants": [
+        "立既"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即办理",
+      "variants": [
+        "立既办理"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即报告",
+      "variants": [
+        "立既报告"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即停止",
+      "variants": [
+        "立既停止"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即整改",
+      "variants": [
+        "立既整改"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即整改到位",
+      "variants": [
+        "立既整改到位"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "立即执行",
+      "variants": [
+        "立既执行"
+      ],
+      "note": "“立既”不是规范词形。"
+    },
+    {
+      "preferred": "利落",
+      "variants": [
+        "俐落"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "利落办事",
+      "variants": [
+        "俐落办事"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "利落办事风格",
+      "variants": [
+        "俐落办事风格"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "利落风格",
+      "variants": [
+        "俐落风格"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "利落干练",
+      "variants": [
+        "俐落干练"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "利落完成",
+      "variants": [
+        "俐落完成"
+      ],
+      "note": "“俐落”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏",
+      "variants": [
+        "脉博"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏记录",
+      "variants": [
+        "脉博记录"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏监测",
+      "variants": [
+        "脉博监测"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏监测记录",
+      "variants": [
+        "脉博监测记录"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏平稳",
+      "variants": [
+        "脉博平稳"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏数据",
+      "variants": [
+        "脉博数据"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏跳动",
+      "variants": [
+        "脉博跳动"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "脉搏异常",
+      "variants": [
+        "脉博异常"
+      ],
+      "note": "“脉博”不是规范词形。"
+    },
+    {
+      "preferred": "贸然",
+      "variants": [
+        "冒然"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然表态",
+      "variants": [
+        "冒然表态"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然承诺",
+      "variants": [
+        "冒然承诺"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然决定",
+      "variants": [
+        "冒然决定"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然决定事项",
+      "variants": [
+        "冒然决定事项"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然推进",
+      "variants": [
+        "冒然推进"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "贸然行动",
+      "variants": [
+        "冒然行动"
+      ],
+      "note": "未经考虑用“贸然”。"
+    },
+    {
+      "preferred": "赠送",
+      "variants": [
+        "免费赠送"
+      ],
+      "note": "“赠送”已含不收费。"
+    },
+    {
+      "preferred": "赠送手册",
+      "variants": [
+        "免费赠送手册"
+      ],
+      "note": "“赠送”已含不收费。"
+    },
+    {
+      "preferred": "赠送资料",
+      "variants": [
+        "免费赠送资料"
+      ],
+      "note": "“赠送”已含不收费。"
+    },
+    {
+      "preferred": "模仿痕迹",
+      "variants": [
+        "摹仿痕迹"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "模仿能力",
+      "variants": [
+        "摹仿能力"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "模仿秀",
+      "variants": [
+        "摹仿秀"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "模仿学习",
+      "variants": [
+        "摹仿学习"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "模仿学习材料",
+      "variants": [
+        "摹仿学习材料"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "模仿作品",
+      "variants": [
+        "摹仿作品"
+      ],
+      "note": "“摹仿”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀",
+      "variants": [
+        "抹煞"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀成绩",
+      "variants": [
+        "抹煞成绩"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀贡献",
+      "variants": [
+        "抹煞贡献"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀事实",
+      "variants": [
+        "抹煞事实"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀已有成绩",
+      "variants": [
+        "抹煞已有成绩"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "抹杀作用",
+      "variants": [
+        "抹煞作用"
+      ],
+      "note": "“抹煞”不是规范词形。"
+    },
+    {
+      "preferred": "目的是规范",
+      "variants": [
+        "目的是为了规范"
+      ],
+      "note": "“目的是”与“为了”重复。"
+    },
+    {
+      "preferred": "目的是提高",
+      "variants": [
+        "目的是为了提高"
+      ],
+      "note": "“目的是”与“为了”重复。"
+    },
+    {
+      "preferred": "那么办",
+      "variants": [
+        "那末办"
+      ],
+      "note": "“那末”不是规范词形。"
+    },
+    {
+      "preferred": "那么做",
+      "variants": [
+        "那末做"
+      ],
+      "note": "“那末”不是规范词形。"
+    },
+    {
+      "preferred": "能否",
+      "variants": [
+        "能否可以"
+      ],
+      "note": "“能否”不必再加“可以”。"
+    },
+    {
+      "preferred": "能否办理",
+      "variants": [
+        "能否可以办理"
+      ],
+      "note": "“能否”不必再加“可以”。"
+    },
+    {
+      "preferred": "能否延期",
+      "variants": [
+        "能否可以延期"
+      ],
+      "note": "“能否”不必再加“可以”。"
+    },
+    {
+      "preferred": "年龄",
+      "variants": [
+        "年令"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄段",
+      "variants": [
+        "年令段"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄分布",
+      "variants": [
+        "年令分布"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄结构",
+      "variants": [
+        "年令结构"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄结构表",
+      "variants": [
+        "年令结构表"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄结构分析",
+      "variants": [
+        "年令结构分析"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄界限",
+      "variants": [
+        "年令界限"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年龄偏大",
+      "variants": [
+        "年令偏大"
+      ],
+      "note": "“年令”不是规范词形。"
+    },
+    {
+      "preferred": "年轻干部",
+      "variants": [
+        "年青干部"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻教师",
+      "variants": [
+        "年青教师"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻力量",
+      "variants": [
+        "年青力量"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻人",
+      "variants": [
+        "年青人"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻一代",
+      "variants": [
+        "年青一代"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻一代干部",
+      "variants": [
+        "年青一代干部"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "年轻职工",
+      "variants": [
+        "年青职工"
+      ],
+      "note": "指年纪用“年轻”。"
+    },
+    {
+      "preferred": "膨胀",
+      "variants": [
+        "膨涨"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀过快",
+      "variants": [
+        "膨涨过快"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀率",
+      "variants": [
+        "膨涨率"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀明显",
+      "variants": [
+        "膨涨明显"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀趋势",
+      "variants": [
+        "膨涨趋势"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀系数",
+      "variants": [
+        "膨涨系数"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀系数测定",
+      "variants": [
+        "膨涨系数测定"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "膨胀压力",
+      "variants": [
+        "膨涨压力"
+      ],
+      "note": "“膨涨”不是规范词形。"
+    },
+    {
+      "preferred": "片段",
+      "variants": [
+        "片断"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段材料",
+      "variants": [
+        "片断材料"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段回忆",
+      "variants": [
+        "片断回忆"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段记录",
+      "variants": [
+        "片断记录"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段节选",
+      "variants": [
+        "片断节选"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段引用",
+      "variants": [
+        "片断引用"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段摘录",
+      "variants": [
+        "片断摘录"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "片段摘录如下",
+      "variants": [
+        "片断摘录如下"
+      ],
+      "note": "相对完整的一段用“片段”。"
+    },
+    {
+      "preferred": "其他安排",
+      "variants": [
+        "其它安排"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他部门",
+      "variants": [
+        "其它部门"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他材料",
+      "variants": [
+        "其它材料"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他措施",
+      "variants": [
+        "其它措施"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他单位",
+      "variants": [
+        "其它单位"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他地区",
+      "variants": [
+        "其它地区"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他附件",
+      "variants": [
+        "其它附件"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他工作",
+      "variants": [
+        "其它工作"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他情况",
+      "variants": [
+        "其它情况"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他人",
+      "variants": [
+        "其它人"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他人员",
+      "variants": [
+        "其它人员"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他事项",
+      "variants": [
+        "其它事项"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他事项一并说明",
+      "variants": [
+        "其它事项一并说明"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他说明",
+      "variants": [
+        "其它说明"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他问题",
+      "variants": [
+        "其它问题"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他问题另报",
+      "variants": [
+        "其它问题另报"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他问题清单",
+      "variants": [
+        "其它问题清单"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他要求",
+      "variants": [
+        "其它要求"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他意见",
+      "variants": [
+        "其它意见"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "其他责任",
+      "variants": [
+        "其它责任"
+      ],
+      "note": "推荐词形为“其他”。"
+    },
+    {
+      "preferred": "启程",
+      "variants": [
+        "起程"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程出发",
+      "variants": [
+        "起程出发"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程返程",
+      "variants": [
+        "起程返程"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程前往",
+      "variants": [
+        "起程前往"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程日期",
+      "variants": [
+        "起程日期"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程时间",
+      "variants": [
+        "起程时间"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "启程时间安排",
+      "variants": [
+        "起程时间安排"
+      ],
+      "note": "“起程”不是规范词形。"
+    },
+    {
+      "preferred": "迁徙",
+      "variants": [
+        "迁徒"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "迁徙安置",
+      "variants": [
+        "迁徒安置"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "迁徙季节",
+      "variants": [
+        "迁徒季节"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "迁徙路线图",
+      "variants": [
+        "迁徒路线图"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "迁徙鸟类",
+      "variants": [
+        "迁徒鸟类"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "迁徙人口",
+      "variants": [
+        "迁徒人口"
+      ],
+      "note": "迁移用“徙”。"
+    },
+    {
+      "preferred": "签订",
+      "variants": [
+        "签定"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订备忘录",
+      "variants": [
+        "签定备忘录"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订合同",
+      "variants": [
+        "签定合同"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订合同书",
+      "variants": [
+        "签定合同书"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订合同文本",
+      "variants": [
+        "签定合同文本"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订协议书",
+      "variants": [
+        "签定协议书"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "签订意向",
+      "variants": [
+        "签定意向"
+      ],
+      "note": "订立协议用“签订”。"
+    },
+    {
+      "preferred": "桥梁",
+      "variants": [
+        "桥粱"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁工程",
+      "variants": [
+        "桥粱工程"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁工程验收",
+      "variants": [
+        "桥粱工程验收"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁加固",
+      "variants": [
+        "桥粱加固"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁检测",
+      "variants": [
+        "桥粱检测"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁检测报告",
+      "variants": [
+        "桥粱检测报告"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁垮塌",
+      "variants": [
+        "桥粱垮塌"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "桥梁养护",
+      "variants": [
+        "桥粱养护"
+      ],
+      "note": "“桥粱”不是规范词形。"
+    },
+    {
+      "preferred": "目睹",
+      "variants": [
+        "亲眼目睹"
+      ],
+      "note": "“目睹”已是亲眼看见。"
+    },
+    {
+      "preferred": "目睹全过程",
+      "variants": [
+        "亲眼目睹全过程"
+      ],
+      "note": "“目睹”已是亲眼看见。"
+    },
+    {
+      "preferred": "目睹现场",
+      "variants": [
+        "亲眼目睹现场"
+      ],
+      "note": "“目睹”已是亲眼看见。"
+    },
+    {
+      "preferred": "请予函复",
+      "variants": [
+        "请于函复"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予批复",
+      "variants": [
+        "请于批复"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予批示",
+      "variants": [
+        "请于批示"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予批准",
+      "variants": [
+        "请于批准"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予批准此项",
+      "variants": [
+        "请于批准此项"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予批准实施",
+      "variants": [
+        "请于批准实施"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予审批",
+      "variants": [
+        "请于审批"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予审批此件",
+      "variants": [
+        "请于审批此件"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予审批事项",
+      "variants": [
+        "请于审批事项"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予协助",
+      "variants": [
+        "请于协助"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予研究",
+      "variants": [
+        "请于研究"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "请予支持",
+      "variants": [
+        "请于支持"
+      ],
+      "note": "“请予”表示请求给予。"
+    },
+    {
+      "preferred": "人才储备",
+      "variants": [
+        "人材储备"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "人才队伍",
+      "variants": [
+        "人材队伍"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "人才队伍建设",
+      "variants": [
+        "人材队伍建设"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "人才培养",
+      "variants": [
+        "人材培养"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "人才市场",
+      "variants": [
+        "人材市场"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "人才引进",
+      "variants": [
+        "人材引进"
+      ],
+      "note": "“人材”不是规范词形。"
+    },
+    {
+      "preferred": "涉及",
+      "variants": [
+        "涉及到"
+      ],
+      "note": "“涉及”不必加“到”。"
+    },
+    {
+      "preferred": "涉及范围",
+      "variants": [
+        "涉及到范围"
+      ],
+      "note": "“涉及”不必加“到”。"
+    },
+    {
+      "preferred": "涉及资金",
+      "variants": [
+        "涉及到资金"
+      ],
+      "note": "“涉及”不必加“到”。"
+    },
+    {
+      "preferred": "身份",
+      "variants": [
+        "身分"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份核验",
+      "variants": [
+        "身分核验"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份核验结果",
+      "variants": [
+        "身分核验结果"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份信息",
+      "variants": [
+        "身分信息"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份证",
+      "variants": [
+        "身分证"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份证件",
+      "variants": [
+        "身分证件"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "身份证明",
+      "variants": [
+        "身分证明"
+      ],
+      "note": "“身分”不是规范词形。"
+    },
+    {
+      "preferred": "什么",
+      "variants": [
+        "甚么"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么内容",
+      "variants": [
+        "甚么内容"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么区别",
+      "variants": [
+        "甚么区别"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么时候",
+      "variants": [
+        "甚么时候"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么问题",
+      "variants": [
+        "甚么问题"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么问题都要问清",
+      "variants": [
+        "甚么问题都要问清"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "什么原因",
+      "variants": [
+        "甚么原因"
+      ],
+      "note": "“甚么”不是规范词形。"
+    },
+    {
+      "preferred": "是否",
+      "variants": [
+        "是否是"
+      ],
+      "note": "“是否”不必再加“是”。"
+    },
+    {
+      "preferred": "是否党员",
+      "variants": [
+        "是否是党员"
+      ],
+      "note": "“是否”不必再加“是”。"
+    },
+    {
+      "preferred": "是否正式文件",
+      "variants": [
+        "是否是正式文件"
+      ],
+      "note": "“是否”不必再加“是”。"
+    },
+    {
+      "preferred": "水分",
+      "variants": [
+        "水份"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分过大",
+      "variants": [
+        "水份过大"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分含量",
+      "variants": [
+        "水份含量"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分含量检测",
+      "variants": [
+        "水份含量检测"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分检测",
+      "variants": [
+        "水份检测"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分控制",
+      "variants": [
+        "水份控制"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分流失",
+      "variants": [
+        "水份流失"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "水分蒸发",
+      "variants": [
+        "水份蒸发"
+      ],
+      "note": "推荐词形为“水分”。"
+    },
+    {
+      "preferred": "松弛",
+      "variants": [
+        "松驰"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛管理",
+      "variants": [
+        "松驰管理"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛管理问题",
+      "variants": [
+        "松驰管理问题"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛环节",
+      "variants": [
+        "松驰环节"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛纪律",
+      "variants": [
+        "松驰纪律"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛下来",
+      "variants": [
+        "松驰下来"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛懈怠",
+      "variants": [
+        "松驰懈怠"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "松弛状态",
+      "variants": [
+        "松驰状态"
+      ],
+      "note": "“松驰”不是规范词形。"
+    },
+    {
+      "preferred": "诉诸",
+      "variants": [
+        "诉诸于"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "诉诸程序",
+      "variants": [
+        "诉诸于程序"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "诉诸法律",
+      "variants": [
+        "诉诸于法律"
+      ],
+      "note": "“诸”已含“之于”。"
+    },
+    {
+      "preferred": "踏实工作",
+      "variants": [
+        "塌实工作"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "踏实工作作风",
+      "variants": [
+        "塌实工作作风"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "踏实肯干",
+      "variants": [
+        "塌实肯干"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "踏实苦干",
+      "variants": [
+        "塌实苦干"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "踏实推进",
+      "variants": [
+        "塌实推进"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "踏实作风",
+      "variants": [
+        "塌实作风"
+      ],
+      "note": "“塌实”不是规范词形。"
+    },
+    {
+      "preferred": "提纲",
+      "variants": [
+        "题纲"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲草案",
+      "variants": [
+        "题纲草案"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲初稿",
+      "variants": [
+        "题纲初稿"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲框架",
+      "variants": [
+        "题纲框架"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲目录",
+      "variants": [
+        "题纲目录"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲要点",
+      "variants": [
+        "题纲要点"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲意见",
+      "variants": [
+        "题纲意见"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "提纲意见征求",
+      "variants": [
+        "题纲意见征求"
+      ],
+      "note": "“题纲”不是规范词形。"
+    },
+    {
+      "preferred": "挺拔",
+      "variants": [
+        "挺拨"
+      ],
+      "note": "“挺拨”不是规范词形。"
+    },
+    {
+      "preferred": "挺拔的树",
+      "variants": [
+        "挺拨的树"
+      ],
+      "note": "“挺拨”不是规范词形。"
+    },
+    {
+      "preferred": "挺拔有力",
+      "variants": [
+        "挺拨有力"
+      ],
+      "note": "“挺拨”不是规范词形。"
+    },
+    {
+      "preferred": "推诿扯皮",
+      "variants": [
+        "推委扯皮"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "推诿塞责",
+      "variants": [
+        "推委塞责"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "推诿拖延",
+      "variants": [
+        "推委拖延"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "推诿责任",
+      "variants": [
+        "推委责任"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "推诿责任人",
+      "variants": [
+        "推委责任人"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "推诿责任问题",
+      "variants": [
+        "推委责任问题"
+      ],
+      "note": "“推委”不是规范词形。"
+    },
+    {
+      "preferred": "妥否，请批示",
+      "variants": [
+        "妥否请批示"
+      ],
+      "note": "请示结束语通行写法在中间用逗号。"
+    },
+    {
+      "preferred": "妥否，请批示为盼",
+      "variants": [
+        "妥否请批示为盼"
+      ],
+      "note": "请示结束语通行写法在中间用逗号。"
+    },
+    {
+      "preferred": "外形",
+      "variants": [
+        "外型"
+      ],
+      "note": "指形状用“外形”。"
+    },
+    {
+      "preferred": "务必",
+      "variants": [
+        "务必要"
+      ],
+      "note": "“务必”不必再加“要”。"
+    },
+    {
+      "preferred": "务必落实",
+      "variants": [
+        "务必要落实"
+      ],
+      "note": "“务必”不必再加“要”。"
+    },
+    {
+      "preferred": "务必完成",
+      "variants": [
+        "务必要完成"
+      ],
+      "note": "“务必”不必再加“要”。"
+    },
+    {
+      "preferred": "稀少资源",
+      "variants": [
+        "希少资源"
+      ],
+      "note": "“希少”不是规范词形。"
+    },
+    {
+      "preferred": "稀世珍品",
+      "variants": [
+        "希世珍品"
+      ],
+      "note": "“希世”不是规范词形。"
+    },
+    {
+      "preferred": "徒劳",
+      "variants": [
+        "徙劳"
+      ],
+      "note": "无益用“徒”。"
+    },
+    {
+      "preferred": "徒劳无功",
+      "variants": [
+        "徙劳无功"
+      ],
+      "note": "无益用“徒”。"
+    },
+    {
+      "preferred": "徒劳无益",
+      "variants": [
+        "徙劳无益"
+      ],
+      "note": "无益用“徒”。"
+    },
+    {
+      "preferred": "贤惠名声",
+      "variants": [
+        "贤慧名声"
+      ],
+      "note": "“贤慧”不是规范词形。"
+    },
+    {
+      "preferred": "祥和",
+      "variants": [
+        "详和"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和的氛围",
+      "variants": [
+        "详和的氛围"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和的社会",
+      "variants": [
+        "详和的社会"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和局面",
+      "variants": [
+        "详和局面"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和气氛",
+      "variants": [
+        "详和气氛"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和社会",
+      "variants": [
+        "详和社会"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "祥和稳定",
+      "variants": [
+        "详和稳定"
+      ],
+      "note": "气氛用“祥和”。"
+    },
+    {
+      "preferred": "想象",
+      "variants": [
+        "想像"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象场景",
+      "variants": [
+        "想像场景"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象得到",
+      "variants": [
+        "想像得到"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象画面",
+      "variants": [
+        "想像画面"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象空间",
+      "variants": [
+        "想像空间"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象力",
+      "variants": [
+        "想像力"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "想象中的场景",
+      "variants": [
+        "想像中的场景"
+      ],
+      "note": "表示设想用“想象”。"
+    },
+    {
+      "preferred": "潇洒不羁",
+      "variants": [
+        "萧洒不羁"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "潇洒的姿态",
+      "variants": [
+        "萧洒的姿态"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "潇洒风度",
+      "variants": [
+        "萧洒风度"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "潇洒飘逸",
+      "variants": [
+        "萧洒飘逸"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "潇洒姿态",
+      "variants": [
+        "萧洒姿态"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "潇洒自如",
+      "variants": [
+        "萧洒自如"
+      ],
+      "note": "“萧洒”不是规范词形。"
+    },
+    {
+      "preferred": "形象",
+      "variants": [
+        "形像"
+      ],
+      "note": "“形像”不是规范词形。"
+    },
+    {
+      "preferred": "形象工程",
+      "variants": [
+        "形像工程"
+      ],
+      "note": "“形像”不是规范词形。"
+    },
+    {
+      "preferred": "形象工程整治",
+      "variants": [
+        "形像工程整治"
+      ],
+      "note": "“形像”不是规范词形。"
+    },
+    {
+      "preferred": "形象塑造",
+      "variants": [
+        "形像塑造"
+      ],
+      "note": "“形像”不是规范词形。"
+    },
+    {
+      "preferred": "形象宣传",
+      "variants": [
+        "形像宣传"
+      ],
+      "note": "“形像”不是规范词形。"
+    },
+    {
+      "preferred": "悬殊",
+      "variants": [
+        "悬殊很大"
+      ],
+      "note": "“悬殊”已含差距很大。"
+    },
+    {
+      "preferred": "悬殊的差距",
+      "variants": [
+        "悬殊很大的差距"
+      ],
+      "note": "“悬殊”已含差距很大。"
+    },
+    {
+      "preferred": "压服对方",
+      "variants": [
+        "压伏对方"
+      ],
+      "note": "“压伏”不是规范词形。"
+    },
+    {
+      "preferred": "压服意见",
+      "variants": [
+        "压伏意见"
+      ],
+      "note": "“压伏”不是规范词形。"
+    },
+    {
+      "preferred": "扬琴演奏",
+      "variants": [
+        "洋琴演奏"
+      ],
+      "note": "“洋琴”不是规范词形。"
+    },
+    {
+      "preferred": "要么放弃",
+      "variants": [
+        "要末放弃"
+      ],
+      "note": "“要末”不是规范词形。"
+    },
+    {
+      "preferred": "要么留下",
+      "variants": [
+        "要末留下"
+      ],
+      "note": "“要末”不是规范词形。"
+    },
+    {
+      "preferred": "要么取消",
+      "variants": [
+        "要末取消"
+      ],
+      "note": "“要末”不是规范词形。"
+    },
+    {
+      "preferred": "要么同意",
+      "variants": [
+        "要末同意"
+      ],
+      "note": "“要末”不是规范词形。"
+    },
+    {
+      "preferred": "要么同意实施",
+      "variants": [
+        "要末同意实施"
+      ],
+      "note": "“要末”不是规范词形。"
+    },
+    {
+      "preferred": "一股脑",
+      "variants": [
+        "一古脑"
+      ],
+      "note": "“一古脑”不是规范词形。"
+    },
+    {
+      "preferred": "一股脑解决",
+      "variants": [
+        "一古脑解决"
+      ],
+      "note": "“一古脑”不是规范词形。"
+    },
+    {
+      "preferred": "公认",
+      "variants": [
+        "一致公认"
+      ],
+      "note": "“公认”已含一致。"
+    },
+    {
+      "preferred": "公认的事实",
+      "variants": [
+        "一致公认的事实"
+      ],
+      "note": "“公认”已含一致。"
+    },
+    {
+      "preferred": "公认有效",
+      "variants": [
+        "一致公认有效"
+      ],
+      "note": "“公认”已含一致。"
+    },
+    {
+      "preferred": "以及",
+      "variants": [
+        "已及"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及抄送",
+      "variants": [
+        "已及抄送"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及附件",
+      "variants": [
+        "已及附件"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及事项",
+      "variants": [
+        "已及事项"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及说明",
+      "variants": [
+        "已及说明"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及相关单位",
+      "variants": [
+        "已及相关单位"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "以及相关说明",
+      "variants": [
+        "已及相关说明"
+      ],
+      "note": "连接用“以及”。"
+    },
+    {
+      "preferred": "关于",
+      "variants": [
+        "有关于"
+      ],
+      "note": "“关于”不必加“有”。"
+    },
+    {
+      "preferred": "关于此的说明",
+      "variants": [
+        "有关于此的说明"
+      ],
+      "note": "“关于”不必加“有”。"
+    },
+    {
+      "preferred": "关于事项",
+      "variants": [
+        "有关于事项"
+      ],
+      "note": "“关于”不必加“有”。"
+    },
+    {
+      "preferred": "预备",
+      "variants": [
+        "予备"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备队员",
+      "variants": [
+        "予备队员"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备方案",
+      "variants": [
+        "予备方案"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备会议",
+      "variants": [
+        "予备会议"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备会议材料",
+      "variants": [
+        "予备会议材料"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备金",
+      "variants": [
+        "予备金"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "预备役",
+      "variants": [
+        "予备役"
+      ],
+      "note": "“予备”不是规范词形。"
+    },
+    {
+      "preferred": "原来打算",
+      "variants": [
+        "元来打算"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "原来方案",
+      "variants": [
+        "元来方案"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "原来计划",
+      "variants": [
+        "元来计划"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "原来如此",
+      "variants": [
+        "元来如此"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "原来如此安排",
+      "variants": [
+        "元来如此安排"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "原来意见",
+      "variants": [
+        "元来意见"
+      ],
+      "note": "“元来”不是规范词形。"
+    },
+    {
+      "preferred": "缘故复杂",
+      "variants": [
+        "原故复杂"
+      ],
+      "note": "“原故”不是规范词形。"
+    },
+    {
+      "preferred": "缘故说明",
+      "variants": [
+        "原故说明"
+      ],
+      "note": "“原故”不是规范词形。"
+    },
+    {
+      "preferred": "原因是程序",
+      "variants": [
+        "原因是因为程序"
+      ],
+      "note": "“原因”与“因为”重复。"
+    },
+    {
+      "preferred": "原因是资金",
+      "variants": [
+        "原因是因为资金"
+      ],
+      "note": "“原因”与“因为”重复。"
+    },
+    {
+      "preferred": "缘由复杂",
+      "variants": [
+        "原由复杂"
+      ],
+      "note": "“原由”不是规范词形。"
+    },
+    {
+      "preferred": "缘由说明",
+      "variants": [
+        "原由说明"
+      ],
+      "note": "“原由”不是规范词形。"
+    },
+    {
+      "preferred": "杂沓脚步",
+      "variants": [
+        "杂遝脚步"
+      ],
+      "note": "“杂遝”不是规范词形。"
+    },
+    {
+      "preferred": "崭新阶段",
+      "variants": [
+        "斩新阶段"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "崭新局面",
+      "variants": [
+        "斩新局面"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "崭新局面已经形成",
+      "variants": [
+        "斩新局面已经形成"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "崭新面貌",
+      "variants": [
+        "斩新面貌"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "崭新起点",
+      "variants": [
+        "斩新起点"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "崭新气象",
+      "variants": [
+        "斩新气象"
+      ],
+      "note": "“斩新”不是规范词形。"
+    },
+    {
+      "preferred": "辗转反侧",
+      "variants": [
+        "展转反侧"
+      ],
+      "note": "“展转”不是规范词形。"
+    },
+    {
+      "preferred": "辗转反复",
+      "variants": [
+        "展转反复"
+      ],
+      "note": "“展转”不是规范词形。"
+    },
+    {
+      "preferred": "辗转各地",
+      "variants": [
+        "展转各地"
+      ],
+      "note": "“展转”不是规范词形。"
+    },
+    {
+      "preferred": "辗转各地调研",
+      "variants": [
+        "展转各地调研"
+      ],
+      "note": "“展转”不是规范词形。"
+    },
+    {
+      "preferred": "辗转求医",
+      "variants": [
+        "展转求医"
+      ],
+      "note": "“展转”不是规范词形。"
+    },
+    {
+      "preferred": "账单",
+      "variants": [
+        "帐单"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账单金额",
+      "variants": [
+        "帐单金额"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账单明细",
+      "variants": [
+        "帐单明细"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账号",
+      "variants": [
+        "帐号"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账号绑定",
+      "variants": [
+        "帐号绑定"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账号密码",
+      "variants": [
+        "帐号密码"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账号信息",
+      "variants": [
+        "帐号信息"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账号已经开通",
+      "variants": [
+        "帐号已经开通"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账户",
+      "variants": [
+        "帐户"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账户冻结",
+      "variants": [
+        "帐户冻结"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账号",
+      "variants": [
+        "帐户号"
+      ],
+      "note": "信息化用语用“账号”。"
+    },
+    {
+      "preferred": "账户名称",
+      "variants": [
+        "帐户名称"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账户已经核对",
+      "variants": [
+        "帐户已经核对"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账户余额",
+      "variants": [
+        "帐户余额"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账目",
+      "variants": [
+        "帐目"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账目不清",
+      "variants": [
+        "帐目不清"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "账目核对",
+      "variants": [
+        "帐目核对"
+      ],
+      "note": "钱款意义用“账”。"
+    },
+    {
+      "preferred": "折叠",
+      "variants": [
+        "摺叠"
+      ],
+      "note": "“摺叠”不是规范词形。"
+    },
+    {
+      "preferred": "折叠文件",
+      "variants": [
+        "摺叠文件"
+      ],
+      "note": "“摺叠”不是规范词形。"
+    },
+    {
+      "preferred": "折叠椅",
+      "variants": [
+        "摺叠椅"
+      ],
+      "note": "“摺叠”不是规范词形。"
+    },
+    {
+      "preferred": "这么办",
+      "variants": [
+        "这末办"
+      ],
+      "note": "“这末”不是规范词形。"
+    },
+    {
+      "preferred": "这么做",
+      "variants": [
+        "这末做"
+      ],
+      "note": "“这末”不是规范词形。"
+    },
+    {
+      "preferred": "针灸",
+      "variants": [
+        "针炙"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸科",
+      "variants": [
+        "针炙科"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸科门诊",
+      "variants": [
+        "针炙科门诊"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸理疗",
+      "variants": [
+        "针炙理疗"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸门诊",
+      "variants": [
+        "针炙门诊"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸师",
+      "variants": [
+        "针炙师"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸学会",
+      "variants": [
+        "针炙学会"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸治疗",
+      "variants": [
+        "针炙治疗"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "针灸治疗方案",
+      "variants": [
+        "针炙治疗方案"
+      ],
+      "note": "“针炙”不是规范词形。"
+    },
+    {
+      "preferred": "震撼",
+      "variants": [
+        "震憾"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼场面",
+      "variants": [
+        "震憾场面"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼力",
+      "variants": [
+        "震憾力"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼全场",
+      "variants": [
+        "震憾全场"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼人心",
+      "variants": [
+        "震憾人心"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼人心的",
+      "variants": [
+        "震憾人心的"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼人心的场面",
+      "variants": [
+        "震憾人心的场面"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "震撼效果",
+      "variants": [
+        "震憾效果"
+      ],
+      "note": "“震憾”不是规范词形。"
+    },
+    {
+      "preferred": "只言片语",
+      "variants": [
+        "只字片语"
+      ],
+      "note": "通行词形为“只言片语”。"
+    },
+    {
+      "preferred": "制作",
+      "variants": [
+        "制做"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作工艺",
+      "variants": [
+        "制做工艺"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作过程",
+      "variants": [
+        "制做过程"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作过程记录",
+      "variants": [
+        "制做过程记录"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作流程",
+      "variants": [
+        "制做流程"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作完成",
+      "variants": [
+        "制做完成"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "制作样品",
+      "variants": [
+        "制做样品"
+      ],
+      "note": "“制做”不是规范词形。"
+    },
+    {
+      "preferred": "重叠",
+      "variants": [
+        "重迭"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠部分",
+      "variants": [
+        "重迭部分"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠部分应当合并",
+      "variants": [
+        "重迭部分应当合并"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠度",
+      "variants": [
+        "重迭度"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠覆盖",
+      "variants": [
+        "重迭覆盖"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠建设",
+      "variants": [
+        "重迭建设"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠区域",
+      "variants": [
+        "重迭区域"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠申报",
+      "variants": [
+        "重迭申报"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "重叠事项",
+      "variants": [
+        "重迭事项"
+      ],
+      "note": "“重迭”不是规范词形。"
+    },
+    {
+      "preferred": "追溯",
+      "variants": [
+        "追朔"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯到",
+      "variants": [
+        "追朔到"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯过程",
+      "variants": [
+        "追朔过程"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯历史",
+      "variants": [
+        "追朔历史"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯历史沿革",
+      "variants": [
+        "追朔历史沿革"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯线索",
+      "variants": [
+        "追朔线索"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯原因",
+      "variants": [
+        "追朔原因"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "追溯源头",
+      "variants": [
+        "追朔源头"
+      ],
+      "note": "“追朔”不是规范词形。"
+    },
+    {
+      "preferred": "姿势不规范",
+      "variants": [
+        "姿式不规范"
+      ],
+      "note": "“姿式”不是规范词形。"
+    },
+    {
+      "preferred": "姿势端正",
+      "variants": [
+        "姿式端正"
+      ],
+      "note": "“姿式”不是规范词形。"
+    },
+    {
+      "preferred": "仔细核对",
+      "variants": [
+        "子细核对"
+      ],
+      "note": "“子细”不是规范词形。"
+    },
+    {
+      "preferred": "仔细核对数据",
+      "variants": [
+        "子细核对数据"
+      ],
+      "note": "“子细”不是规范词形。"
+    },
+    {
+      "preferred": "仔细检查",
+      "variants": [
+        "子细检查"
+      ],
+      "note": "“子细”不是规范词形。"
+    },
+    {
+      "preferred": "仔细阅读",
+      "variants": [
+        "子细阅读"
+      ],
+      "note": "“子细”不是规范词形。"
+    },
+    {
+      "preferred": "仔细斟酌",
+      "variants": [
+        "子细斟酌"
+      ],
+      "note": "“子细”不是规范词形。"
+    },
+    {
+      "preferred": "做法",
+      "variants": [
+        "作法"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法不同",
+      "variants": [
+        "作法不同"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法手册",
+      "variants": [
+        "作法手册"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法说明",
+      "variants": [
+        "作法说明"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法说明材料",
+      "variants": [
+        "作法说明材料"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法细则",
+      "variants": [
+        "作法细则"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "做法指南",
+      "variants": [
+        "作法指南"
+      ],
+      "note": "公文中表示方法用“做法”。"
+    },
+    {
+      "preferred": "座位",
+      "variants": [
+        "坐位"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位安排",
+      "variants": [
+        "坐位安排"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位安排表",
+      "variants": [
+        "坐位安排表"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位表",
+      "variants": [
+        "坐位表"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位调整",
+      "variants": [
+        "坐位调整"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位号",
+      "variants": [
+        "坐位号"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "座位排布",
+      "variants": [
+        "坐位排布"
+      ],
+      "note": "“坐位”不是规范词形。"
+    },
+    {
+      "preferred": "坐标",
+      "variants": [
+        "座标"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标参数",
+      "variants": [
+        "座标参数"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标点",
+      "variants": [
+        "座标点"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标位置",
+      "variants": [
+        "座标位置"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标位置标注",
+      "variants": [
+        "座标位置标注"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标系",
+      "variants": [
+        "座标系"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标原点",
+      "variants": [
+        "座标原点"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐标转换",
+      "variants": [
+        "座标转换"
+      ],
+      "note": "“座标”不是规范词形。"
+    },
+    {
+      "preferred": "坐落",
+      "variants": [
+        "座落"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落城区",
+      "variants": [
+        "座落城区"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落地点",
+      "variants": [
+        "座落地点"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落地址",
+      "variants": [
+        "座落地址"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落方位",
+      "variants": [
+        "座落方位"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落位置",
+      "variants": [
+        "座落位置"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落位置示意",
+      "variants": [
+        "座落位置示意"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落于",
+      "variants": [
+        "座落于"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "坐落于城区",
+      "variants": [
+        "座落于城区"
+      ],
+      "note": "“座落”不是规范词形。"
+    },
+    {
+      "preferred": "作出安排",
+      "variants": [
+        "做出安排"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出安排如下",
+      "variants": [
+        "做出安排如下"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出处理",
+      "variants": [
+        "做出处理"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出贡献",
+      "variants": [
+        "做出贡献"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出贡献的单位",
+      "variants": [
+        "做出贡献的单位"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出规定",
+      "variants": [
+        "做出规定"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出解释",
+      "variants": [
+        "做出解释"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出决定",
+      "variants": [
+        "做出决定"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出决定的会议",
+      "variants": [
+        "做出决定的会议"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    },
+    {
+      "preferred": "作出批复",
+      "variants": [
+        "做出批复"
+      ],
+      "note": "公文固定搭配用“作出”。"
+    }
+  ]
+}

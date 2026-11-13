@@ -11,8 +11,8 @@ import java.util.List;
 public final class WritingMaterialDtos {
     private WritingMaterialDtos() {}
 
-    public record FromKnowledgeRequest(@NotBlank String sourceId, @NotBlank String documentId,
-            String chunkId, String outlineNodeId) {}
+    public record FromKnowledgeRequest(
+            @NotBlank String sourceId, @NotBlank String documentId, String chunkId, String outlineNodeId) {}
 
     public record CreateRequest(
             @NotBlank @Size(max = 500) String materialName,

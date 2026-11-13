@@ -35,24 +35,32 @@ public class WritingMaterialService {
     }
 
     @Transactional
-    public Response attachKnowledge(String taskId, cn.gov.document.platform.writing.api.WritingMaterialDtos.FromKnowledgeRequest request) {
+    public Response attachKnowledge(
+            String taskId, cn.gov.document.platform.writing.api.WritingMaterialDtos.FromKnowledgeRequest request) {
         taskService.require(taskId);
         var read = knowledge.readDocument(request.sourceId(), request.documentId());
         var document = read.document();
-        if (!"已完成".equals(document.parsedStatus()) || read.chunks().isEmpty()
-                || "来源索引".equals(document.completeness()))
+        if (!"已完成".equals(document.parsedStatus()) || read.chunks().isEmpty() || "来源索引".equals(document.completeness()))
             throw BusinessException.unprocessable("该知识文档尚无可选正文");
         var selected = request.chunkId() == null || request.chunkId().isBlank()
                 ? read.chunks()
-                : read.chunks().stream().filter(chunk -> chunk.id().equals(request.chunkId())).toList();
+                : read.chunks().stream()
+                        .filter(chunk -> chunk.id().equals(request.chunkId()))
+                        .toList();
         if (selected.isEmpty()) throw BusinessException.notFound("知识片段不存在");
         String text = selected.stream().map(c -> c.chunkText()).collect(java.util.stream.Collectors.joining("\n\n"));
         if (text.length() > 200_000) throw BusinessException.unprocessable("整篇内容超过 20 万字，请改选片段");
         WritingMaterialEntity entity = new WritingMaterialEntity();
         entity.setTenantId(RequestContext.tenantId());
         entity.setTaskId(taskId);
-        entity.setOutlineNodeId(StringUtils.hasText(request.outlineNodeId()) ? request.outlineNodeId().trim() : null);
-        entity.setMaterialName(document.documentTitle() + (request.chunkId() == null || request.chunkId().isBlank() ? "（整篇）" : "（片段 " + selected.get(0).chunkOrder() + "）"));
+        entity.setOutlineNodeId(
+                StringUtils.hasText(request.outlineNodeId())
+                        ? request.outlineNodeId().trim()
+                        : null);
+        entity.setMaterialName(document.documentTitle()
+                + (request.chunkId() == null || request.chunkId().isBlank()
+                        ? "（整篇）"
+                        : "（片段 " + selected.get(0).chunkOrder() + "）"));
         entity.setSourceType("知识库参考");
         entity.setSourceId(document.id());
         entity.setAuthorityLevel(document.authorityLevel());
@@ -92,7 +100,10 @@ public class WritingMaterialService {
         entity.setIsLocked(Boolean.TRUE.equals(request.locked()));
         entity.setFileHash(request.fileHash());
         entity.setFilePath(request.filePath());
-        entity.setOutlineNodeId(StringUtils.hasText(request.outlineNodeId()) ? request.outlineNodeId().trim() : null);
+        entity.setOutlineNodeId(
+                StringUtils.hasText(request.outlineNodeId())
+                        ? request.outlineNodeId().trim()
+                        : null);
         mapper.insert(entity);
         return Response.from(entity);
     }
@@ -266,7 +277,8 @@ public class WritingMaterialService {
     }
 
     private String permissionResult(WritingMaterialEntity material) {
-        return "知识库参考".equals(material.getSourceType()) || "仅供参考".equals(material.getPermissionStatus())
+        return "知识库参考".equals(material.getSourceType())
+                        || "仅供参考".equals(material.getPermissionStatus())
                         || "禁止".equals(material.getPermissionStatus())
                         || (material.getExpiryDate() != null
                                 && material.getExpiryDate().isBefore(java.time.LocalDate.now()))

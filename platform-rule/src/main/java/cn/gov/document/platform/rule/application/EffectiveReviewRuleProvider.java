@@ -60,9 +60,13 @@ public class EffectiveReviewRuleProvider {
                 continue;
             }
             if ("词库".equals(rule.getDetectionMethod())) {
-                ReviewDictionaryEntity dictionary = dictionaryMapper.selectOne(new LambdaQueryWrapper<ReviewDictionaryEntity>()
-                        .eq(ReviewDictionaryEntity::getDictCode, rule.getRuleExpression().trim()));
-                if (dictionary != null && isEffective(dictionary.getEffectiveDate(), dictionary.getExpiryDate(), today)) {
+                ReviewDictionaryEntity dictionary =
+                        dictionaryMapper.selectOne(new LambdaQueryWrapper<ReviewDictionaryEntity>()
+                                .eq(
+                                        ReviewDictionaryEntity::getDictCode,
+                                        rule.getRuleExpression().trim()));
+                if (dictionary != null
+                        && isEffective(dictionary.getEffectiveDate(), dictionary.getExpiryDate(), today)) {
                     for (ReviewTermEntity term : termMapper.selectList(new LambdaQueryWrapper<ReviewTermEntity>()
                             .eq(ReviewTermEntity::getDictionaryId, dictionary.getId()))) {
                         if (isEffective(term.getEffectiveDate(), term.getExpiryDate(), today))
@@ -71,18 +75,46 @@ public class EffectiveReviewRuleProvider {
                 }
             } else addRuleMatches(result, deduplication, rule, source);
         }
-        return result;
+        return preferLongerSpans(result);
+    }
+
+    private List<Match> preferLongerSpans(List<Match> matches) {
+        List<Match> kept = new ArrayList<>();
+        for (int i = 0; i < matches.size(); i++) {
+            Match match = matches.get(i);
+            boolean covered = false;
+            for (int j = 0; j < matches.size(); j++) {
+                if (i == j) continue;
+                Match other = matches.get(j);
+                if ("词库".equals(match.detectionMethod())
+                        && "词库".equals(other.detectionMethod())
+                        && other.start() <= match.start()
+                        && other.end() >= match.end()
+                        && other.end() - other.start() > match.end() - match.start()) {
+                    covered = true;
+                    break;
+                }
+            }
+            if (!covered) kept.add(match);
+        }
+        return kept;
     }
 
     private void addRuleMatches(List<Match> result, Set<String> deduplication, ReviewRuleEntity rule, String text) {
         Expression expression = parseExpression(rule.getDetectionMethod(), rule.getRuleExpression());
         Matcher matcher = expression.pattern().matcher(text);
         int guard = 0;
+        StringBuffer rewrittenPrefix = new StringBuffer();
+        int previousMatchEnd = 0;
         while (matcher.find() && guard++ < 10_000) {
             String original = matcher.group();
-            String replacement = expression.replacement() == null
-                    ? original
-                    : expression.pattern().matcher(original).replaceFirst(expression.replacement());
+            String replacement = null;
+            if (expression.replacement() != null) {
+                int before = rewrittenPrefix.length();
+                matcher.appendReplacement(rewrittenPrefix, expression.replacement());
+                replacement = rewrittenPrefix.substring(before + matcher.start() - previousMatchEnd);
+                previousMatchEnd = matcher.end();
+            }
             add(
                     result,
                     deduplication,
@@ -101,7 +133,8 @@ public class EffectiveReviewRuleProvider {
         }
     }
 
-    private void addTermMatches(List<Match> result, Set<String> deduplication, ReviewTermEntity term, ReviewRuleEntity rule, String text) {
+    private void addTermMatches(
+            List<Match> result, Set<String> deduplication, ReviewTermEntity term, ReviewRuleEntity rule, String text) {
         // A reference entry with the same standard form is correct terminology, not a correction to report.
         if (!StringUtils.hasText(term.getStandardForm())
                 || term.getTermText().equals(term.getStandardForm().trim())) return;

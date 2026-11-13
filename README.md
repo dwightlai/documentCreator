@@ -65,7 +65,7 @@ pnpm dev
 powershell -NoProfile -ExecutionPolicy Bypass -File deploy/ops/seed-local-demo.ps1
 ```
 
-脚本使用 `local-government / local-user` 身份，初始化不同阶段的写作任务、审校任务、规则、词库、知识库文档、提示词模板、停用的模型配置，以及内置文种和审校方案。模型配置保持停用，不会误调用外部服务；重复运行不会复制相同样例。初始化完成后刷新 `http://localhost:5175` 即可。
+脚本使用 `local-government / admin` 身份，初始化不同阶段的写作任务、审校任务、知识库文档、提示词模板、停用的模型配置，以及内置文种和审校方案。可执行规则包由本地后端启动时装载；脚本不再写入演示规则和词库。模型配置保持停用，不会误调用外部服务；重复运行不会复制相同样例。初始化完成后刷新 `http://localhost:5175` 即可。
 
 ## 容器部署基线
 

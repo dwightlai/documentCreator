@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 public class LocalOfficialReviewPackBootstrap implements ApplicationRunner {
     private final OfficialReviewPackService service;
 
-    public LocalOfficialReviewPackBootstrap(OfficialReviewPackService service) { this.service = service; }
+    public LocalOfficialReviewPackBootstrap(OfficialReviewPackService service) {
+        this.service = service;
+    }
 
     @Override
     public void run(ApplicationArguments args) {

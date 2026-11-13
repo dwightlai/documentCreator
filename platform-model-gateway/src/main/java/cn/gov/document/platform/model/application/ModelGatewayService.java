@@ -353,7 +353,8 @@ public class ModelGatewayService implements ModelGenerationPort {
         String storedInput = clipContent(input, LOG_CONTENT_LIMIT);
         String storedOutput = output == null ? null : clipContent(output, LOG_CONTENT_LIMIT);
         int inputChars = input.codePointCount(0, input.length());
-        e.setInputSummary("chars=" + inputChars + (storedInput != null && storedInput.length() < input.length() ? "; truncated=true" : ""));
+        e.setInputSummary("chars=" + inputChars
+                + (storedInput != null && storedInput.length() < input.length() ? "; truncated=true" : ""));
         e.setInputContent(storedInput);
         e.setOutputHash(output == null ? null : sha256(output));
         e.setOutputContent(storedOutput);

@@ -1,6 +1,7 @@
 package cn.gov.document.platform.document.api;
 
 import cn.gov.document.platform.common.api.ApiResponse;
+import cn.gov.document.platform.document.application.DocumentAssistService;
 import cn.gov.document.platform.document.application.DocumentGenerationStreamService;
 import cn.gov.document.platform.document.application.DocumentService;
 import jakarta.validation.Valid;
@@ -17,10 +18,15 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class DocumentGenerationController {
     private final DocumentService service;
     private final DocumentGenerationStreamService streamService;
+    private final DocumentAssistService assistService;
 
-    public DocumentGenerationController(DocumentService service, DocumentGenerationStreamService streamService) {
+    public DocumentGenerationController(
+            DocumentService service,
+            DocumentGenerationStreamService streamService,
+            DocumentAssistService assistService) {
         this.service = service;
         this.streamService = streamService;
+        this.assistService = assistService;
     }
 
     @PostMapping("/section")
@@ -69,5 +75,38 @@ public class DocumentGenerationController {
     ApiResponse<DocumentDtos.SelectionCandidatesResponse> selectionCandidates(
             @PathVariable String taskId, @Valid @RequestBody DocumentDtos.SelectionCandidatesRequest request) {
         return ApiResponse.success(service.selectionCandidates(taskId, request));
+    }
+
+    @PostMapping("/summary")
+    ApiResponse<DocumentDtos.SummaryResponse> summary(@PathVariable String taskId) {
+        return ApiResponse.success(assistService.summary(taskId));
+    }
+
+    @PostMapping("/summary/insert")
+    ApiResponse<DocumentDtos.DocumentResponse> insertSummary(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.SummaryInsertRequest request) {
+        return ApiResponse.success(assistService.insertSummary(taskId, request.text()));
+    }
+
+    @PostMapping("/assist-preview")
+    ApiResponse<DocumentDtos.AssistPreviewResponse> assistPreview(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.AssistPreviewRequest request) {
+        return ApiResponse.success(assistService.preview(taskId, request));
+    }
+
+    @PostMapping("/assist-apply")
+    ApiResponse<DocumentDtos.DocumentResponse> assistApply(
+            @PathVariable String taskId, @Valid @RequestBody DocumentDtos.AssistApplyRequest request) {
+        return ApiResponse.success(assistService.apply(taskId, request));
+    }
+
+    @PostMapping("/format-preview")
+    ApiResponse<DocumentDtos.FormatPreviewResponse> formatPreview(@PathVariable String taskId) {
+        return ApiResponse.success(assistService.formatPreview(taskId));
+    }
+
+    @PostMapping("/format-apply")
+    ApiResponse<DocumentDtos.DocumentResponse> formatApply(@PathVariable String taskId) {
+        return ApiResponse.success(assistService.formatApply(taskId));
     }
 }

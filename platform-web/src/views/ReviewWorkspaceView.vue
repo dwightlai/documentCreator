@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch, type CSSProperties } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, type CSSProperties } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RouterLink, useRoute } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import { listWritingTasks, type WritingTask } from '@/api/writing'
 import { listOutputTemplates, type OutputTemplate } from '@/api/templates'
 import {
-  batchProcessIssues, createReviewPlan, deleteReviewPlan, deleteReviewTask, downloadEditedReviewDocument, downloadReviewReport, generateReviewReport, getReviewContent, initiateReview, listReviewPlans, reUploadReviewDocument, saveReviewContent, updateReviewPlan, uploadReviewDocument, type ReviewContent, type ReviewContentBlock, type ReviewPlan, type ReviewPlanInput,
-  listReviewIssues, listReviewTasks, processIssue, reReview, type ReviewAction,
+  batchProcessIssues, deleteReviewTask, downloadEditedReviewDocument, downloadReviewReport, generateReviewReport, getReviewContent, initiateReview, reUploadReviewDocument, saveReviewContent, uploadReviewDocument, type ReviewContent, type ReviewContentBlock,
+  detectReviewDocumentType, listReviewIssues, listReviewTasks, processIssue, reReview, type ReviewAction,
   type ReviewIssue, type ReviewTask,
 } from '@/api/review'
 
@@ -19,6 +19,7 @@ const content = ref<ReviewContent>()
 const activeIssueNumber = ref('')
 const editingAnchor = ref('')
 const editingText = ref('')
+const editingHint = ref('')
 const editingCells = ref<string[]>([])
 const savingContent = ref(false)
 const selectedId = ref('')
@@ -31,41 +32,7 @@ const outputTemplates = ref<OutputTemplate[]>([])
 const replaceFileInput = ref<HTMLInputElement>()
 const loading = ref(false)
 const selectedIssueNumbers = ref<string[]>([])
-const plans = ref<ReviewPlan[]>([])
-const planDialog = ref(false)
-const editingPlanId = ref('')
 const BUSINESS_CATEGORIES = ['政治与重要表述', '政策法规与事实依据', '公文业务规范', '内容与逻辑', '语言文字', '格式与版式']
-const planForm = reactive<ReviewPlanInput>({ planCode: '', planName: '', applicableScenarios: '', reviewLevels: ['公文业务规范', '语言文字', '格式与版式'], ruleSetVersion: '', knowledgeScope: [], allowExternalModel: false, riskThreshold: '一般', checkAttachments: true, allowAutoFix: false, generateReport: true })
-const selectedPlanId = ref('')
-const selectedPlan = computed(() => plans.value.find(plan => plan.id === selectedPlanId.value))
-function openPlan(plan?: ReviewPlan) {
-  editingPlanId.value = plan?.id ?? ''
-  Object.assign(planForm, plan ? {
-    planCode: plan.planCode, planName: plan.planName, applicableScenarios: plan.applicableScenarios,
-    reviewLevels: [...plan.reviewLevels], ruleSetVersion: plan.ruleSetVersion ?? '', knowledgeScope: [...(plan.knowledgeScope ?? [])],
-    allowExternalModel: plan.allowExternalModel ?? false, riskThreshold: plan.riskThreshold,
-    checkAttachments: plan.checkAttachments, allowAutoFix: plan.allowAutoFix, generateReport: plan.generateReport,
-  } : { planCode: '', planName: '', applicableScenarios: '', reviewLevels: ['公文业务规范', '语言文字', '格式与版式'], ruleSetVersion: '', knowledgeScope: [], allowExternalModel: false, riskThreshold: '一般', checkAttachments: true, allowAutoFix: false, generateReport: true })
-  planDialog.value = true
-}
-async function savePlan() {
-  if (!planForm.planCode.trim() || !planForm.planName.trim() || !planForm.reviewLevels.length) { ElMessage.warning('请填写方案代码、名称并选择检查范围'); return }
-  try {
-    const previous = plans.value.find(item => item.id === editingPlanId.value)
-    const changed = previous ? await updateReviewPlan(previous.id, { ...planForm, lockVersion: previous.lockVersion }) : await createReviewPlan({ ...planForm })
-    plans.value = await listReviewPlans(); selectedPlanId.value = changed.id; planDialog.value = false
-    ElMessage.success(previous ? '审校方案已更新' : '审校方案已创建')
-  } catch (reason) { ElMessage.error(reason instanceof Error ? reason.message : '方案保存失败') }
-}
-async function removePlan(plan: ReviewPlan) {
-  try {
-    await ElMessageBox.confirm(`确定删除审校方案“${plan.planName}”？`, '删除审校方案', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
-    await deleteReviewPlan(plan.id)
-    plans.value = await listReviewPlans()
-    if (selectedPlanId.value === plan.id) selectedPlanId.value = plans.value.find(item => item.planCode === 'OFFICIAL')?.id ?? plans.value[0]?.id ?? ''
-    ElMessage.success('审校方案已删除')
-  } catch (reason) { if (reason !== 'cancel' && reason !== 'close') ElMessage.error(reason instanceof Error ? reason.message : '方案删除失败') }
-}
 const selected = computed(() => tasks.value.find(item => item.id === selectedId.value))
 const reviewGroups = computed(() => {
   const groups = new Map<string, ReviewTask[]>()
@@ -79,7 +46,7 @@ const reviewGroups = computed(() => {
 })
 const selectedGroup = computed(() => reviewGroups.value.find(group => group.entries.some(item => item.id === selectedId.value)))
 const eligibleWritingTasks = computed(() => writingTasks.value.filter(item => item.currentDocumentId))
-const eligibleTemplates = computed(() => outputTemplates.value.filter(item => item.lifecycleStatus === '生效' && item.documentTypeCode === uploadType.value))
+const eligibleTemplates = computed(() => outputTemplates.value.filter(item => item.lifecycleStatus === '生效' && (!uploadType.value || item.documentTypeCode === uploadType.value)))
 const pending = computed(() => issues.value.filter(item => item.processingStatus === '待处理').length)
 
 const activeLevel = ref('')
@@ -138,23 +105,34 @@ function originalParagraphStyle(block:ReviewContentBlock):CSSProperties | undefi
   if (source.afterTwips>0) style.marginBottom=twips(source.afterTwips)
   return style
 }
-async function focusIssue(issue: ReviewIssue) {
+function suggestionOf(issue: ReviewIssue) {
+  if (issue.suggestedFix?.trim()) return issue.suggestedFix.trim()
+  const text = issue.issueExplanation || ''
+  const mark = '建议修改方向：'
+  const at = text.indexOf(mark)
+  if (at < 0) return ''
+  return text.slice(at + mark.length).replace(/。?\s*（模型提出[\s\S]*$/, '').trim()
+}
+async function focusIssue(issue: ReviewIssue, edit = false) {
   activeIssueNumber.value = issue.issueNumber
   const target = locate(issue)
   if (!target) { ElMessage.info('此问题涉及版式或缺少可靠的文字定位，请对照整篇原文人工核查'); return }
+  const block = content.value?.blocks.find(item => item.anchor === target.anchor)
+  if (edit && block) {
+    beginEdit(block)
+    const advice = suggestionOf(issue)
+    const canReplace = Boolean(issue.suggestedFix?.trim() && issue.originalText && editingText.value.includes(issue.originalText))
+    if (canReplace) editingText.value = editingText.value.replace(issue.originalText, issue.suggestedFix)
+    editingHint.value = canReplace ? '已按建议填入，确认后点保存新版本' : advice ? `建议：${advice}` : ''
+  }
   await nextTick()
-  const block = document.getElementById(`review-block-${target.anchor}`)
-  const panel = block?.closest('.review-document-panel')
-  if (block && panel) panel.scrollTo({
-    top: panel.scrollTop + block.getBoundingClientRect().top - panel.getBoundingClientRect().top
-      - panel.clientHeight / 2 + block.clientHeight / 2,
-    behavior: 'smooth',
-  })
+  document.getElementById(`review-block-${target.anchor}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 function beginEdit(block: ReviewContentBlock) {
   if (block.locked) { ElMessage.warning('这一段已锁定，无法修改'); return }
   editingAnchor.value = block.anchor
   editingText.value = block.currentText
+  editingHint.value = ''
   editingCells.value = block.kind === 'tableRow' ? block.currentText.split('\t') : []
 }
 async function saveEdit() {
@@ -186,7 +164,16 @@ function reviewLabel(task: ReviewTask) {
   const version = task.documentVersion ? `文稿 V${task.documentVersion} · ` : ''
   return `${version}${new Date(task.createdAt).toLocaleString('zh-CN')} · ${task.totalIssues} 项`
 }
-function chooseUploadFile(event: Event) { uploadFile.value = (event.target as HTMLInputElement).files?.[0] }
+async function chooseUploadFile(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  uploadFile.value = file
+  outputTemplateId.value = ''
+  uploadType.value = ''
+  if (!file) return
+  try {
+    uploadType.value = (await detectReviewDocumentType(file)) || ''
+  } catch { uploadType.value = '' }
+}
 
 async function acceptGroup(issue: ReviewIssue) {
   if (!selected.value) return
@@ -207,9 +194,7 @@ async function acceptGroup(issue: ReviewIssue) {
 async function load() {
   loading.value = true
   try {
-    const [writingPage, reviewTasks, reviewPlans, templates] = await Promise.all([listWritingTasks(), listReviewTasks(), listReviewPlans(), listOutputTemplates()])
-    plans.value = reviewPlans
-    selectedPlanId.value ||= reviewPlans.find(plan => plan.planCode === 'OFFICIAL')?.id ?? reviewPlans.at(0)?.id ?? ''
+    const [writingPage, reviewTasks, templates] = await Promise.all([listWritingTasks(), listReviewTasks(), listOutputTemplates()])
     writingTasks.value = writingPage.items
     outputTemplates.value = templates
     tasks.value = reviewTasks
@@ -246,7 +231,7 @@ async function startUploadReview() {
   if (!uploadFile.value.name.toLowerCase().endsWith('.docx')) { ElMessage.warning('当前仅支持 DOCX 文件'); return }
   loading.value = true
   try {
-    const task = await uploadReviewDocument(uploadFile.value, uploadType.value, selectedPlanId.value || undefined, outputTemplateId.value || undefined)
+    const task = await uploadReviewDocument(uploadFile.value, outputTemplateId.value || undefined)
     tasks.value.unshift(task)
     selectedId.value = task.id
     uploadFile.value = undefined
@@ -274,7 +259,7 @@ async function startReview() {
   if (!selectedWritingId.value) { ElMessage.warning('请先在智能写作中生成文稿正文'); return }
   loading.value = true
   try {
-    const task = await initiateReview(selectedWritingId.value, selectedPlanId.value || undefined)
+    const task = await initiateReview(selectedWritingId.value)
     tasks.value.unshift(task); selectedId.value = task.id
     ElMessage.success(`审校完成，发现 ${task.totalIssues} 项问题`)
   } catch (reason) { ElMessage.error(reason instanceof Error ? reason.message : '审校发起失败') }
@@ -384,16 +369,7 @@ onMounted(load)
           <template v-else>
             <label>选择 DOCX 文件<input class="review-upload-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="chooseUploadFile"></label>
             <small class="review-file-name">{{ uploadFile?.name || '可上传本地起草的 Word 文档，最大 50MB' }}</small>
-            <label>文种</label><el-select v-model="uploadType" aria-label="本地文件文种" @change="outputTemplateId=''">
-              <el-option v-for="type in ['请示','报告','通知','函','纪要','通报','决定','批复']" :key="type" :label="type" :value="type" />
-            </el-select>
           </template>
-          <div class="review-plan-label"><label>审校方案</label><button type="button" @click="openPlan()">＋ 新建方案</button></div>
-          <el-select v-model="selectedPlanId" aria-label="审校方案" placeholder="默认方案">
-            <el-option v-for="plan in plans" :key="plan.id" :label="plan.planName" :value="plan.id" />
-          </el-select>
-          <small v-if="selectedPlan" class="plan-levels">{{ selectedPlan.applicableScenarios }} · 检查范围：{{ selectedPlan.reviewLevels.join('、') }}</small>
-          <div v-if="selectedPlan?.custom" class="review-plan-actions"><button type="button" @click="openPlan(selectedPlan)">编辑方案</button><button type="button" @click="removePlan(selectedPlan)">删除方案</button></div>
           <template v-if="launchMode === 'upload'"><label>输出模板（选填，用于对照版式）</label><el-select v-model="outputTemplateId" aria-label="输出模板" placeholder="不选择模板"><el-option label="不选择模板" value="" /><el-option v-for="item in eligibleTemplates" :key="item.id" :label="item.templateName" :value="item.id" /></el-select></template>
           <button class="primary-button" type="button" :disabled="loading" @click="launchMode === 'upload' ? startUploadReview() : startReview()">{{ loading ? '正在检查…' : launchMode === 'upload' ? '上传并审校' : '发起智能审校' }}</button>
         </div>
@@ -427,7 +403,10 @@ onMounted(load)
                 <div v-for="block in content.blocks" :id="`review-block-${block.anchor}`" :key="block.anchor" class="review-block" :class="{ 'review-block-active': activeLocator?.anchor === block.anchor, 'review-block-title': block.kind === 'title' && content.sourceSystem !== 'upload', 'review-block-table': block.kind === 'tableRow' }">
                   <template v-if="editingAnchor === block.anchor">
                     <div v-if="block.kind === 'tableRow'" class="review-table-edit"><label v-for="(_, cellIndex) in editingCells" :key="cellIndex">第 {{ cellIndex + 1 }} 列<input v-model="editingCells[cellIndex]" :aria-label="`编辑表格第 ${cellIndex + 1} 列`" /></label></div>
-                    <textarea v-else v-model="editingText" class="review-edit-area" :aria-label="`编辑${block.kind === 'title' ? '标题或首段' : '正文段落'}`" rows="4" />
+                    <template v-else>
+                      <p v-if="editingHint" class="review-advice">{{ editingHint }}</p>
+                      <textarea v-model="editingText" class="review-edit-area" :aria-label="`编辑${block.kind === 'title' ? '标题或首段' : '正文段落'}`" rows="4" />
+                    </template>
                     <div class="review-edit-actions"><button type="button" :disabled="savingContent" @click="saveEdit">保存新版本</button><button type="button" @click="editingAnchor = ''">取消</button></div>
                   </template>
                   <template v-else>
@@ -449,10 +428,10 @@ onMounted(load)
             <div class="risk-flag" :data-risk="issue.riskLevel">{{ issue.riskLevel }}</div>
             <div class="issue-body">
               <header><span>{{ issue.issueNumber }} · {{ issue.issueCategory }}<b v-if="pendingGroup(issue).length > 1" class="level-chip group">同组 {{ pendingGroup(issue).length }} 处</b><b v-if="content?.needsReview && locate(issue)" class="level-chip">待复核</b></span><small>{{ locate(issue) ? `第 ${issue.paragraphNumber} 段` : '整篇核查' }} · 置信度 {{ Math.round(issue.confidenceScore * 100) }}%</small></header>
-              <div v-if="issue.suggestedFix" class="text-change"><del>{{ issue.originalText }}</del><span>→</span><ins>{{ issue.suggestedFix }}</ins></div><div v-else class="text-change manual"><mark>{{ issue.originalText }}</mark><small>需人工修改</small></div>
+              <div v-if="issue.suggestedFix" class="text-change"><del>{{ issue.originalText }}</del><span>→</span><ins>{{ issue.suggestedFix }}</ins></div><div v-else class="text-change manual"><mark>{{ issue.originalText }}</mark><small>{{ suggestionOf(issue) ? `建议：${suggestionOf(issue)}` : '需人工修改' }}</small></div>
               <p>{{ issue.issueExplanation }}</p><small class="basis">检查来源：{{ sourceOf(issue) }}<template v-if="issue.ruleBasis"> · 依据：{{ issue.ruleBasis }}</template></small>
             </div>
-            <div v-if="issue.processingStatus === '待处理'" class="issue-actions" @click.stop><button v-if="selected.sourceSystem !== 'upload' && issue.autoFixAllowed && pendingGroup(issue).length > 1 && !content?.needsReview" type="button" @click="acceptGroup(issue)">采纳同组</button><button v-if="selected.sourceSystem !== 'upload' && issue.autoFixAllowed && !content?.needsReview" type="button" @click="handle(issue, 'accept')">采纳</button><button type="button" @click="handle(issue, 'ignore')">忽略</button><button type="button" @click="focusIssue(issue)">定位修改</button><button type="button" @click="handle(issue, 'transfer')">转人工</button></div>
+            <div v-if="issue.processingStatus === '待处理'" class="issue-actions" @click.stop><button v-if="selected.sourceSystem !== 'upload' && issue.autoFixAllowed && pendingGroup(issue).length > 1 && !content?.needsReview" type="button" @click="acceptGroup(issue)">采纳同组</button><button v-if="selected.sourceSystem !== 'upload' && issue.autoFixAllowed && !content?.needsReview" type="button" @click="handle(issue, 'accept')">采纳</button><button type="button" @click="handle(issue, 'ignore')">忽略</button><button type="button" @click="focusIssue(issue, true)">定位修改</button><button type="button" @click="handle(issue, 'transfer')">转人工</button></div>
             <div v-else class="processed-mark">{{ issue.processingStatus }}<small v-if="issue.processingNote">{{ issue.processingNote }}</small></div>
           </article>
             </section>
@@ -461,7 +440,6 @@ onMounted(load)
         <div v-else class="canvas-empty"><span>审</span><h2>选择文稿并发起审校</h2><p>审校结论按风险、层级和规则依据逐项呈现。</p></div>
       </div>
     </section>
-    <el-dialog v-model="planDialog" :title="editingPlanId ? '编辑审校方案' : '新建审校方案'" width="620px" class="task-dialog"><el-form label-position="top"><div class="form-pair"><el-form-item label="方案代码"><el-input v-model="planForm.planCode" :disabled="!!editingPlanId" /></el-form-item><el-form-item label="方案名称"><el-input v-model="planForm.planName" /></el-form-item></div><el-form-item label="适用场景"><el-input v-model="planForm.applicableScenarios" /></el-form-item><el-form-item label="检查范围"><el-checkbox-group v-model="planForm.reviewLevels"><el-checkbox v-for="category in BUSINESS_CATEGORIES" :key="category" :value="category">{{ category }}</el-checkbox></el-checkbox-group></el-form-item><el-form-item label="风险阈值"><el-select v-model="planForm.riskThreshold"><el-option v-for="level in ['提示','一般','重要','严重']" :key="level" :value="level" /></el-select></el-form-item><div class="review-plan-options"><el-checkbox v-model="planForm.checkAttachments">检查附件</el-checkbox><el-checkbox v-model="planForm.allowAutoFix">允许自动修复</el-checkbox><el-checkbox v-model="planForm.generateReport">生成报告</el-checkbox><el-checkbox v-model="planForm.allowExternalModel">允许外部模型</el-checkbox></div></el-form><template #footer><button class="secondary-button" type="button" @click="planDialog = false">取消</button><button class="primary-button" type="button" @click="savePlan">保存方案</button></template></el-dialog>
   </AppShell>
 </template>
 
@@ -496,7 +474,7 @@ onMounted(load)
 .review-paper-writing .review-block:not(.review-block-title):not(.review-block-table) p{font-family:'SimSun','Songti SC',serif;text-indent:2em;line-height:2;letter-spacing:.02em}
 .review-paper-writing .review-block-title p{font-family:'SimHei','Microsoft YaHei',sans-serif;font-size:22px;line-height:1.6}
 .review-block mark{padding:2px 0;background:#ffe38a;box-shadow:0 0 0 2px #ffe38a;color:#222}
-.review-edit-area{box-sizing:border-box;width:100%;min-height:100px;padding:10px;border:1px solid #d5dce5;border-radius:5px;background:#fff;color:#29313b;line-height:1.7;resize:vertical}
+.review-advice{margin:0 0 8px;padding:8px 10px;border-radius:5px;background:#f3f8ef;color:#2d5a1e;font-size:13px;line-height:1.6}.review-edit-area{box-sizing:border-box;width:100%;min-height:100px;padding:10px;border:1px solid #d5dce5;border-radius:5px;background:#fff;color:#29313b;line-height:1.7;resize:vertical}
 .review-table-edit{display:grid;gap:8px}.review-table-edit label{display:grid;gap:3px;color:#6b7280;font-size:12px}.review-table-edit input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #d5dce5;border-radius:5px;background:#fff;color:#29313b}
 .review-edit-actions{display:flex;gap:8px;margin-top:7px}.review-edit-actions button{padding:6px 11px;border:1px solid #d0d6de;border-radius:5px;background:#fff;color:#505a66;cursor:pointer}.review-edit-actions button:first-child{border-color:var(--red);background:var(--red);color:#fff}
 .review-issues-panel .review-filter-help{padding:10px 14px}.review-issues-panel .level-tabs{margin:4px 12px 12px;overflow:auto;white-space:nowrap}.review-issues-panel .level-tabs button{padding:8px 9px;font-size:12px}

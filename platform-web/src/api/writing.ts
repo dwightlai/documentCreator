@@ -1,5 +1,5 @@
 import { http, randomId, type ApiEnvelope } from './http'
-import { accessToken, usesOidc } from '@/auth/identity'
+import { authorizationHeader } from '@/auth/identity'
 
 export interface WritingTask {
   id: string
@@ -192,9 +192,7 @@ async function recoverPersistedStream(taskId:string,baselineVersion:number,onEve
 export async function streamDocumentSection(taskId:string,nodeId:string,instruction:string,onEvent:(event:string,data:Record<string,unknown>)=>void) {
   let baselineVersion=0
   try { baselineVersion=(await getWritingDocument(taskId)).currentVersion } catch { /* 首次生成尚无文稿。 */ }
-  const headers:Record<string,string>={'Content-Type':'application/json','X-Request-Id':randomId()}
-  if(usesOidc()) headers.Authorization=`Bearer ${await accessToken()}`
-  else { headers['X-Tenant-Id']=import.meta.env.VITE_TENANT_ID||'local-government';headers['X-User-Id']=import.meta.env.VITE_USER_ID||'local-user' }
+  const headers:Record<string,string>={'Content-Type':'application/json','X-Request-Id':randomId(), ...await authorizationHeader()}
   const base=import.meta.env.VITE_API_BASE_URL||'/api/v1'
   const response=await fetch(`${base}/writing-tasks/${taskId}/generate/section/stream`,{method:'POST',headers,body:JSON.stringify({outlineNodeId:nodeId,instruction})})
   if(!response.ok||!response.body) throw new Error(`流式生成请求失败（HTTP ${response.status}）`)
@@ -268,3 +266,13 @@ export interface OnlyOfficeStatus { enabled:boolean;documentServerUrl?:string }
 export interface OnlyOfficeEditorConfig { documentServerUrl:string;config:Record<string,unknown> }
 export const onlyOfficeStatus = () => data(http.get<ApiEnvelope<OnlyOfficeStatus>>('/onlyoffice/status'))
 export const typesetEditorConfig = (taskId:string,typesetId:string) => data(http.get<ApiEnvelope<OnlyOfficeEditorConfig>>(`/writing-tasks/${taskId}/document/typesets/${typesetId}/editor-config`))
+export interface DocumentSummary { brief:string;points:string[];modelVersion?:string }
+export interface AssistProposal { paragraphId:string;order:number;original:string;proposed:string }
+export interface AssistPreview { operation:string;scope:string;proposals:AssistProposal[];truncated:boolean }
+export interface FormatChange { paragraphId:string;order:number;original:string;proposed:string;reason:string }
+export const requestSummary = (taskId:string) => data(http.post<ApiEnvelope<DocumentSummary>>(`/writing-tasks/${taskId}/generate/summary`,{},{timeout:120000}))
+export const insertSummary = (taskId:string,text:string) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/generate/summary/insert`,{text}))
+export const requestAssistPreview = (taskId:string,payload:{operation:'润色'|'扩写';scope:'本节'|'全文';outlineNodeId?:string}) => data(http.post<ApiEnvelope<AssistPreview>>(`/writing-tasks/${taskId}/generate/assist-preview`,payload,{timeout:180000}))
+export const applyAssist = (taskId:string,items:{paragraphId:string;text:string}[]) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/generate/assist-apply`,{items}))
+export const requestFormatPreview = (taskId:string) => data(http.post<ApiEnvelope<{changes:FormatChange[]}>>(`/writing-tasks/${taskId}/generate/format-preview`))
+export const applyFormat = (taskId:string) => data(http.post<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/generate/format-apply`))
