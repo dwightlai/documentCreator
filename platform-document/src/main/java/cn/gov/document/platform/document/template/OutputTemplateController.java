@@ -29,12 +29,17 @@ public class OutputTemplateController {
     private static final MediaType DOCX =
             MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     private final OutputTemplateService service;
+    private final OutputTemplateExchangeService exchange;
     private final DocxFormatReviewService formatReviewService;
     private final DocxTemplateEngine engine;
 
     public OutputTemplateController(
-            OutputTemplateService service, DocxFormatReviewService formatReviewService, DocxTemplateEngine engine) {
+            OutputTemplateService service,
+            OutputTemplateExchangeService exchange,
+            DocxFormatReviewService formatReviewService,
+            DocxTemplateEngine engine) {
         this.service = service;
+        this.exchange = exchange;
         this.formatReviewService = formatReviewService;
         this.engine = engine;
     }
@@ -44,6 +49,19 @@ public class OutputTemplateController {
             @RequestParam(required = false) String documentTypeCode,
             @RequestParam(required = false) String lifecycleStatus) {
         return ApiResponse.success(service.list(documentTypeCode, lifecycleStatus));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<OutputTemplateExchangeDtos.Bundle> exportTemplates() {
+        return ApiResponse.success(exchange.exportTemplates());
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<OutputTemplateExchangeDtos.ImportResult> importTemplates(
+            @RequestBody OutputTemplateExchangeDtos.Bundle bundle) {
+        return ApiResponse.success(exchange.importTemplates(bundle));
     }
 
     @GetMapping("/standard-template")

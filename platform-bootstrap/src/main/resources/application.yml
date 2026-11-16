@@ -15,6 +15,9 @@ server:
   port: ${SERVER_PORT:18089}
   shutdown: graceful
   forward-headers-strategy: framework
+  tomcat:
+    max-http-form-post-size: 60MB
+    max-swallow-size: 60MB
 
 mybatis-plus:
   configuration:

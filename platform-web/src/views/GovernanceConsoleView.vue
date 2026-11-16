@@ -18,8 +18,13 @@ import {
   listAuditLogs,
   listDocumentTypes,
   listModelCallLogs,
+  exportModelConfigs,
+  exportPromptTemplates,
+  importModelConfigs,
+  importPromptTemplates,
   listModelConfigs,
   listPromptTemplates,
+  type ConfigImportResult,
   publishDocumentType,
   publishPromptTemplate,
   submitDocumentType,
@@ -146,6 +151,40 @@ function parseAuditDetail(detail?: string): { summary: string; durationMs?: numb
 }
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : '操作失败，请稍后重试'
+}
+function downloadJson(name: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function exportBundle(kind: 'models' | 'prompts') {
+  try {
+    downloadJson(kind === 'models' ? '模型路由' : '提示词模板', kind === 'models' ? await exportModelConfigs() : await exportPromptTemplates())
+    ElMessage.success('导出文件已生成')
+  } catch (error) { ElMessage.error(errorMessage(error)) }
+}
+async function importBundle(event: Event, kind: 'models' | 'prompts') {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    if (file.size > 5 * 1024 * 1024) { ElMessage.warning('JSON 文件不能超过 5 MB'); return }
+    let bundle: unknown
+    try { bundle = JSON.parse(await file.text()) } catch { ElMessage.error('文件不是有效的 JSON'); return }
+    const result: ConfigImportResult = kind === 'models' ? await importModelConfigs(bundle) : await importPromptTemplates(bundle)
+    if (kind === 'models') models.value = await listModelConfigs()
+    else prompts.value = await listPromptTemplates()
+    const details = result.skippedCodes.length ? `\n已存在并跳过：${result.skippedCodes.slice(0, 15).join('、')}${result.skippedCodes.length > 15 ? '等' : ''}` : ''
+    const draft = kind === 'prompts' ? '新增的提示词为草稿。' : ''
+    await ElMessageBox.alert(`共 ${result.total} 条，新增 ${result.imported}，跳过 ${result.skipped}。${draft}${details}`, '导入完成', { confirmButtonText: '知道了' })
+  } catch (error) { ElMessage.error(errorMessage(error)) }
+  finally { input.value = '' }
 }
 function statusTone(status: string) {
   return status === '生效' || status === '启用' ? 'success' : status === '审核' || status === '测试' ? 'warning' : status === '停用' ? 'muted' : 'draft'
@@ -364,7 +403,7 @@ onMounted(refreshAll)
       </nav>
 
       <section v-if="activePanel === 'models'" class="governance-panel">
-        <header class="panel-heading"><div><span class="section-no">模型路由</span><h3>模型端点与数据边界</h3><p>端点必须命中服务端白名单；凭据字段仅保存环境变量名称，不落库存储密钥。</p></div><button class="primary-button" type="button" @click="newModel">登记模型路由</button></header>
+        <header class="panel-heading"><div><span class="section-no">模型路由</span><h3>模型端点与数据边界</h3><p>端点必须命中服务端白名单；凭据字段仅保存环境变量名称，不落库存储密钥。已有代码在导入时跳过。</p></div><div class="panel-actions"><label class="exchange-file">导入<input type="file" accept=".json,application/json" @change="importBundle($event, 'models')"></label><button class="secondary-button" type="button" @click="exportBundle('models')">导出</button><button class="primary-button" type="button" @click="newModel">登记模型路由</button></div></header>
         <div class="model-grid">
           <article v-for="model in models" :key="model.id" class="model-card">
             <header><div><small>{{ model.provider }}</small><h4>{{ model.configName }}</h4></div><span class="status-chip" :data-tone="model.active ? 'success' : 'muted'">{{ model.active ? '启用' : '停用' }}</span></header>
@@ -377,7 +416,7 @@ onMounted(refreshAll)
       </section>
 
       <section v-else-if="activePanel === 'prompts'" class="governance-panel">
-        <header class="panel-heading"><div><span class="section-no">提示词模板</span><h3>提示词模板版本库</h3><p>完整提示词按版本固化，测试用于发现未解析变量，审核发布后才参与模型路由。</p></div><button class="primary-button" type="button" @click="newPrompt">新建提示词</button></header>
+        <header class="panel-heading"><div><span class="section-no">提示词模板</span><h3>提示词模板版本库</h3><p>完整提示词按版本固化，测试用于发现未解析变量，审核发布后才参与模型路由。导入后为草稿。</p></div><div class="panel-actions"><label class="exchange-file">导入<input type="file" accept=".json,application/json" @change="importBundle($event, 'prompts')"></label><button class="secondary-button" type="button" @click="exportBundle('prompts')">导出</button><button class="primary-button" type="button" @click="newPrompt">新建提示词</button></div></header>
         <div class="document-type-grid">
           <article v-for="item in prompts" :key="item.id">
             <header>
@@ -487,7 +526,7 @@ onMounted(refreshAll)
 .gate-item small,.gate-role small{color:var(--muted);font-size:13px;line-height:1.5}
 .gate-role{padding:16px 18px}
 .gate-role select{max-width:320px;margin-top:4px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
-.governance-console{padding:34px 42px 70px}.governance-hero{display:grid;grid-template-columns:1.25fr 1fr;gap:56px;padding:38px 42px;background:#17231e;color:#f4f0e8;position:relative;overflow:hidden}.governance-hero:after{content:"治";position:absolute;right:-24px;bottom:-92px;font:220px/1 sans-serif;color:rgba(255,255,255,.035)}.governance-intro h2{margin:18px 0 14px;font:500 38px/1.24 "Noto Sans SC",sans-serif;letter-spacing:-1px}.governance-intro h2 em{color:#d8b36a;font-style:normal}.governance-intro p{max-width:600px;color:#aebbb5;line-height:1.8}.governance-metrics{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid rgba(255,255,255,.13);z-index:1}.governance-metrics article{padding:22px;border-right:1px solid rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13);display:grid;grid-template-columns:1fr auto;align-items:end}.governance-metrics article:nth-child(even){border-right:0}.governance-metrics article:nth-child(n+3){border-bottom:0}.governance-metrics span{color:#8fa097;font-size:13px}.governance-metrics strong{font:500 34px/1 sans-serif}.governance-metrics small{grid-column:1/-1;color:#aebbb5;margin-top:12px}.governance-metrics .alert strong{color:#d8b36a}.governance-intro>.section-no{color:#f09a90}.governance-tabs{display:flex;border-bottom:1px solid #d8d3c8;margin:26px 0 0}.governance-tabs button{border:0;background:none;padding:18px 26px;color:#625f58;position:relative;cursor:pointer;font-size:14px}.governance-tabs button.active{color:#17231e;font-weight:700}.governance-tabs button i{position:absolute;height:2px;left:50%;right:50%;bottom:-1px;background:#a33c32;transition:.2s}.governance-tabs button.active i{left:20px;right:20px}.governance-panel{padding-top:32px}.panel-heading{display:flex;justify-content:space-between;gap:28px;align-items:flex-end;margin-bottom:24px}.panel-heading h3{font:500 28px/1.2 "Noto Sans SC",sans-serif;margin:9px 0}.panel-heading p{color:#625f58;margin:0;max-width:720px;line-height:1.7}.model-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.model-card{background:#fff;border:1px solid #ded9ce;padding:23px;min-height:280px;display:flex;flex-direction:column}.model-card header,.config-ledger article header,.document-type-grid article>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.model-card small,.config-ledger small,.document-type-grid small{color:#908b82}.model-card h4,.config-ledger h4,.document-type-grid h4{font:600 18px/1.3 "Noto Sans SC",sans-serif;margin:5px 0}.model-id{font-family:ui-monospace,monospace;font-size:14px;color:#a33c32;border-bottom:1px solid #ece8df;padding-bottom:18px}.model-card dl{display:grid;gap:10px;margin:4px 0 18px}.model-card dl div{display:flex;justify-content:space-between;gap:12px}.model-card dt,.document-type-grid dt{font-size:14px;color:#908b82}.model-card dd{font-size:14px;margin:0;text-align:right}.model-card footer{border-top:1px solid #ece8df;padding-top:13px;margin-top:auto;display:grid;gap:7px;font-size:13px;color:#908b82;word-break:break-all}.status-chip{font-size:13px;border:1px solid;padding:4px 9px;white-space:nowrap}.status-chip[data-tone=success]{color:#3e7159;border-color:#9ab6a8;background:#edf5f0}.status-chip[data-tone=warning]{color:#936b1f;border-color:#d7c18d;background:#fbf5e7}.status-chip[data-tone=muted]{color:#777;border-color:#ccc;background:#f3f2ef}.status-chip[data-tone=draft]{color:#7b5a55;border-color:#d5c0bb;background:#faf1ef}.config-ledger{border-top:1px solid #ccc6ba}.config-ledger>article{display:grid;grid-template-columns:70px 1fr 100px;gap:22px;padding:24px 0;border-bottom:1px solid #ded9ce}.ledger-index{font:500 25px/1 sans-serif;color:#b8b2a8}.ledger-main p{color:#595751;line-height:1.65;margin:10px 0}.ledger-main footer{display:flex;gap:22px;color:#908b82;font-size:13px}.ledger-main footer time{margin-left:auto}.ledger-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end}.ledger-actions button,.audit-filters button{border:1px solid #bdb7ab;background:#fff;padding:8px 11px;cursor:pointer;color:#56534c}.ledger-actions button.emphasis{background:#17231e;color:#fff;border-color:#17231e}.document-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.document-type-grid>article{background:#fff;border:1px solid #ded9ce;padding:24px}.type-monogram{width:45px;height:45px;background:#a33c32;color:#fff;display:grid;place-items:center;font:500 22px sans-serif;margin-right:12px}.document-type-grid article>header>div:nth-child(2){margin-right:auto}.document-type-grid article>p{color:#77736b;min-height:43px;line-height:1.6}.document-type-grid dl{display:grid;gap:13px;border-top:1px solid #ece8df;border-bottom:1px solid #ece8df;padding:16px 0}.document-type-grid dl div{display:grid;grid-template-columns:80px 1fr}.document-type-grid dd{margin:0;font-size:14px;line-height:1.6}.document-type-grid footer{display:flex;justify-content:space-between;align-items:center;padding-top:15px;color:#908b82;font-size:13px}.audit-filters{display:flex;gap:8px}.audit-filters input{border:1px solid #cfc9bd;background:#fff;padding:10px 12px;width:150px}.gov-table{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:auto}
+.governance-console{padding:34px 42px 70px}.governance-hero{display:grid;grid-template-columns:1.25fr 1fr;gap:56px;padding:38px 42px;background:#17231e;color:#f4f0e8;position:relative;overflow:hidden}.governance-hero:after{content:"治";position:absolute;right:-24px;bottom:-92px;font:220px/1 sans-serif;color:rgba(255,255,255,.035)}.governance-intro h2{margin:18px 0 14px;font:500 38px/1.24 "Noto Sans SC",sans-serif;letter-spacing:-1px}.governance-intro h2 em{color:#d8b36a;font-style:normal}.governance-intro p{max-width:600px;color:#aebbb5;line-height:1.8}.governance-metrics{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid rgba(255,255,255,.13);z-index:1}.governance-metrics article{padding:22px;border-right:1px solid rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13);display:grid;grid-template-columns:1fr auto;align-items:end}.governance-metrics article:nth-child(even){border-right:0}.governance-metrics article:nth-child(n+3){border-bottom:0}.governance-metrics span{color:#8fa097;font-size:13px}.governance-metrics strong{font:500 34px/1 sans-serif}.governance-metrics small{grid-column:1/-1;color:#aebbb5;margin-top:12px}.governance-metrics .alert strong{color:#d8b36a}.governance-intro>.section-no{color:#f09a90}.governance-tabs{display:flex;border-bottom:1px solid #d8d3c8;margin:26px 0 0}.governance-tabs button{border:0;background:none;padding:18px 26px;color:#625f58;position:relative;cursor:pointer;font-size:14px}.governance-tabs button.active{color:#17231e;font-weight:700}.governance-tabs button i{position:absolute;height:2px;left:50%;right:50%;bottom:-1px;background:#a33c32;transition:.2s}.governance-tabs button.active i{left:20px;right:20px}.governance-panel{padding-top:32px}.panel-heading{display:flex;justify-content:space-between;gap:28px;align-items:flex-end;margin-bottom:24px}.panel-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.exchange-file{min-height:38px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;color:var(--red);background:#fff;border:1px solid #e8aaa6;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:13px}.exchange-file input{display:none}.panel-heading h3{font:500 28px/1.2 "Noto Sans SC",sans-serif;margin:9px 0}.panel-heading p{color:#625f58;margin:0;max-width:720px;line-height:1.7}.model-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.model-card{background:#fff;border:1px solid #ded9ce;padding:23px;min-height:280px;display:flex;flex-direction:column}.model-card header,.config-ledger article header,.document-type-grid article>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.model-card small,.config-ledger small,.document-type-grid small{color:#908b82}.model-card h4,.config-ledger h4,.document-type-grid h4{font:600 18px/1.3 "Noto Sans SC",sans-serif;margin:5px 0}.model-id{font-family:ui-monospace,monospace;font-size:14px;color:#a33c32;border-bottom:1px solid #ece8df;padding-bottom:18px}.model-card dl{display:grid;gap:10px;margin:4px 0 18px}.model-card dl div{display:flex;justify-content:space-between;gap:12px}.model-card dt,.document-type-grid dt{font-size:14px;color:#908b82}.model-card dd{font-size:14px;margin:0;text-align:right}.model-card footer{border-top:1px solid #ece8df;padding-top:13px;margin-top:auto;display:grid;gap:7px;font-size:13px;color:#908b82;word-break:break-all}.status-chip{font-size:13px;border:1px solid;padding:4px 9px;white-space:nowrap}.status-chip[data-tone=success]{color:#3e7159;border-color:#9ab6a8;background:#edf5f0}.status-chip[data-tone=warning]{color:#936b1f;border-color:#d7c18d;background:#fbf5e7}.status-chip[data-tone=muted]{color:#777;border-color:#ccc;background:#f3f2ef}.status-chip[data-tone=draft]{color:#7b5a55;border-color:#d5c0bb;background:#faf1ef}.config-ledger{border-top:1px solid #ccc6ba}.config-ledger>article{display:grid;grid-template-columns:70px 1fr 100px;gap:22px;padding:24px 0;border-bottom:1px solid #ded9ce}.ledger-index{font:500 25px/1 sans-serif;color:#b8b2a8}.ledger-main p{color:#595751;line-height:1.65;margin:10px 0}.ledger-main footer{display:flex;gap:22px;color:#908b82;font-size:13px}.ledger-main footer time{margin-left:auto}.ledger-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end}.ledger-actions button,.audit-filters button{border:1px solid #bdb7ab;background:#fff;padding:8px 11px;cursor:pointer;color:#56534c}.ledger-actions button.emphasis{background:#17231e;color:#fff;border-color:#17231e}.document-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.document-type-grid>article{background:#fff;border:1px solid #ded9ce;padding:24px}.type-monogram{width:45px;height:45px;background:#a33c32;color:#fff;display:grid;place-items:center;font:500 22px sans-serif;margin-right:12px}.document-type-grid article>header>div:nth-child(2){margin-right:auto}.document-type-grid article>p{color:#77736b;min-height:43px;line-height:1.6}.document-type-grid dl{display:grid;gap:13px;border-top:1px solid #ece8df;border-bottom:1px solid #ece8df;padding:16px 0}.document-type-grid dl div{display:grid;grid-template-columns:80px 1fr}.document-type-grid dd{margin:0;font-size:14px;line-height:1.6}.document-type-grid footer{display:flex;justify-content:space-between;align-items:center;padding-top:15px;color:#908b82;font-size:13px}.audit-filters{display:flex;gap:8px}.audit-filters input{border:1px solid #cfc9bd;background:#fff;padding:10px 12px;width:150px}.gov-table{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:auto}
 .gov-table-head,.gov-table-row{display:grid;gap:12px;align-items:start;min-width:960px}
 .gov-table-head.call-cols,.gov-table-row.call-cols{grid-template-columns:140px minmax(120px,.9fr) 110px minmax(150px,1.1fr) minmax(150px,1.1fr) 96px 84px}
 .gov-table-head.audit-cols,.gov-table-row.audit-cols{grid-template-columns:140px minmax(160px,1fr) minmax(180px,1.1fr) 120px 84px 110px}

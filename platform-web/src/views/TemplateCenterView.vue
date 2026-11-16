@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell.vue'
 import { templateExample } from '@/data/templateExample'
 import { listDocumentTypes, type DocumentTypeConfig } from '@/api/governance'
 import { useDict } from '@/composables/useDict'
-import { createOutputTemplate, deleteOutputTemplate, downloadCompleteExample, downloadOutputTemplate, downloadStandardTemplate, listOutputTemplates, listTemplateUsages, listTemplateVersions, previewOutputTemplate, publishOutputTemplate, replaceOutputTemplateFile, testOutputTemplate, updateOutputTemplate, type OutputTemplate, type TemplatePreviewBlock, type TemplateUsage, type TemplateVersion } from '@/api/templates'
+import { createOutputTemplate, deleteOutputTemplate, downloadCompleteExample, downloadOutputTemplate, downloadStandardTemplate, exportOutputTemplates, importOutputTemplates, listOutputTemplates, listTemplateUsages, listTemplateVersions, previewOutputTemplate, publishOutputTemplate, replaceOutputTemplateFile, testOutputTemplate, updateOutputTemplate, type OutputTemplate, type TemplateImportResult, type TemplatePreviewBlock, type TemplateUsage, type TemplateVersion } from '@/api/templates'
 const { options: directionOptions } = useDict('document_direction', ['上行', '下行', '平行', '内部'])
 
 const templates = ref<OutputTemplate[]>([])
@@ -75,6 +75,36 @@ function saveDocx(blob: Blob, filename: string) {
 async function getCompleteExample() {
   try { saveDocx(await downloadCompleteExample(), '完整请示示例.docx'); ElMessage.success('完整公文示例已开始下载') }
   catch (error) { fail(error, '示例公文下载失败') }
+}
+function downloadJson(name: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function exportTemplates() {
+  try { downloadJson('输出模板', await exportOutputTemplates()); ElMessage.success('导出文件已生成') }
+  catch (error) { fail(error, '导出失败') }
+}
+async function importTemplates(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    if (file.size > 40 * 1024 * 1024) { ElMessage.warning('JSON 文件不能超过 40 MB'); return }
+    let bundle: unknown
+    try { bundle = JSON.parse(await file.text()) } catch { ElMessage.error('文件不是有效的 JSON'); return }
+    const result: TemplateImportResult = await importOutputTemplates(bundle)
+    await load()
+    const details = result.skippedCodes.length ? `\n已存在并跳过：${result.skippedCodes.slice(0, 15).join('、')}${result.skippedCodes.length > 15 ? '等' : ''}` : ''
+    await ElMessageBox.alert(`共 ${result.total} 个，新增 ${result.imported}，跳过 ${result.skipped}。新增的模板为草稿。${details}`, '导入完成', { confirmButtonText: '知道了' })
+  } catch (error) { fail(error, '导入失败') }
+  finally { input.value = '' }
 }
 async function getStandardTemplate() {
   try { saveDocx(await downloadStandardTemplate(), '请示输出模板.docx'); ElMessage.success('示例模板已开始下载') }
@@ -171,7 +201,7 @@ onMounted(load)
     <section class="template-center" v-loading="loading">
       <header class="template-hero">
         <div><h2>输出模板</h2><p>上传、预览并测试 DOCX 模板，通过模拟填充后发布。</p></div>
-        <div class="template-hero-actions"><button class="secondary-button" type="button" @click="exampleDialog = true">查看完整公文示例</button><button class="primary-button" type="button" @click="dialog = true">上传 DOCX 模板</button></div>
+        <div class="template-hero-actions"><label class="exchange-file">导入模板<input type="file" accept=".json,application/json" @change="importTemplates"></label><button class="secondary-button" type="button" @click="exportTemplates">导出模板</button><button class="secondary-button" type="button" @click="exampleDialog = true">查看完整公文示例</button><button class="primary-button" type="button" @click="dialog = true">上传 DOCX 模板</button></div>
       </header>
 
       <div class="template-grid">
@@ -226,7 +256,7 @@ onMounted(load)
 .template-hero{min-height:170px}.template-guide{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.template-guide>div{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:10px}.template-guide b{grid-row:1/3;color:var(--red);font-size:20px}.template-guide strong{font-size:14px}.template-guide span{font-size:12px;color:var(--muted);line-height:1.55}.template-guide code{color:var(--red)}
 .template-example{padding:24px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.template-example>header{display:flex;justify-content:space-between;gap:20px;align-items:start}.template-example h3{margin:6px 0;font-size:20px}.template-example>header p,.template-example-note{margin:0;color:var(--muted);font-size:13px;line-height:1.7}.template-example-badge{padding:5px 10px;background:var(--red-soft);color:var(--red);font-size:12px;white-space:nowrap}
 .template-example-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.template-hero-actions,.template-quick-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.template-grid{margin-top:12px}.template-quick-actions{margin:12px 0 16px}.template-delete{margin-left:auto;border:1px solid #e7b4ae;background:#fff;color:var(--red);border-radius:7px;padding:8px 14px;cursor:pointer}.template-delete:hover{background:var(--red-soft)}
+.template-hero-actions,.template-quick-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.exchange-file{min-height:38px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;color:var(--red);background:#fff;border:1px solid #e8aaa6;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:13px}.exchange-file input{display:none}.template-grid{margin-top:12px}.template-quick-actions{margin:12px 0 16px}.template-delete{margin-left:auto;border:1px solid #e7b4ae;background:#fff;color:var(--red);border-radius:7px;padding:8px 14px;cursor:pointer}.template-delete:hover{background:var(--red-soft)}
 .template-dialog-scroll{max-height:calc(100vh - 230px);overflow-y:auto}.template-example-dialog .template-example{border:0;box-shadow:none;padding:0}.template-preview-note{color:var(--muted);font-size:13px;margin:0 0 12px}.template-preview-paper{max-width:740px;min-height:380px;margin:auto;padding:48px 56px;border:1px solid #dad6ce;background:#fffdf9;box-shadow:0 8px 24px rgba(35,40,50,.08);font-family:'Noto Serif SC','SimSun',serif;line-height:1.8;white-space:pre-wrap}.template-preview-paper p{margin:0 0 12px}.template-preview-paper table{width:100%;border-collapse:collapse;margin:16px 0}.template-preview-paper td{border:1px solid #aaa;padding:7px}
 .example-paper{max-width:780px;margin:20px auto 14px;padding:42px 55px 32px;background:#fffdf9;border:1px solid #d9d4cb;box-shadow:0 8px 24px rgba(35,40,50,.08);font-family:'Noto Serif SC','SimSun',serif;color:#222;line-height:1.85}.example-sender{text-align:center;color:#c4322d;font-size:26px;font-weight:700;letter-spacing:5px}.example-doc-number{margin:22px 0 28px;padding-bottom:8px;border-bottom:2px solid #c4322d;text-align:center;font-size:14px}.example-doc-number span{margin-left:34px}.example-paper h4{margin:0 0 22px;text-align:center;font-size:22px;line-height:1.55}.example-recipient{margin:0 0 10px}.example-body{margin:0 0 12px;text-indent:2em}.example-attachment{margin:20px 0 28px}.example-date{text-align:right;margin:0 28px 30px 0}.example-imprint{border-top:1px solid #222;border-bottom:1px solid #222;font-size:13px}.example-imprint p{margin:0;padding:4px 0}.example-imprint p+p{border-top:1px solid #888;display:flex;justify-content:space-between}.template-example-note{max-width:900px;margin:auto}.template-example-note code{padding:1px 4px;background:#f5eee9;color:var(--red)}.template-field-hint{font-size:12px;line-height:1.7;color:var(--muted)}
 @media(max-width:1000px){.template-guide{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.template-guide{grid-template-columns:1fr}.template-example{padding:18px}.example-paper{padding:28px 20px}.example-sender{font-size:20px}.example-paper h4{font-size:18px}.example-doc-number span{margin-left:12px}}

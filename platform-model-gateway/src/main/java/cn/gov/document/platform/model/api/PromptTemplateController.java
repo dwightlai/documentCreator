@@ -1,6 +1,7 @@
 package cn.gov.document.platform.model.api;
 
 import cn.gov.document.platform.common.api.ApiResponse;
+import cn.gov.document.platform.model.application.ModelDataExchangeService;
 import cn.gov.document.platform.model.application.PromptTemplateService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -12,9 +13,22 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('platform.admin')")
 public class PromptTemplateController {
     private final PromptTemplateService service;
+    private final ModelDataExchangeService exchange;
 
-    public PromptTemplateController(PromptTemplateService service) {
+    public PromptTemplateController(PromptTemplateService service, ModelDataExchangeService exchange) {
         this.service = service;
+        this.exchange = exchange;
+    }
+
+    @GetMapping("/export")
+    ApiResponse<ModelDataExchangeDtos.PromptBundle> export() {
+        return ApiResponse.success(exchange.exportPrompts());
+    }
+
+    @PostMapping("/import")
+    ApiResponse<ModelDataExchangeDtos.ImportResult> importTemplates(
+            @RequestBody ModelDataExchangeDtos.PromptBundle bundle) {
+        return ApiResponse.success(exchange.importPrompts(bundle));
     }
 
     @GetMapping

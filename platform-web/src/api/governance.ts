@@ -148,6 +148,11 @@ export interface ConfigurationTestResult {
 
 const data = async <T>(request: Promise<{ data: ApiEnvelope<T> }>) => (await request).data.data
 
+export interface ConfigImportResult { total: number; imported: number; skipped: number; skippedCodes: string[] }
+export const exportModelConfigs = () => data(http.get<ApiEnvelope<unknown>>('/model-configs/export'))
+export const importModelConfigs = (bundle: unknown) => data(http.post<ApiEnvelope<ConfigImportResult>>('/model-configs/import', bundle))
+export const exportPromptTemplates = () => data(http.get<ApiEnvelope<unknown>>('/prompt-templates/export'))
+export const importPromptTemplates = (bundle: unknown) => data(http.post<ApiEnvelope<ConfigImportResult>>('/prompt-templates/import', bundle))
 export const listModelConfigs = () => data(http.get<ApiEnvelope<ModelConfig[]>>('/model-configs'))
 export const createModelConfig = (input: ModelConfigInput) => data(http.post<ApiEnvelope<ModelConfig>>('/model-configs', input))
 export const getModelConfig = (id: string) => data(http.get<ApiEnvelope<ModelConfig>>(`/model-configs/${encodeURIComponent(id)}`))

@@ -10,6 +10,9 @@ export interface TemplateVersion { id:string;versionNumber:number;templateFileHa
 export interface TemplatePreviewBlock { type:'paragraph'|'table';text?:string;align?:string;fontSize?:number;bold:boolean;color?:string;rows?:string[][] }
 const data=async<T>(request:Promise<{data:ApiEnvelope<T>}>)=>(await request).data.data
 export interface TemplateUsage { kind:string;refId:string;title:string;status:string }
+export interface TemplateImportResult { total: number; imported: number; skipped: number; skippedCodes: string[] }
+export const exportOutputTemplates=()=>data(http.get<ApiEnvelope<unknown>>('/output-templates/export'))
+export const importOutputTemplates=(bundle: unknown)=>data(http.post<ApiEnvelope<TemplateImportResult>>('/output-templates/import', bundle))
 export const listOutputTemplates=()=>data(http.get<ApiEnvelope<OutputTemplate[]>>('/output-templates'))
 export const listTemplateVersions=(id:string)=>data(http.get<ApiEnvelope<TemplateVersion[]>>(`/output-templates/${id}/versions`))
 export const listTemplateUsages=(id:string)=>data(http.get<ApiEnvelope<TemplateUsage[]>>(`/output-templates/${id}/usages`))

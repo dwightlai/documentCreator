@@ -1,6 +1,7 @@
 package cn.gov.document.platform.model.api;
 
 import cn.gov.document.platform.common.api.ApiResponse;
+import cn.gov.document.platform.model.application.ModelDataExchangeService;
 import cn.gov.document.platform.model.application.ModelGatewayService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -10,15 +11,30 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class ModelGatewayController {
     private final ModelGatewayService service;
+    private final ModelDataExchangeService exchange;
 
-    public ModelGatewayController(ModelGatewayService service) {
+    public ModelGatewayController(ModelGatewayService service, ModelDataExchangeService exchange) {
         this.service = service;
+        this.exchange = exchange;
     }
 
     @GetMapping("/api/v1/model-configs")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<List<ModelDtos.ConfigResponse>> configs(@RequestParam(required = false) String scene) {
         return ApiResponse.success(service.configs(scene));
+    }
+
+    @GetMapping("/api/v1/model-configs/export")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<ModelDataExchangeDtos.ModelBundle> exportConfigs() {
+        return ApiResponse.success(exchange.exportModels());
+    }
+
+    @PostMapping("/api/v1/model-configs/import")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<ModelDataExchangeDtos.ImportResult> importConfigs(
+            @RequestBody ModelDataExchangeDtos.ModelBundle bundle) {
+        return ApiResponse.success(exchange.importModels(bundle));
     }
 
     @PostMapping("/api/v1/model-configs")
