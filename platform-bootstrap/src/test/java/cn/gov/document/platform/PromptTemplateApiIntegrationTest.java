@@ -40,7 +40,7 @@ class PromptTemplateApiIntegrationTest {
              "modelParameters":{"temperature":0.2,"top_p":0.8},"testSampleIds":["sample-001"],"changeDescription":"初始版本"}
             """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.lifecycleStatus").value("草稿"))
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"))
                 .andExpect(jsonPath("$.data.modelParameters.temperature").value(0.2))
                 .andReturn()
                 .getResponse()
@@ -49,7 +49,8 @@ class PromptTemplateApiIntegrationTest {
         mockMvc.perform(post("/api/v1/prompt-templates/{id}/publish", id)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "prompt-admin"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"));
         mockMvc.perform(post("/api/v1/prompt-templates/{id}/test", id)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "prompt-admin")
@@ -70,7 +71,7 @@ class PromptTemplateApiIntegrationTest {
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "prompt-admin"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.lifecycleStatus").value("审核"));
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"));
         mockMvc.perform(post("/api/v1/prompt-templates/{id}/publish", id)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "approver"))
@@ -80,7 +81,6 @@ class PromptTemplateApiIntegrationTest {
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "prompt-admin"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].approvedBy").value("approver"))
                 .andExpect(jsonPath("$.data[0].testResults").value(org.hamcrest.Matchers.containsString("promptHash")));
         mockMvc.perform(get("/api/v1/prompt-templates")
                         .header("X-Tenant-Id", "other-prompt-tenant")

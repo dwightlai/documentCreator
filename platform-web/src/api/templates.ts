@@ -23,6 +23,8 @@ export const createOutputTemplate=(file:File,metadata:{templateCode:string;templ
 export const updateOutputTemplate=(id:string,metadata:Pick<OutputTemplate,'templateName'|'documentTypeCode'|'hasRedHeader'|'hasFooterMark'|'direction'|'description'|'lockVersion'>)=>data(http.put<ApiEnvelope<OutputTemplate>>(`/output-templates/${id}`,metadata))
 export const replaceOutputTemplateFile=(id:string,file:File,changeNote:string)=>{const form=new FormData();form.append('file',file);return data(http.put<ApiEnvelope<OutputTemplate>>(`/output-templates/${id}/file`,form,{params:{changeNote}}))}
 export const publishOutputTemplate=(id:string)=>data(http.post<ApiEnvelope<OutputTemplate>>(`/output-templates/${id}/publish`,undefined,{headers:{'Idempotency-Key':`template-publish-${id}`}}))
+export const activateOutputTemplate=(id:string)=>data(http.post<ApiEnvelope<OutputTemplate>>(`/output-templates/${id}/activate`))
+export const deactivateOutputTemplate=(id:string)=>data(http.post<ApiEnvelope<OutputTemplate>>(`/output-templates/${id}/deactivate`))
 export const testOutputTemplate=async(id:string)=>{const response=await http.post<Blob>(`/output-templates/${id}/test`,{values:templateExampleValues,sections:[...templateExample.paragraphs]},{responseType:'blob',headers:{'Idempotency-Key':`template-test-${randomId()}`}});return response.data}
 export const downloadStandardTemplate=async()=>{const response=await http.get<Blob>('/output-templates/standard-template',{responseType:'blob'});return response.data}
 export const downloadCompleteExample=async()=>{const response=await http.post<Blob>('/output-templates/complete-example',{values:templateExampleValues,sections:[...templateExample.paragraphs]},{responseType:'blob'});return response.data}

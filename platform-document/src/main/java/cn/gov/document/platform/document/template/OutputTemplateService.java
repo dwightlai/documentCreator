@@ -138,12 +138,12 @@ public class OutputTemplateService implements OutputTemplatePort {
                 metadata.direction(),
                 metadata.description());
         entity.setCurrentVersion(1);
-        entity.setLifecycleStatus("草稿");
+        entity.setLifecycleStatus("生效");
         entity.setTemplateFileHash(inspection.fileHash());
         entity.setPlaceholderMap(writePlaceholderMap(inspection.placeholders()));
         entity.setTemplateFilePath(fileStore.write(entity.getId(), 1, bytes));
         mapper.insert(entity);
-        insertVersion(entity, "初始上传", "草稿", null, null);
+        insertVersion(entity, "初始上传", "生效", null, null);
         return response(entity);
     }
 
@@ -175,9 +175,9 @@ public class OutputTemplateService implements OutputTemplatePort {
         entity.setTemplateFilePath(fileStore.write(id, version, bytes));
         entity.setTemplateFileHash(inspection.fileHash());
         entity.setPlaceholderMap(writePlaceholderMap(inspection.placeholders()));
-        entity.setLifecycleStatus("草稿");
+        entity.setLifecycleStatus("停用".equals(entity.getLifecycleStatus()) ? "停用" : "生效");
         mapper.updateById(entity);
-        insertVersion(entity, changeNote, "草稿", null, null);
+        insertVersion(entity, changeNote, entity.getLifecycleStatus(), null, null);
         return response(entity);
     }
 
@@ -194,23 +194,17 @@ public class OutputTemplateService implements OutputTemplatePort {
     @Transactional
     public byte[] test(String id, OutputTemplateDtos.RenderRequest request) {
         OutputTemplateEntity entity = require(id);
-        byte[] rendered = engine.render(
+        return engine.render(
                 fileStore.read(entity.getTemplateFilePath()),
                 request.values() == null ? Map.of() : request.values(),
                 request.sections() == null ? List.of() : request.sections());
-        entity.setLifecycleStatus("测试");
-        mapper.updateById(entity);
-        OutputTemplateVersionEntity version = currentVersion(id, entity.getCurrentVersion());
-        version.setLifecycleStatus("测试");
-        versionMapper.updateById(version);
-        return rendered;
     }
 
     @Transactional
     public OutputTemplateDtos.Response publish(String id) {
         OutputTemplateEntity entity = require(id);
-        if (!"测试".equals(entity.getLifecycleStatus())) {
-            throw BusinessException.unprocessable("输出模板必须先通过模拟填充测试才能发布");
+        if ("停用".equals(entity.getLifecycleStatus())) {
+            throw BusinessException.unprocessable("停用的输出模板不能发布");
         }
         DocxTemplateEngine.Inspection inspection =
                 inspectValid("template.docx", fileStore.read(entity.getTemplateFilePath()));
@@ -336,6 +330,24 @@ public class OutputTemplateService implements OutputTemplatePort {
                 tenant,
                 id));
         return items;
+    }
+
+    @Transactional
+    public OutputTemplateDtos.Response activate(String id) {
+        OutputTemplateEntity entity = require(id);
+        if (!"停用".equals(entity.getLifecycleStatus())) throw BusinessException.conflict("只有停用输出模板可以启用");
+        entity.setLifecycleStatus("生效");
+        mapper.updateById(entity);
+        return response(entity);
+    }
+
+    @Transactional
+    public OutputTemplateDtos.Response deactivate(String id) {
+        OutputTemplateEntity entity = require(id);
+        if (!"生效".equals(entity.getLifecycleStatus())) throw BusinessException.conflict("只有生效输出模板可以停用");
+        entity.setLifecycleStatus("停用");
+        mapper.updateById(entity);
+        return response(entity);
     }
 
     @Transactional

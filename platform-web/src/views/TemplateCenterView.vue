@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell.vue'
 import { templateExample } from '@/data/templateExample'
 import { listDocumentTypes, type DocumentTypeConfig } from '@/api/governance'
 import { useDict } from '@/composables/useDict'
-import { createOutputTemplate, deleteOutputTemplate, downloadCompleteExample, downloadOutputTemplate, downloadStandardTemplate, exportOutputTemplates, importOutputTemplates, listOutputTemplates, listTemplateUsages, listTemplateVersions, previewOutputTemplate, publishOutputTemplate, replaceOutputTemplateFile, testOutputTemplate, updateOutputTemplate, type OutputTemplate, type TemplateImportResult, type TemplatePreviewBlock, type TemplateUsage, type TemplateVersion } from '@/api/templates'
+import { activateOutputTemplate, createOutputTemplate, deactivateOutputTemplate, deleteOutputTemplate, downloadCompleteExample, downloadOutputTemplate, downloadStandardTemplate, exportOutputTemplates, importOutputTemplates, listOutputTemplates, listTemplateUsages, listTemplateVersions, previewOutputTemplate, replaceOutputTemplateFile, testOutputTemplate, updateOutputTemplate, type OutputTemplate, type TemplateImportResult, type TemplatePreviewBlock, type TemplateUsage, type TemplateVersion } from '@/api/templates'
 const { options: directionOptions } = useDict('document_direction', ['上行', '下行', '平行', '内部'])
 
 const templates = ref<OutputTemplate[]>([])
@@ -57,7 +57,7 @@ async function replaceFile() {
     const updated = await replaceOutputTemplateFile(item.id, replacementFile.value, changeNote.value)
     templates.value = templates.value.map(value => value.id === updated.id ? updated : value)
     await loadVersions(); replaceDialog.value = false; replacementFile.value = undefined
-    ElMessage.success('模板文件已更新，请重新测试后发布')
+    ElMessage.success('模板文件已更新')
   } catch (error) { fail(error, '模板文件更新失败') }
 }
 
@@ -102,7 +102,7 @@ async function importTemplates(event: Event) {
     const result: TemplateImportResult = await importOutputTemplates(bundle)
     await load()
     const details = result.skippedCodes.length ? `\n已存在并跳过：${result.skippedCodes.slice(0, 15).join('、')}${result.skippedCodes.length > 15 ? '等' : ''}` : ''
-    await ElMessageBox.alert(`共 ${result.total} 个，新增 ${result.imported}，跳过 ${result.skipped}。新增的模板为草稿。${details}`, '导入完成', { confirmButtonText: '知道了' })
+    await ElMessageBox.alert(`共 ${result.total} 个，新增 ${result.imported}，跳过 ${result.skipped}。${details}`, '导入完成', { confirmButtonText: '知道了' })
   } catch (error) { fail(error, '导入失败') }
   finally { input.value = '' }
 }
@@ -178,15 +178,14 @@ async function test() {
     ElMessage.success('已用上方完整示例填充模板并下载 DOCX')
   } catch (error) { fail(error, '模拟填充失败') }
 }
-async function publish() {
+async function setStatus(action: 'activate' | 'deactivate') {
   if (!selected.value) return
   try {
-    const updated = await publishOutputTemplate(selected.value.id)
+    const updated = action === 'activate' ? await activateOutputTemplate(selected.value.id) : await deactivateOutputTemplate(selected.value.id)
     const index = templates.value.findIndex((item) => item.id === updated.id)
     templates.value[index] = updated
-    await loadVersions()
-    ElMessage.success('模板已发布生效')
-  } catch (error) { fail(error, '模板发布失败') }
+    ElMessage.success(action === 'activate' ? '模板已启用' : '模板已停用')
+  } catch (error) { fail(error, '状态更新失败') }
 }
 watch(selectedId, () => {
   loadVersions().catch((error) => fail(error, '版本加载失败'))
@@ -200,7 +199,7 @@ onMounted(load)
     <template #title>输出模板中心</template>
     <section class="template-center" v-loading="loading">
       <header class="template-hero">
-        <div><h2>输出模板</h2><p>上传、预览并测试 DOCX 模板，通过模拟填充后发布。</p></div>
+        <div><h2>输出模板</h2><p>上传并维护 DOCX 模板。生效后可用于套红，停用后不再选用。</p></div>
         <div class="template-hero-actions"><label class="exchange-file">导入模板<input type="file" accept=".json,application/json" @change="importTemplates"></label><button class="secondary-button" type="button" @click="exportTemplates">导出模板</button><button class="secondary-button" type="button" @click="exampleDialog = true">查看完整公文示例</button><button class="primary-button" type="button" @click="dialog = true">上传 DOCX 模板</button></div>
       </header>
 
@@ -208,7 +207,7 @@ onMounted(load)
         <aside class="template-list"><header><span class="section-no">已上传模板</span><b>{{ templates.length }}</b></header><button v-for="item in templates" :key="item.id" type="button" :class="{ active: item.id === selectedId }" @click="selectedId = item.id"><span>{{ item.documentTypeCode.slice(0, 1) }}</span><div><strong>{{ item.templateName }}</strong><small>{{ item.templateCode }} · V{{ item.currentVersion }}</small></div><i :data-status="item.lifecycleStatus">{{ item.lifecycleStatus }}</i></button><div v-if="!templates.length" class="governance-empty">尚未上传输出模板。</div></aside>
         <main v-if="selected" class="template-detail">
           <header><div><span class="section-no">{{ selected.direction || '通用' }} / {{ selected.documentTypeCode }}</span><h3>{{ selected.templateName }}</h3><p>{{ selected.description }}</p></div><b :data-status="selected.lifecycleStatus">{{ selected.lifecycleStatus }}</b></header>
-          <div class="template-quick-actions"><button class="primary-button" type="button" @click="preview">预览原模板</button><button class="secondary-button" type="button" @click="downloadOriginal">下载原模板</button><button class="secondary-button" type="button" @click="openEdit">编辑信息</button><button class="secondary-button" type="button" @click="replaceDialog = true">更新 DOCX</button><button class="secondary-button" type="button" @click="test">模拟填充并下载</button><button class="template-delete" type="button" @click="remove">删除模板</button></div>
+          <div class="template-quick-actions"><button class="primary-button" type="button" @click="preview">预览原模板</button><button class="secondary-button" type="button" @click="downloadOriginal">下载原模板</button><button class="secondary-button" type="button" @click="openEdit">编辑信息</button><button class="secondary-button" type="button" @click="replaceDialog = true">更新 DOCX</button><button class="secondary-button" type="button" @click="test">模拟填充并下载</button><button v-if="selected.lifecycleStatus === '生效'" class="secondary-button" type="button" @click="setStatus('deactivate')">停用</button><button v-if="selected.lifecycleStatus === '停用'" class="secondary-button" type="button" @click="setStatus('activate')">启用</button><button class="template-delete" type="button" @click="remove">删除模板</button></div>
           <dl class="template-meta"><div><dt>当前版本</dt><dd>V{{ selected.currentVersion }}</dd></div><div><dt>红色版头</dt><dd>{{ selected.hasRedHeader ? '包含' : '不包含' }}</dd></div><div><dt>版记区域</dt><dd>{{ selected.hasFooterMark ? '包含' : '不包含' }}</dd></div><div><dt>文件指纹</dt><dd><code>{{ selected.templateFileHash.slice(0, 12) }}…</code></dd></div></dl>
           <section class="placeholder-sheet"><header><span class="section-no">模板字段</span><h4>占位符映射</h4></header><div><article v-for="(meaning, key) in selected.placeholderMap" :key="key"><code>{{ key }}</code><span>{{ meaning }}</span></article></div></section>
           <p class="template-field-hint">上方只列出当前 DOCX 实际包含的字段。缺少发文机关、文号等字段时，模拟填充也不会自动增加这些内容。</p>
@@ -216,8 +215,7 @@ onMounted(load)
             <article v-for="usage in usages" :key="usage.kind + usage.refId"><b>{{ usage.kind }}</b><div><strong>{{ usage.title }}</strong><small>{{ usage.status }} · {{ usage.refId }}</small></div></article>
             <div v-if="!usages.length" class="governance-empty">当前没有写作/审校任务或套红定稿引用此模板，可以删除。</div>
           </section>
-          <section class="template-versions"><header><span class="section-no">版本记录</span><h4>文件与发布记录</h4></header><article v-for="version in versions" :key="version.id"><b>V{{ version.versionNumber }}</b><div><strong>{{ version.changeNote }}</strong><small>{{ version.lifecycleStatus }} · {{ new Date(version.createdAt).toLocaleString('zh-CN', { hour12: false }) }}</small></div><span>{{ version.approvedBy || '待审批' }}</span></article></section>
-          <footer><button v-if="selected.lifecycleStatus === '测试'" class="primary-button" type="button" @click="publish">发布生效</button><span v-else-if="selected.lifecycleStatus === '草稿'">请先下载并检查模拟填充结果</span></footer>
+          <section class="template-versions"><header><span class="section-no">版本记录</span><h4>文件记录</h4></header><article v-for="version in versions" :key="version.id"><b>V{{ version.versionNumber }}</b><div><strong>{{ version.changeNote }}</strong><small>{{ version.lifecycleStatus }} · {{ new Date(version.createdAt).toLocaleString('zh-CN', { hour12: false }) }}</small></div><span>{{ version.approvedBy || '—' }}</span></article></section>
         </main>
         <main v-else class="template-detail template-empty">上传一份 DOCX 模板后，可预览原文件并用完整公文示例进行模拟填充。</main>
       </div>
@@ -248,7 +246,7 @@ onMounted(load)
     </el-dialog>
     <el-dialog v-model="dialog" title="上传输出模板" width="620px" class="task-dialog"><el-form label-position="top"><div class="form-pair"><el-form-item label="模板代码"><el-input v-model="form.templateCode" /></el-form-item><el-form-item label="模板名称"><el-input v-model="form.templateName" /></el-form-item></div><div class="form-pair"><el-form-item label="适用文种"><el-select v-model="form.documentTypeCode"><el-option v-for="value in documentTypeOptions" :key="value" :label="value" :value="value" /></el-select></el-form-item><el-form-item label="行文方向"><el-select v-model="form.direction"><el-option v-for="value in directionOptions" :key="value" :value="value" /></el-select></el-form-item></div><el-form-item label="DOCX 文件"><input type="file" accept=".docx" @change="file = ($event.target as HTMLInputElement).files?.[0]" /></el-form-item><el-form-item label="说明"><el-input v-model="form.description" type="textarea" /></el-form-item><div class="form-pair"><el-checkbox v-model="form.hasRedHeader">包含红色版头</el-checkbox><el-checkbox v-model="form.hasFooterMark">包含版记区域</el-checkbox></div></el-form><template #footer><button class="secondary-button" type="button" @click="dialog = false">取消</button><button class="primary-button" type="button" @click="create">上传并检查</button></template></el-dialog>
     <el-dialog v-model="editDialog" title="编辑输出模板信息" width="560px" class="task-dialog"><el-form label-position="top"><div class="form-pair"><el-form-item label="模板名称"><el-input v-model="editForm.templateName" /></el-form-item><el-form-item label="适用文种"><el-select v-model="editForm.documentTypeCode"><el-option v-for="value in documentTypeOptions" :key="value" :label="value" :value="value" /></el-select></el-form-item></div><el-form-item label="行文方向"><el-select v-model="editForm.direction"><el-option v-for="value in directionOptions" :key="value" :value="value" /></el-select></el-form-item><el-form-item label="说明"><el-input v-model="editForm.description" type="textarea" /></el-form-item><el-checkbox v-model="editForm.hasRedHeader">包含红色版头</el-checkbox><el-checkbox v-model="editForm.hasFooterMark">包含版记区域</el-checkbox></el-form><template #footer><button class="secondary-button" type="button" @click="editDialog = false">取消</button><button class="primary-button" type="button" @click="saveEdit">保存修改</button></template></el-dialog>
-    <el-dialog v-model="replaceDialog" title="更新 DOCX 模板文件" width="520px" class="task-dialog"><p>上传新文件将形成新版本，发布前需要重新模拟填充并核对。</p><input type="file" accept=".docx" @change="replacementFile = ($event.target as HTMLInputElement).files?.[0]" /><el-form-item label="变更说明"><el-input v-model="changeNote" /></el-form-item><template #footer><button class="secondary-button" type="button" @click="replaceDialog = false">取消</button><button class="primary-button" type="button" @click="replaceFile">更新文件</button></template></el-dialog>
+    <el-dialog v-model="replaceDialog" title="更新 DOCX 模板文件" width="520px" class="task-dialog"><p>上传新文件将形成新版本，当前生效或停用状态保持不变。</p><input type="file" accept=".docx" @change="replacementFile = ($event.target as HTMLInputElement).files?.[0]" /><el-form-item label="变更说明"><el-input v-model="changeNote" /></el-form-item><template #footer><button class="secondary-button" type="button" @click="replaceDialog = false">取消</button><button class="primary-button" type="button" @click="replaceFile">更新文件</button></template></el-dialog>
   </AppShell>
 </template>
 

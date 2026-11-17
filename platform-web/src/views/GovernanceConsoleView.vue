@@ -11,6 +11,7 @@ import {
   deleteModelConfig,
   deletePromptTemplate,
   deactivateDocumentType,
+  activatePromptTemplate,
   deactivatePromptTemplate,
   getDocumentType,
   getModelConfig,
@@ -26,11 +27,8 @@ import {
   listPromptTemplates,
   type ConfigImportResult,
   publishDocumentType,
-  publishPromptTemplate,
   submitDocumentType,
-  submitPromptTemplate,
   testDocumentType,
-  testPromptTemplate,
   updateDocumentType,
   updateModelConfig,
   updatePromptTemplate,
@@ -181,8 +179,7 @@ async function importBundle(event: Event, kind: 'models' | 'prompts') {
     if (kind === 'models') models.value = await listModelConfigs()
     else prompts.value = await listPromptTemplates()
     const details = result.skippedCodes.length ? `\n已存在并跳过：${result.skippedCodes.slice(0, 15).join('、')}${result.skippedCodes.length > 15 ? '等' : ''}` : ''
-    const draft = kind === 'prompts' ? '新增的提示词为草稿。' : ''
-    await ElMessageBox.alert(`共 ${result.total} 条，新增 ${result.imported}，跳过 ${result.skipped}。${draft}${details}`, '导入完成', { confirmButtonText: '知道了' })
+    await ElMessageBox.alert(`共 ${result.total} 条，新增 ${result.imported}，跳过 ${result.skipped}。${details}`, '导入完成', { confirmButtonText: '知道了' })
   } catch (error) { ElMessage.error(errorMessage(error)) }
   finally { input.value = '' }
 }
@@ -318,7 +315,7 @@ async function savePrompt() {
     if (editingPrompt.value) await updatePromptTemplate(editingPrompt.value.id, input)
     else await createPromptTemplate(input)
     promptDialog.value = false
-    ElMessage.success(editingPrompt.value ? '提示词草稿已更新' : '提示词草稿已创建')
+    ElMessage.success(editingPrompt.value ? '提示词已更新' : '提示词已创建')
     prompts.value = await listPromptTemplates()
   } catch (error) { ElMessage.error(errorMessage(error)) }
 }
@@ -340,14 +337,9 @@ async function saveDocumentType() {
   } catch (error) { ElMessage.error(errorMessage(error)) }
 }
 
-async function advancePrompt(item: PromptTemplate, action: 'test' | 'submit' | 'publish' | 'deactivate') {
+async function advancePrompt(item: PromptTemplate, action: 'activate' | 'deactivate') {
   try {
-    if (action === 'test') {
-      const result = await testPromptTemplate(item.id, { topic: '基层治理能力提升' })
-      if (!result.passed) throw new Error(`测试未通过：${result.unresolvedPlaceholders?.join('、') || '存在未满足约束'}`)
-      ElMessage.success(`测试通过 · ${result.promptHash?.slice(0, 12) ?? '校验完成'}`)
-    } else if (action === 'submit') await submitPromptTemplate(item.id)
-    else if (action === 'publish') await publishPromptTemplate(item.id)
+    if (action === 'activate') await activatePromptTemplate(item.id)
     else await deactivatePromptTemplate(item.id)
     prompts.value = await listPromptTemplates()
     audits.value = await listAuditLogs()
@@ -416,7 +408,7 @@ onMounted(refreshAll)
       </section>
 
       <section v-else-if="activePanel === 'prompts'" class="governance-panel">
-        <header class="panel-heading"><div><span class="section-no">提示词模板</span><h3>提示词模板版本库</h3><p>完整提示词按版本固化，测试用于发现未解析变量，审核发布后才参与模型路由。导入后为草稿。</p></div><div class="panel-actions"><label class="exchange-file">导入<input type="file" accept=".json,application/json" @change="importBundle($event, 'prompts')"></label><button class="secondary-button" type="button" @click="exportBundle('prompts')">导出</button><button class="primary-button" type="button" @click="newPrompt">新建提示词</button></div></header>
+        <header class="panel-heading"><div><span class="section-no">提示词模板</span><h3>提示词模板版本库</h3><p>编辑后按当前状态保存。生效模板参与模型路由，停用后不再参与。</p></div><div class="panel-actions"><label class="exchange-file">导入<input type="file" accept=".json,application/json" @change="importBundle($event, 'prompts')"></label><button class="secondary-button" type="button" @click="exportBundle('prompts')">导出</button><button class="primary-button" type="button" @click="newPrompt">新建提示词</button></div></header>
         <div class="document-type-grid">
           <article v-for="item in prompts" :key="item.id">
             <header>
@@ -430,16 +422,14 @@ onMounted(refreshAll)
               <span>{{ displayTime(item.updatedAt) }}</span>
               <div class="ledger-actions">
                 <button type="button" @click="viewPrompt(item.id)">查看</button>
-                <button v-if="['草稿', '测试', '停用'].includes(item.lifecycleStatus)" type="button" @click="editPrompt(item)">编辑</button>
-                <button v-if="item.lifecycleStatus === '草稿'" type="button" @click="advancePrompt(item, 'test')">测试</button>
-                <button v-if="item.lifecycleStatus === '测试'" type="button" @click="advancePrompt(item, 'submit')">送审</button>
-                <button v-if="item.lifecycleStatus === '审核'" class="emphasis" type="button" @click="advancePrompt(item, 'publish')">发布</button>
+                <button type="button" @click="editPrompt(item)">编辑</button>
                 <button v-if="item.lifecycleStatus === '生效'" type="button" @click="advancePrompt(item, 'deactivate')">停用</button>
-                <button v-if="['草稿', '测试', '审核', '停用'].includes(item.lifecycleStatus)" type="button" @click="removeItem('prompt', item.id, item.templateName)">删除</button>
+                <button v-if="item.lifecycleStatus === '停用'" type="button" @click="advancePrompt(item, 'activate')">启用</button>
+                <button v-if="item.lifecycleStatus === '停用'" type="button" @click="removeItem('prompt', item.id, item.templateName)">删除</button>
               </div>
             </footer>
           </article>
-          <div v-if="!prompts.length" class="governance-empty">暂无提示词模板。创建草稿后，依次完成测试、送审和发布。</div>
+          <div v-if="!prompts.length" class="governance-empty">暂无提示词模板。</div>
         </div>
       </section>
 
@@ -498,7 +488,7 @@ onMounted(refreshAll)
 
     <el-dialog v-model="promptDialog" :title="editingPrompt ? '编辑提示词模板' : '新建提示词模板'" width="760px" class="governance-dialog">
       <div class="form-grid"><label>模板编码<input v-model="promptForm.templateCode" placeholder="official-writing-v1"></label><label>模板名称<input v-model="promptForm.templateName" placeholder="政务正文生成"></label><label>应用场景<input v-model="promptForm.applicableScene"></label><label>文种编码<input v-model="promptForm.documentTypeCode" placeholder="留空表示通用"></label><label class="span-2">适用模型<input v-model="promptForm.applicableModelsText" placeholder="多个模型用逗号分隔"></label><label class="span-2">系统角色<textarea v-model="promptForm.systemRole" rows="3" /></label><label class="span-2">文种方法<textarea v-model="promptForm.documentTypeMethod" rows="2" placeholder="可使用 {{topic}} 等变量" /></label><label class="span-2">输入字段 JSON<textarea v-model="promptForm.inputFieldsText" rows="2" /></label><label class="span-2">材料引用规则<textarea v-model="promptForm.materialCitationRule" rows="2" /></label><label class="span-2">防编造规则<textarea v-model="promptForm.antiFabricationRule" rows="2" /></label><label class="span-2">输出格式<textarea v-model="promptForm.outputFormat" rows="2" /></label><label class="span-2">风险约束<textarea v-model="promptForm.riskConstraint" rows="2" /></label><label class="span-2">模型参数 JSON<textarea v-model="promptForm.modelParametersText" rows="2" /></label><label class="span-2">测试样例编号<input v-model="promptForm.testSampleIdsText" placeholder="多个编号用逗号分隔"></label><label class="span-2">变更说明<input v-model="promptForm.changeDescription"></label></div>
-      <template #footer><button class="secondary-button" type="button" @click="promptDialog = false">取消</button><button class="primary-button" type="button" @click="savePrompt">{{ editingPrompt ? '保存修改' : '创建草稿' }}</button></template>
+      <template #footer><button class="secondary-button" type="button" @click="promptDialog = false">取消</button><button class="primary-button" type="button" @click="savePrompt">{{ editingPrompt ? '保存修改' : '创建' }}</button></template>
     </el-dialog>
 
     <el-dialog v-model="documentTypeDialog" :title="editingDocumentType ? '编辑文种配置' : '新建文种配置'" width="720px" class="governance-dialog">

@@ -128,7 +128,7 @@ class RuleDictionaryApiIntegrationTest {
                      "ruleExpression":"截止目前为止=>截至目前","basis":"现代汉语规范用法","changeDescription":"建立初版"}
                     """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.lifecycleStatus").value("草稿"))
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -138,7 +138,8 @@ class RuleDictionaryApiIntegrationTest {
         mockMvc.perform(post("/api/v1/rules/{id}/submit-for-review", ruleId)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "admin-1"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"));
         mockMvc.perform(post("/api/v1/rules/{id}/test", ruleId)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "admin-1")
@@ -164,7 +165,7 @@ class RuleDictionaryApiIntegrationTest {
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "admin-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.lifecycleStatus").value("审核"));
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"));
         mockMvc.perform(post("/api/v1/rules/{id}/publish", ruleId)
                         .header("X-Tenant-Id", tenant)
                         .header("X-User-Id", "admin-1"))

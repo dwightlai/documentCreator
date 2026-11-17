@@ -160,6 +160,18 @@ public class OutputTemplateController {
         return docx(service.render(templateId, request), "rendered-document.docx");
     }
 
+    @PostMapping("/{templateId}/activate")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<OutputTemplateDtos.Response> activate(@PathVariable String templateId) {
+        return ApiResponse.success(service.activate(templateId));
+    }
+
+    @PostMapping("/{templateId}/deactivate")
+    @PreAuthorize("hasRole('platform.admin')")
+    ApiResponse<OutputTemplateDtos.Response> deactivate(@PathVariable String templateId) {
+        return ApiResponse.success(service.deactivate(templateId));
+    }
+
     @PostMapping("/{templateId}/publish")
     @PreAuthorize("hasRole('platform.admin')")
     ApiResponse<OutputTemplateDtos.Response> publish(@PathVariable String templateId) {

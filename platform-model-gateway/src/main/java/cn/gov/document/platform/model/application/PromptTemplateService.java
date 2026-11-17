@@ -70,7 +70,7 @@ public class PromptTemplateService {
         PromptTemplateEntity e = new PromptTemplateEntity();
         e.setTenantId(RequestContext.tenantId());
         e.setCurrentVersion(1);
-        e.setLifecycleStatus("草稿");
+        e.setLifecycleStatus("生效");
         apply(e, r);
         mapper.insert(e);
         insertVersion(e, r.changeDescription() == null ? "创建提示词模板" : r.changeDescription());
@@ -81,15 +81,13 @@ public class PromptTemplateService {
     public PromptTemplateDtos.Response update(String id, PromptTemplateDtos.Request r) {
         validate(r);
         PromptTemplateEntity e = require(id);
-        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus()))
-            throw BusinessException.conflict("只有草稿、测试或停用状态的提示词模板可以编辑");
         if (r.lockVersion() == null) throw BusinessException.unprocessable("更新提示词模板必须提交 lockVersion");
         PromptTemplateEntity duplicate = mapper.selectOne(new LambdaQueryWrapper<PromptTemplateEntity>()
                 .eq(PromptTemplateEntity::getTemplateCode, r.templateCode().trim()));
         if (duplicate != null && !duplicate.getId().equals(id)) throw BusinessException.conflict("提示词模板代码已存在");
         e.setLockVersion(r.lockVersion());
         e.setCurrentVersion(e.getCurrentVersion() + 1);
-        e.setLifecycleStatus("草稿");
+        e.setLifecycleStatus("停用".equals(e.getLifecycleStatus()) ? "停用" : "生效");
         apply(e, r);
         if (mapper.updateById(e) != 1) throw BusinessException.conflict("提示词模板已被其他用户修改");
         insertVersion(e, r.changeDescription());
@@ -99,7 +97,6 @@ public class PromptTemplateService {
     @Transactional
     public PromptTemplateDtos.TestResponse test(String id, PromptTemplateDtos.TestRequest r) {
         PromptTemplateEntity e = require(id);
-        if (!List.of("草稿", "测试").contains(e.getLifecycleStatus())) throw BusinessException.conflict("当前状态不允许测试");
         String rendered = render(fullPrompt(e), r.variables());
         List<String> unresolved = unresolved(rendered);
         PromptTemplateDtos.TestResponse result =
@@ -113,16 +110,13 @@ public class PromptTemplateService {
                 "unresolvedPlaceholders",
                 result.unresolvedPlaceholders())));
         versionMapper.updateById(v);
-        if (result.passed()) {
-            e.setLifecycleStatus("测试");
-            mapper.updateById(e);
-        }
         return result;
     }
 
     @Transactional
     public PromptTemplateDtos.Response submit(String id) {
         PromptTemplateEntity e = require(id);
+        if ("生效".equals(e.getLifecycleStatus()) || "停用".equals(e.getLifecycleStatus())) return get(id);
         if (!"测试".equals(e.getLifecycleStatus())) throw BusinessException.conflict("提示词模板必须通过测试后才能提交审核");
         e.setLifecycleStatus("审核");
         mapper.updateById(e);
@@ -132,6 +126,7 @@ public class PromptTemplateService {
     @Transactional
     public PromptTemplateDtos.Response publish(String id) {
         PromptTemplateEntity e = require(id);
+        if ("生效".equals(e.getLifecycleStatus())) return get(id);
         if (!"审核".equals(e.getLifecycleStatus())) throw BusinessException.conflict("只有审核状态的提示词模板可以发布");
         e.setLifecycleStatus("生效");
         mapper.updateById(e);
@@ -139,6 +134,15 @@ public class PromptTemplateService {
         v.setApprovedBy(RequestContext.userId());
         v.setApprovedAt(OffsetDateTime.now());
         versionMapper.updateById(v);
+        return get(id);
+    }
+
+    @Transactional
+    public PromptTemplateDtos.Response activate(String id) {
+        PromptTemplateEntity e = require(id);
+        if (!"停用".equals(e.getLifecycleStatus())) throw BusinessException.conflict("只有停用提示词模板可以启用");
+        e.setLifecycleStatus("生效");
+        mapper.updateById(e);
         return get(id);
     }
 

@@ -167,6 +167,7 @@ export const deletePromptTemplate = (id: string) => data(http.delete<ApiEnvelope
 export const testPromptTemplate = (id: string, variables: Record<string, unknown>) => data(http.post<ApiEnvelope<ConfigurationTestResult>>(`/prompt-templates/${id}/test`, { variables }))
 export const submitPromptTemplate = (id: string) => data(http.post<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/submit-for-review`))
 export const publishPromptTemplate = (id: string) => data(http.post<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/publish`))
+export const activatePromptTemplate = (id: string) => data(http.patch<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/activate`))
 export const deactivatePromptTemplate = (id: string) => data(http.patch<ApiEnvelope<PromptTemplate>>(`/prompt-templates/${id}/deactivate`))
 
 export const listDocumentTypes = () => data(http.get<ApiEnvelope<DocumentTypeConfig[]>>('/document-type-configs'))

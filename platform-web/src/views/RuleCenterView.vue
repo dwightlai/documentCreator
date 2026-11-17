@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AppShell from '@/components/AppShell.vue'
 import {
   createDictionary, createRule, createTerm, deactivateRule, reactivateRule, deleteDictionary, deleteRule, deleteTerm, exportDictionariesJson, exportRulesJson, importDictionariesJson, importRulesJson, importTerms, listDictionaries, listRules, listTerms, getOfficialReviewPack, installOfficialReviewPack, type OfficialReviewPackInfo, type RuleImportResult,
-  publishRule, submitRule, testRule, updateDictionary, updateRule, updateTerm, type Dictionary, type DictionaryTerm, type ReviewRule,
+  testRule, updateDictionary, updateRule, updateTerm, type Dictionary, type DictionaryTerm, type ReviewRule,
 } from '@/api/rule'
 
 const mode = ref<'rules' | 'dictionaries'>('rules')
@@ -173,7 +173,7 @@ async function saveRule() {
     ruleStatus.value = '全部'
     ruleQuery.value = ''
     await load(); selectedRuleId.value = changed.id; testFeedback.value = null; testError.value = ''; ruleDetailOpen.value = true; ruleDialog.value = false
-    ElMessage.success(existing ? '规则已更新，请重新测试后提交审核' : '规则草稿已建立')
+    ElMessage.success(existing ? '规则已更新' : '规则已创建')
   } catch (reason) { message(reason, '规则保存失败') }
 }
 
@@ -201,13 +201,12 @@ async function runTest() {
   finally { testRunning.value = false }
 }
 
-async function transition(action: 'submit' | 'publish' | 'deactivate' | 'reactivate') {
+async function transition(action: 'deactivate' | 'reactivate') {
   if (!selectedRule.value) return
   try {
-    const handlers = { submit: submitRule, publish: publishRule, deactivate: deactivateRule, reactivate: reactivateRule }
-    const changed = await handlers[action](selectedRule.value.id)
+    const changed = action === 'deactivate' ? await deactivateRule(selectedRule.value.id) : await reactivateRule(selectedRule.value.id)
     rules.value = rules.value.map(item => item.id === changed.id ? changed : item)
-    ElMessage.success({ submit: '已提交审核', publish: '规则已发布并即时进入审校引擎', deactivate: '规则已停用，后续审校不再使用', reactivate: '规则已重新启用，后续审校将使用此版本' }[action])
+    ElMessage.success(action === 'deactivate' ? '规则已停用，后续审校不再使用' : '规则已重新启用')
   } catch (reason) { message(reason, '规则状态变更失败') }
 }
 
@@ -300,7 +299,7 @@ onMounted(load)
       <header class="rule-hero">
         <div>
           <h2>规则与词库</h2>
-          <p>规则须经过测试与审核后发布；有效词库会随下一次审校即时加载。</p>
+          <p>生效规则参与审校，停用后不再使用。命中测试不改变启用状态。</p>
         </div>
       </header>
 
@@ -317,13 +316,13 @@ onMounted(load)
 
       <div v-if="mode === 'rules'" id="rules-panel" class="rule-workspace" role="tabpanel" aria-labelledby="rules-tab">
         <section class="rule-browser">
-          <header class="rule-browser-head"><div><h3>审校规则</h3><p>按分类浏览，或输入名称、代码和依据查找。导入的规则从草稿开始审核。</p></div><div class="rule-exchange-actions"><label class="exchange-file">导入规则<input type="file" accept=".json,application/json" @change="importData($event, 'rules')"></label><button class="secondary-button" type="button" @click="exportData('rules')">导出规则</button><button class="primary-button" type="button" @click="openRule()">新建规则</button></div></header>
+          <header class="rule-browser-head"><div><h3>审校规则</h3><p>按分类浏览，或输入名称、代码和依据查找。已有代码在导入时跳过。</p></div><div class="rule-exchange-actions"><label class="exchange-file">导入规则<input type="file" accept=".json,application/json" @change="importData($event, 'rules')"></label><button class="secondary-button" type="button" @click="exportData('rules')">导出规则</button><button class="primary-button" type="button" @click="openRule()">新建规则</button></div></header>
           <div class="rule-filters">
             <label class="rule-search">
               <span class="visually-hidden">搜索规则</span>
               <input v-model="ruleQuery" type="search" placeholder="搜索规则名称、代码或依据" />
             </label>
-            <label class="rule-status-select"><span class="visually-hidden">按状态筛选规则</span><select v-model="ruleStatus"><option value="全部">全部状态</option><option v-for="status in ['生效', '审核', '测试', '草稿', '停用']" :key="status" :value="status">{{ status }}</option></select></label>
+            <label class="rule-status-select"><span class="visually-hidden">按状态筛选规则</span><select v-model="ruleStatus"><option value="全部">全部状态</option><option v-for="status in ['生效', '停用']" :key="status" :value="status">{{ status }}</option></select></label>
           </div>
           <div class="rule-category-list" aria-label="按分类筛选规则">
             <button v-for="item in ruleCategories" :key="item.name" type="button" :class="{ active: ruleCategory === item.name }" :aria-pressed="ruleCategory === item.name" @click="ruleCategory = item.name">
@@ -368,8 +367,8 @@ onMounted(load)
               <p v-else-if="!visibleRuleTerms.length">没有匹配的词条。</p>
             </div>
           </section>
-          <section v-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod) && ['草稿', '测试'].includes(selectedRule.lifecycleStatus)" class="rule-test-bed">
-            <header><div><h4>命中测试</h4></div><small>发布前必须通过</small></header>
+          <section v-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod)" class="rule-test-bed">
+            <header><div><h4>命中测试</h4></div><small>不影响启用状态</small></header>
             <textarea v-model="testText" :disabled="testRunning" placeholder="粘贴测试文本；例如半角 : 与全角 ： 会得到不同结果" />
             <div><label>预期命中 <el-input-number v-model="expectedCount" :min="0" :max="100" /></label><button class="secondary-button" type="button" :disabled="testRunning" @click="runTest">{{ testRunning ? '测试中…' : '运行测试' }}</button></div>
             <p v-if="testError" class="rule-test-feedback error" role="alert">测试失败：{{ testError }}</p>
@@ -380,15 +379,11 @@ onMounted(load)
               <span v-else>没有找到匹配内容。请检查测试文本中的字符以及规则表达式。</span>
             </div>
           </section>
-          <p v-else-if="!['人工核验', '词库'].includes(selectedRule.detectionMethod)" class="rule-test-note">当前状态无需运行命中测试。修改规则会产生草稿版本，届时可重新测试。</p>
           <footer class="lifecycle-actions">
-            <button v-if="['草稿', '测试', '停用'].includes(selectedRule.lifecycleStatus)" class="secondary-button" type="button" @click="openRule(selectedRule)">编辑规则</button>
-            <button v-if="['草稿', '测试', '停用'].includes(selectedRule.lifecycleStatus)" class="secondary-button" type="button" @click="removeRule">删除规则</button>
-            <button v-if="selectedRule.lifecycleStatus === '测试' || (['人工核验', '词库'].includes(selectedRule.detectionMethod) && selectedRule.lifecycleStatus === '草稿')" class="primary-button" type="button" @click="transition('submit')">提交审核</button>
-            <button v-if="selectedRule.lifecycleStatus === '审核'" class="primary-button" type="button" @click="transition('publish')">批准并发布</button>
+            <button class="secondary-button" type="button" @click="openRule(selectedRule)">编辑规则</button>
+            <button v-if="selectedRule.lifecycleStatus === '停用'" class="secondary-button" type="button" @click="removeRule">删除规则</button>
             <button v-if="selectedRule.lifecycleStatus === '生效'" class="secondary-button" type="button" @click="transition('deactivate')">停用规则</button>
             <button v-if="selectedRule.lifecycleStatus === '停用'" class="primary-button" type="button" @click="transition('reactivate')">重新启用</button>
-            <span>{{ selectedRule.lifecycleStatus === '停用' ? '重新启用将恢复当前已审核版本；编辑规则后须重新测试、审核和发布。' : '草稿 → 测试 → 审核 → 生效' }}</span>
           </footer>
         </article>
         </el-drawer>
@@ -424,7 +419,7 @@ onMounted(load)
         <div class="form-pair"><el-form-item label="业务分类"><el-select v-model="ruleForm.category"><el-option v-for="item in categoryOrder" :key="item" :value="item" /></el-select></el-form-item><el-form-item label="风险等级"><el-select v-model="ruleForm.riskLevel"><el-option v-for="item in ['提示','一般','重要','严重']" :key="item" :value="item" /></el-select></el-form-item></div>
         <div class="form-pair"><el-form-item label="检测方式"><el-select v-model="ruleForm.detectionMethod"><el-option label="词项匹配" value="词项" /><el-option label="正则表达式" value="正则" /><el-option label="引用标准词库" value="词库" /><el-option label="人工核验" value="人工核验" /></el-select></el-form-item><el-form-item label="适用文种"><el-select v-model="ruleForm.applicableDocumentTypes" multiple><el-option v-for="item in ['请示','报告','通知','函','纪要']" :key="item" :value="item" /></el-select></el-form-item></div>
         <el-form-item :label="ruleForm.detectionMethod === '词库' ? '引用词库' : '规则表达式'"><el-select v-if="ruleForm.detectionMethod === '词库'" v-model="ruleForm.ruleExpression" placeholder="选择词库"><el-option v-for="item in dictionaries" :key="item.id" :label="item.dictName" :value="item.dictCode" /></el-select><el-input v-else v-model="ruleForm.ruleExpression" placeholder="错误表达=>建议表达" /></el-form-item><el-form-item label="规则依据"><el-input v-model="ruleForm.basis" type="textarea" /></el-form-item><el-form-item v-if="editingRuleId" label="修改说明"><el-input v-model="ruleForm.changeDescription" /></el-form-item></el-form>
-      <template #footer><button class="secondary-button" type="button" @click="ruleDialog = false">取消</button><button class="primary-button" type="button" @click="saveRule">{{ editingRuleId ? '保存修改' : '建立草稿' }}</button></template>
+      <template #footer><button class="secondary-button" type="button" @click="ruleDialog = false">取消</button><button class="primary-button" type="button" @click="saveRule">{{ editingRuleId ? '保存修改' : '创建' }}</button></template>
     </el-dialog>
     <el-dialog v-model="dictionaryDialog" :title="editingDictionaryId ? '编辑标准词库' : '建立标准词库'" width="520px" class="task-dialog"><el-form label-position="top"><div class="form-pair"><el-form-item label="词库代码"><el-input v-model="dictionaryForm.dictCode" :disabled="!!editingDictionaryId" /></el-form-item><el-form-item label="词库名称"><el-input v-model="dictionaryForm.dictName" /></el-form-item></div><el-form-item label="词库数据类型"><el-select v-model="dictionaryForm.dictType"><el-option v-for="item in dictionaryTypes" :key="item" :value="item" /><el-option v-if="dictionaryForm.dictType && !dictionaryTypes.includes(dictionaryForm.dictType)" :value="dictionaryForm.dictType" /></el-select></el-form-item><el-form-item label="来源说明"><el-input v-model="dictionaryForm.sourceDescription" type="textarea" /></el-form-item></el-form><template #footer><button class="secondary-button" type="button" @click="dictionaryDialog = false">取消</button><button class="primary-button" type="button" @click="saveDictionary">{{ editingDictionaryId ? '保存修改' : '创建词库' }}</button></template></el-dialog>
     <el-dialog v-model="termDialog" :title="editingTermId ? '编辑标准词条' : '新增标准词条'" width="560px" class="task-dialog"><el-form label-position="top"><div class="form-pair"><el-form-item label="词条或待规范写法"><el-input v-model="termForm.termText" /></el-form-item><el-form-item label="标准形式"><el-input v-model="termForm.standardForm" /></el-form-item></div><p class="term-form-help">标准形式与词条相同时仅作规范参考，不会将正确写法报为错误。</p><el-form-item label="别名（用分号分隔）"><el-input v-model="termForm.aliases" /></el-form-item><div class="form-pair"><el-form-item label="分类"><el-input v-model="termForm.categoryTag" /></el-form-item><el-form-item label="风险等级"><el-select v-model="termForm.riskLevel"><el-option v-for="item in ['提示','一般','重要','严重']" :key="item" :value="item" /></el-select></el-form-item></div><el-form-item label="来源依据"><el-input v-model="termForm.sourceReference" /></el-form-item><el-form-item label="使用说明"><el-input v-model="termForm.usageNote" type="textarea" /></el-form-item></el-form><template #footer><button class="secondary-button" type="button" @click="termDialog = false">取消</button><button class="primary-button" type="button" @click="saveTerm">{{ editingTermId ? '保存修改' : '保存并生效' }}</button></template></el-dialog>

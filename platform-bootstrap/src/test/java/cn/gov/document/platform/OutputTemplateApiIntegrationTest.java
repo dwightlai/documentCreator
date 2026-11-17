@@ -136,7 +136,7 @@ class OutputTemplateApiIntegrationTest {
                         .header("X-Tenant-Id", TENANT)
                         .header("X-User-Id", "template-admin"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.lifecycleStatus").value("草稿"))
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"))
                 .andExpect(jsonPath("$.data.placeholderMap['{title}']").value("公文标题"))
                 .andReturn()
                 .getResponse()
@@ -170,7 +170,8 @@ class OutputTemplateApiIntegrationTest {
         mockMvc.perform(post("/api/v1/output-templates/{id}/publish", templateId)
                         .header("X-Tenant-Id", TENANT)
                         .header("X-User-Id", "template-admin"))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lifecycleStatus").value("生效"));
 
         byte[] preview = mockMvc.perform(
                         post("/api/v1/output-templates/{id}/test", templateId)

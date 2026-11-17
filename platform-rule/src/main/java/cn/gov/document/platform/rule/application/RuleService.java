@@ -67,7 +67,7 @@ public class RuleService {
                 request.basis(),
                 request.effectiveDate(),
                 request.expiryDate());
-        e.setLifecycleStatus("草稿");
+        e.setLifecycleStatus("生效");
         e.setCurrentVersion(1);
         e.setEnabled(true);
         ruleMapper.insert(e);
@@ -93,8 +93,6 @@ public class RuleService {
     @Transactional
     public RuleDtos.Response update(String id, RuleDtos.UpdateRequest request) {
         ReviewRuleEntity e = require(id);
-        if (!List.of("草稿", "测试", "停用").contains(e.getLifecycleStatus()))
-            throw BusinessException.conflict("只有草稿、测试或停用状态的规则可以编辑");
         validateDates(request.effectiveDate(), request.expiryDate());
         validateRisk(request.riskLevel());
         validateCategory(request.category());
@@ -113,7 +111,8 @@ public class RuleService {
                 request.effectiveDate(),
                 request.expiryDate());
         e.setCurrentVersion(e.getCurrentVersion() + 1);
-        e.setLifecycleStatus("草稿");
+        e.setLifecycleStatus("停用".equals(e.getLifecycleStatus()) ? "停用" : "生效");
+        e.setEnabled(!"停用".equals(e.getLifecycleStatus()));
         if (ruleMapper.updateById(e) != 1) throw BusinessException.conflict("规则已被其他用户修改");
         insertVersion(e, request.changeDescription());
         return get(id);
@@ -122,8 +121,7 @@ public class RuleService {
     @Transactional
     public void delete(String id) {
         ReviewRuleEntity e = require(id);
-        if (List.of("生效", "审核").contains(e.getLifecycleStatus()))
-            throw BusinessException.conflict("规则正在生效或审核，请先停用或完成审核");
+        if ("生效".equals(e.getLifecycleStatus())) throw BusinessException.conflict("请先停用规则再删除");
         ruleMapper.deleteById(id);
     }
 
@@ -132,7 +130,6 @@ public class RuleService {
         ReviewRuleEntity e = require(id);
         if (List.of("人工核验", "词库").contains(e.getDetectionMethod()))
             throw BusinessException.unprocessable("该检测方式不支持文本命中测试");
-        if (!List.of("草稿", "测试").contains(e.getLifecycleStatus())) throw BusinessException.conflict("当前状态不允许测试");
         Pattern pattern = compilePattern(e.getDetectionMethod(), e.getRuleExpression());
         List<RuleDtos.CaseResult> results = new ArrayList<>();
         int index = 0, passed = 0;
@@ -156,19 +153,13 @@ public class RuleService {
             throw new IllegalStateException(ex);
         }
         versionMapper.updateById(version);
-        if (response.passed()) {
-            e.setLifecycleStatus("测试");
-            ruleMapper.updateById(e);
-        }
         return response;
     }
 
     @Transactional
     public RuleDtos.Response submit(String id) {
         ReviewRuleEntity e = require(id);
-        if (!"测试".equals(e.getLifecycleStatus())
-                && !(List.of("人工核验", "词库").contains(e.getDetectionMethod()) && "草稿".equals(e.getLifecycleStatus())))
-            throw BusinessException.conflict("自动规则须通过测试；人工核验规则可直接提交审核");
+        if ("生效".equals(e.getLifecycleStatus()) || "停用".equals(e.getLifecycleStatus())) return get(id);
         e.setLifecycleStatus("审核");
         ruleMapper.updateById(e);
         return get(id);
@@ -177,6 +168,13 @@ public class RuleService {
     @Transactional
     public RuleDtos.Response publish(String id) {
         ReviewRuleEntity e = require(id);
+        if ("生效".equals(e.getLifecycleStatus())) {
+            RuleVersionEntity current = requireVersion(e.getId(), e.getCurrentVersion());
+            current.setApprovedBy(RequestContext.userId());
+            current.setApprovedAt(OffsetDateTime.now());
+            versionMapper.updateById(current);
+            return get(id);
+        }
         if (!"审核".equals(e.getLifecycleStatus())) throw BusinessException.conflict("只有审核状态的规则可以发布");
         e.setLifecycleStatus("生效");
         e.setEnabled(true);
@@ -203,10 +201,8 @@ public class RuleService {
     public RuleDtos.Response reactivate(String id) {
         ReviewRuleEntity e = require(id);
         if (!"停用".equals(e.getLifecycleStatus())) throw BusinessException.conflict("只有停用规则可以重新启用");
-        RuleVersionEntity version = requireVersion(e.getId(), e.getCurrentVersion());
-        if (version.getApprovedAt() == null) throw BusinessException.conflict("当前版本尚未审核发布，请编辑后重新测试和提交审核");
         if (e.getExpiryDate() != null && e.getExpiryDate().isBefore(java.time.LocalDate.now()))
-            throw BusinessException.conflict("规则已过失效日期，请更新规则并重新审核发布");
+            throw BusinessException.conflict("规则已过失效日期，请更新后再启用");
         e.setLifecycleStatus("生效");
         e.setEnabled(true);
         ruleMapper.updateById(e);

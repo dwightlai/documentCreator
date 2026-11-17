@@ -77,6 +77,11 @@ public class PromptTemplateController {
         return ApiResponse.success(service.publish(id));
     }
 
+    @PatchMapping("/{id}/activate")
+    ApiResponse<PromptTemplateDtos.Response> activate(@PathVariable String id) {
+        return ApiResponse.success(service.activate(id));
+    }
+
     @PatchMapping("/{id}/deactivate")
     ApiResponse<PromptTemplateDtos.Response> deactivate(@PathVariable String id) {
         return ApiResponse.success(service.deactivate(id));
