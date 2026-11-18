@@ -6,7 +6,7 @@ import cn.gov.document.platform.writing.domain.WritingTaskEntity;
 import java.util.List;
 
 public interface WritingAssistant {
-    List<DocumentTypeSuggestion> recommendDocumentTypes(String purpose);
+    List<DocumentTypeSuggestion> recommendDocumentTypes(WritingTaskEntity task);
 
     List<NodeDraft> generateOutline(WritingTaskEntity task, int materialCount);
 

@@ -72,6 +72,6 @@ public class WritingTaskController {
     @PostMapping("/{taskId}/recommend-type")
     ApiResponse<?> recommendType(@PathVariable String taskId) {
         return ApiResponse.success(
-                assistant.recommendDocumentTypes(service.require(taskId).getWritingPurpose()));
+                assistant.recommendDocumentTypes(service.require(taskId)));
     }
 }

@@ -14,23 +14,79 @@ public class RuleBasedWritingAssistant implements WritingAssistant {
         this.configService = configService;
     }
 
+    private static final List<String> STATUTORY_TYPES =
+            List.of("决议", "决定", "命令", "公报", "公告", "通告", "意见", "通报", "通知", "报告", "请示", "批复", "议案", "函", "纪要");
+
     @Override
-    public List<DocumentTypeSuggestion> recommendDocumentTypes(String purpose) {
+    public List<DocumentTypeSuggestion> recommendDocumentTypes(WritingTaskEntity task) {
+        String titled = statutoryTitle(task.getTaskName(), task.getWritingTopic());
+        if (titled != null) return List.of(fromTitle(titled));
+        DocumentTypeSuggestion byPurpose = fromPurpose(task.getWritingPurpose());
+        if (byPurpose != null) return List.of(byPurpose);
+        return List.of(new DocumentTypeSuggestion("未能判定", "标题未标明法定文种，写作目的也不足以对照条例第八条确定文种。", 0));
+    }
+
+    private static String statutoryTitle(String... candidates) {
+        if (candidates == null) return null;
+        for (String candidate : candidates) {
+            if (candidate != null && statutoryType(candidate.strip()) != null) return candidate.strip();
+        }
+        return null;
+    }
+
+    private static String statutoryType(String text) {
+        if (text == null || text.isBlank()) return null;
+        if (text.endsWith("会议纪要")) return "纪要";
+        for (String type : STATUTORY_TYPES) {
+            if (text.endsWith("的" + type) || text.endsWith("的" + type + "）") || text.endsWith("的" + type + ")")) return type;
+        }
+        return null;
+    }
+
+    private static DocumentTypeSuggestion fromTitle(String title) {
+        String type = statutoryType(title);
+        if ("通知".equals(type) && title.contains("印发")) {
+            return new DocumentTypeSuggestion(
+                    "通知",
+                    "标题以“的通知”结尾，事由是印发本机关制定的方案、办法、细则或计划。法定文种是通知，属于发布性通知中的印发类通知。书名号内的文件名称不是法定文种。",
+                    0.96);
+        }
+        if ("通知".equals(type) && title.contains("批转")) {
+            return new DocumentTypeSuggestion("通知", "标题以“的通知”结尾，事由是批转下级机关公文。法定文种是通知，属于批转性通知。", 0.96);
+        }
+        if ("通知".equals(type) && title.contains("转发")) {
+            return new DocumentTypeSuggestion("通知", "标题以“的通知”结尾，事由是转发上级机关或不相隶属机关的公文。法定文种是通知，属于转发性通知。", 0.96);
+        }
+        if ("通知".equals(type)) {
+            return new DocumentTypeSuggestion("通知", "标题以“的通知”结尾。通知适用于发布、传达要求下级机关执行和有关单位周知或者执行的事项。", 0.94);
+        }
+        return new DocumentTypeSuggestion(type, "标题以“的" + type + "”结尾，按标题标明的法定文种确定。", 0.94);
+    }
+
+    private static DocumentTypeSuggestion fromPurpose(String purpose) {
         String value = purpose == null ? "" : purpose;
-        if (value.contains("申请") || value.contains("批准") || value.contains("请示")) {
-            return List.of(new DocumentTypeSuggestion("请示", "向上级机关请求指示或批准，适用请示且应一文一事。", 0.92));
+        if (value.contains("批复") || (value.contains("答复") && value.contains("请示"))) {
+            return new DocumentTypeSuggestion("批复", "适用于答复下级机关的请示事项。", 0.9);
         }
-        if (value.contains("汇报") || value.contains("进展") || value.contains("情况")) {
-            return List.of(
-                    new DocumentTypeSuggestion("报告", "向上级机关汇报工作或反映情况。", 0.86),
-                    new DocumentTypeSuggestion("情况说明", "用于解释具体事实或背景。", 0.68));
+        if (value.contains("请示") || (value.contains("上级") && (value.contains("申请") || value.contains("批准") || value.contains("指示")))) {
+            return new DocumentTypeSuggestion("请示", "适用于向上级机关请求指示或批准，一文一事。", 0.9);
         }
-        if (value.contains("部署") || value.contains("安排") || value.contains("要求")) {
-            return List.of(new DocumentTypeSuggestion("通知", "用于发布、传达要求并部署工作。", 0.82));
+        if (value.contains("汇报") || value.contains("反映情况") || (value.contains("上级") && value.contains("询问"))) {
+            return new DocumentTypeSuggestion("报告", "适用于向上级机关汇报工作、反映情况，或回复上级机关的询问。", 0.9);
         }
-        return List.of(
-                new DocumentTypeSuggestion("函", "适合平行机关之间商洽、询问或答复事项。", 0.55),
-                new DocumentTypeSuggestion("报告", "适合汇报情况并提出工作建议。", 0.51));
+        if (value.contains("表彰") || value.contains("批评")) {
+            return new DocumentTypeSuggestion("通报", "适用于表彰先进、批评错误、传达重要精神和告知重要情况。", 0.9);
+        }
+        if (value.contains("纪要") || value.contains("议定")) {
+            return new DocumentTypeSuggestion("纪要", "适用于记载会议主要情况和议定事项。", 0.9);
+        }
+        if (value.contains("商洽") || value.contains("不相隶属") || value.contains("平行")) {
+            return new DocumentTypeSuggestion("函", "适用于不相隶属机关之间商洽工作、询问和答复问题、请求批准和答复审批事项。", 0.9);
+        }
+        if (value.contains("印发") || value.contains("批转") || value.contains("转发") || value.contains("发布") || value.contains("传达") || value.contains("周知") || value.contains("部署") || value.contains("安排")) {
+            return new DocumentTypeSuggestion("通知", "适用于发布、传达要求下级机关执行和有关单位周知或者执行的事项，以及批转、转发公文。", 0.9);
+        }
+        return null;
     }
 
     @Override

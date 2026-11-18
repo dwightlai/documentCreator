@@ -246,7 +246,7 @@ onBeforeUnmount(() => window.removeEventListener('focus', refreshWorkspaceProgre
 
             <section class="assistant-card">
               <header><span class="live-dot" /><h3>智能参谋</h3><small>规则增强模式</small></header>
-              <p v-if="!store.suggestions.length" class="assistant-intro">系统将综合写作目的、行文关系与材料内容，给出可追溯的文种及结构建议。</p>
+              <p v-if="!store.suggestions.length" class="assistant-intro">先按标题中的法定文种确定。标题没有文种时，再按行文关系和写作目的对照条例第八条。</p>
               <article v-for="suggestion in store.suggestions" :key="suggestion.documentType">
                 <div><strong>{{ suggestion.documentType }}</strong><span>{{ Math.round(suggestion.confidence * 100) }}%</span></div>
                 <p>{{ suggestion.reason }}</p>
