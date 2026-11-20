@@ -303,10 +303,9 @@ onMounted(load)
         </div>
       </header>
 
-      <section v-if="officialPack" class="official-pack-banner" aria-label="官方规范数据包">
+      <section v-if="officialPack && !officialPack.installed" class="official-pack-banner" aria-label="官方规范数据包">
         <div><strong>{{ officialPack.title }} · {{ officialPack.version }}</strong><p>{{ officialPack.scope }}。共 {{ officialPack.automaticRuleCount }} 条可执行规则、{{ officialPack.termCount }} 个参与规则匹配的词条。具体依据见每条记录。</p></div>
-        <button v-if="!officialPack.installed" class="primary-button" type="button" @click="installPack">装载规范数据</button>
-        <span v-else class="pack-installed">已装载</span>
+        <button class="primary-button" type="button" @click="installPack">装载规范数据</button>
       </section>
 
       <div class="rule-mode-switch" role="tablist">
@@ -504,7 +503,6 @@ onMounted(load)
 .official-pack-banner { margin: 14px 0 2px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fff; border: 1px solid #e0e3e8; border-radius: 10px; }
 .official-pack-banner strong { font-size: 14px; color: #1d2939; }
 .official-pack-banner p { margin: 5px 0 0; color: #667085; font-size: 12px; line-height: 1.6; }
-.pack-installed { color: #14804a; white-space: nowrap; font-size: 13px; }
 .term-form-help { margin: -8px 0 12px; color: #667085; font-size: 12px; }
 .term-table-head, .term-row { grid-template-columns: 1.2fr 1fr 1fr 1fr 100px; }
 .term-actions { display: flex; gap: 10px; }
