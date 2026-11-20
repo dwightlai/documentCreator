@@ -91,6 +91,45 @@ public class RuleBasedWritingAssistant implements WritingAssistant {
 
     @Override
     public List<NodeDraft> generateOutline(WritingTaskEntity task, int materialCount) {
+        List<NodeDraft> drafts = topLevelOutline(task, materialCount);
+        String type = task.getDocumentTypeCode();
+        int total = task.getExpectedLengthMax() == null ? 2400 : task.getExpectedLengthMax();
+        boolean layered = OutlineStructure.LONG_TYPES.contains(type)
+                || (total >= 4000 && !OutlineStructure.SINGLE_LEVEL_TYPES.contains(type));
+        return layered ? layered(drafts) : drafts;
+    }
+
+    private List<NodeDraft> layered(List<NodeDraft> drafts) {
+        java.util.ArrayList<NodeDraft> result = new java.util.ArrayList<>();
+        for (NodeDraft draft : drafts) {
+            List<String> subtitles = subsections(draft.title());
+            result.add(draft);
+            if (subtitles.isEmpty()) continue;
+            int each = Math.max(1, draft.targetWordCount() / subtitles.size());
+            for (String subtitle : subtitles) {
+                result.add(new NodeDraft(
+                        subtitle,
+                        "属于“" + draft.title() + "”的下级事项。结合材料确定本项小标题、责任主体和具体要求，小标题与同级事项并列不交叉。",
+                        each,
+                        draft.required(),
+                        2));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private List<String> subsections(String title) {
+        if (title.contains("目标")) return List.of();
+        if (title.contains("保障")) return List.of("加强组织领导", "强化工作保障", "严格督促落实");
+        if (title.contains("问题")) return List.of("主要问题", "原因分析");
+        if (title.contains("对策") || title.contains("建议")) return List.of("建议事项一", "建议事项二", "建议事项三");
+        for (String keyword : List.of("任务", "工作", "成效", "做法", "部署", "进展", "发现", "事项", "举措", "措施")) {
+            if (title.contains(keyword)) return List.of(title + "一", title + "二", title + "三");
+        }
+        return List.of();
+    }
+
+    private List<NodeDraft> topLevelOutline(WritingTaskEntity task, int materialCount) {
         int total = task.getExpectedLengthMax() == null ? 2400 : task.getExpectedLengthMax();
         String type = task.getDocumentTypeCode();
         var effective = configService.effective(type);

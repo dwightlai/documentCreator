@@ -145,11 +145,11 @@ const groups = [
 
 <style scoped>
 .rich-paragraph{position:relative;margin-top:8px}
-.rich-toolbar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;margin-bottom:6px;background:#f6f4ef;border:1px solid #ddd7cc}
-.rich-toolbar-group{display:flex;gap:2px;padding-right:6px;border-right:1px solid #ddd7cc}
+.rich-toolbar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;margin-bottom:6px;background:#f4f6f9;border:1px solid #d9dde3}
+.rich-toolbar-group{display:flex;gap:2px;padding-right:6px;border-right:1px solid #d9dde3}
 .rich-toolbar-group:last-child{border-right:0}
 .rich-toolbar button{min-width:30px;height:28px;padding:0 7px;border:1px solid transparent;background:transparent;color:#2f3430;font-size:13px;cursor:pointer}
-.rich-toolbar button:hover:not(:disabled){border-color:#aaa397;background:#fff}
+.rich-toolbar button:hover:not(:disabled){border-color:#c3c8d0;background:#fff}
 .rich-toolbar button.active{background:#fdf0ef;color:#c4302b;border-color:#e8aaa6}
 .rich-toolbar-group.ai button:not(:disabled){color:#1a56db}
 .rich-toolbar-group.ai button:hover:not(:disabled){border-color:#1a56db;background:#e8f0fe}
@@ -157,13 +157,13 @@ const groups = [
 .rich-toolbar button[aria-label='加粗']{font-weight:700}
 .rich-toolbar button[aria-label='倾斜']{font-style:italic}
 .rich-toolbar button[aria-label='下划线']{text-decoration:underline}
-:deep(.rich-paragraph-body){min-height:64px;outline:0;font:16px/2 "Noto Sans SC",sans-serif;color:#292d2a;white-space:pre-wrap;overflow-wrap:anywhere}
-.rich-paragraph.focused :deep(.rich-paragraph-body){box-shadow:inset 0 0 0 1px #d8d3c8}
+:deep(.rich-paragraph-body){min-height:64px;outline:0;font:16px/2 "Noto Sans SC",sans-serif;color:#1f2329;white-space:pre-wrap;overflow-wrap:anywhere}
+.rich-paragraph.focused :deep(.rich-paragraph-body){box-shadow:inset 0 0 0 1px #e5e7eb}
 .rich-paragraph.readonly :deep(.rich-paragraph-body){color:#4b4f4c}
 :deep(.rich-paragraph-body p){margin:0}
 :deep(.rich-paragraph-body ul),:deep(.rich-paragraph-body ol){margin:0;padding-left:2em}
 :deep(.rich-paragraph-body table){width:100%;border-collapse:collapse;table-layout:fixed;margin:8px 0}
 :deep(.rich-paragraph-body td),:deep(.rich-paragraph-body th){border:1px solid #8c877e;padding:4px 8px;vertical-align:top;font-size:15px;line-height:1.7}
-:deep(.rich-paragraph-body th){background:#f1eee7;font-weight:600;text-align:left}
+:deep(.rich-paragraph-body th){background:#f0f2f5;font-weight:600;text-align:left}
 :deep(.rich-paragraph-body .selectedCell){background:#e8f0fe}
 </style>

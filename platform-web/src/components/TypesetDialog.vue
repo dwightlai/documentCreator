@@ -158,25 +158,25 @@ const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12
 @media(max-width:860px){.typeset-layout{grid-template-columns:1fr}}
 .typeset-form{display:grid;gap:12px;align-content:start}
 .typeset-form label{display:grid;gap:4px;font-size:13px;color:#4b4f4c}
-.typeset-form label b{color:#a33c32;margin-left:2px}
-.typeset-form input,.typeset-form select{border:1px solid #c9c3b7;background:#fbfaf7;padding:8px 10px;font:inherit;font-size:14px}
+.typeset-form label b{color:#c4302b;margin-left:2px}
+.typeset-form input,.typeset-form select{border:1px solid #d0d5dd;background:#f8f9fb;padding:8px 10px;font:inherit;font-size:14px}
 .typeset-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .typeset-fields .wide{grid-column:1/-1}
-.typeset-hint{margin:0;color:#5f5b54;font-size:12px;line-height:1.6}
+.typeset-hint{margin:0;color:#4e5561;font-size:12px;line-height:1.6}
 .typeset-form .primary-button{justify-self:start}
-.typeset-result{border:1px solid #ddd7cc;background:#fbfaf7;padding:14px 16px;display:grid;gap:10px;align-content:start;min-height:240px}
+.typeset-result{border:1px solid #d9dde3;background:#f8f9fb;padding:14px 16px;display:grid;gap:10px;align-content:start;min-height:240px}
 .typeset-result header{display:grid;gap:2px}
-.typeset-result header small{color:#5f5b54;font-size:12px}
+.typeset-result header small{color:#4e5561;font-size:12px}
 .typeset-stale{margin:0;padding:8px 10px;background:#fff4e5;color:#9a5b13;font-size:13px}
 .typeset-pass{margin:0;padding:8px 10px;background:#e8f5ee;color:#18794e;font-size:13px}
 .typeset-deviations{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:300px;overflow:auto}
-.typeset-deviations li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:8px;background:#fff;border:1px solid #eee9df}
+.typeset-deviations li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:8px;background:#fff;border:1px solid #eef0f3}
 .typeset-deviations div{display:grid;gap:2px}
 .typeset-deviations strong{font-size:13px}
-.typeset-deviations small{color:#5f5b54;font-size:12px}
+.typeset-deviations small{color:#4e5561;font-size:12px}
 .risk{padding:0 6px;border-radius:999px;font-size:12px;background:#f0f2f5;color:#4b4f4c}
-.risk[data-risk='严重']{background:#fdf0ef;color:#a33c32}
+.risk[data-risk='严重']{background:#fdf0ef;color:#c4302b}
 .risk[data-risk='重要']{background:#fff4e5;color:#9a5b13}
 .typeset-result footer{display:flex;flex-wrap:wrap;gap:8px}
-.typeset-empty{color:#5f5b54;font-size:13px;line-height:1.7;margin:0}
+.typeset-empty{color:#4e5561;font-size:13px;line-height:1.7;margin:0}
 </style>

@@ -9,6 +9,7 @@ import ParagraphComments from '@/components/ParagraphComments.vue'
 import ParagraphSuggestions from '@/components/ParagraphSuggestions.vue'
 import TypesetDialog from '@/components/TypesetDialog.vue'
 import DocumentAssistDialog from '@/components/DocumentAssistDialog.vue'
+import OutlineEditorDialog from '@/components/OutlineEditorDialog.vue'
 import { useDict } from '@/composables/useDict'
 import { toEditorDoc, type SelectionRewrite } from '@/editor/richText'
 const { options: authorityOptions } = useDict('material_authority', ['正式公文', '权威资料', '内部资料', '参考资料'])
@@ -20,12 +21,9 @@ import { searchKnowledge, readKnowledgeDocument, listKnowledgeSources, listKnowl
 import { isConflict } from '@/api/http'
 import {
   acquireEditLease,
-  addOutlineNode,
   attachKnowledgeMaterial,
-  checkOutline,
   confirmOutline,
   createWritingMaterial,
-  deleteOutlineNode,
   deleteWritingMaterial,
   downloadWritingDocument,
   generateOutline,
@@ -49,7 +47,6 @@ import {
   updateDocumentParagraph,
   deleteDocumentParagraph,
   updateWritingMaterial,
-  updateOutlineNode,
   uploadWritingMaterial,
   type DocumentParagraph,
   type OutlineNode,
@@ -378,6 +375,33 @@ function openMaterial(item?: WritingMaterial, scope:'通篇'|'本节' = '通篇'
 }
 
 const selectedNode = computed(() => outline.value?.nodes.find((item) => item.id === selectedNodeId.value))
+const outlineLayered = computed(() => Boolean(outline.value?.nodes.some(item => item.parentNodeId)))
+const outlineMeta = computed(() => {
+  const nodes = outline.value?.nodes ?? []
+  const numerals = ['一','二','三','四','五','六','七','八','九','十']
+  const numeral = (n:number) => n <= 10 ? numerals[n-1] : n < 20 ? `十${numerals[n-11]}` : `${numerals[Math.floor(n/10)-1]}十${n%10 ? numerals[n%10-1] : ''}`
+  const meta = new Map<string,{level:number;label:string;hasChildren:boolean;lastOrder:number}>()
+  const counts = new Map<string,number>()
+  for (const node of nodes) {
+    const parent = node.parentNodeId ? meta.get(node.parentNodeId) : undefined
+    const level = parent ? parent.level + 1 : 1
+    const key = node.parentNodeId ?? ''
+    const index = (counts.get(key) ?? 0) + 1
+    counts.set(key, index)
+    const label = level === 1 ? `${numeral(index)}、` : level === 2 ? `（${numeral(index)}）` : `${index}.`
+    meta.set(node.id, { level, label, hasChildren: false, lastOrder: node.order })
+    let cursor = node.parentNodeId
+    while (cursor) {
+      const ancestor = meta.get(cursor)
+      if (!ancestor) break
+      ancestor.hasChildren = true
+      ancestor.lastOrder = Math.max(ancestor.lastOrder, node.order)
+      cursor = nodes.find(item => item.id === cursor)?.parentNodeId
+    }
+  }
+  return meta
+})
+const selectedIsParent = computed(() => Boolean(selectedNode.value && outlineMeta.value.get(selectedNode.value.id)?.hasChildren))
 const selectedParagraph = computed(() => document.value?.paragraphs.find((item) => item.id === selectedParagraphId.value))
 async function selectOutlineNode(node: OutlineNode) {
   selectedNodeId.value = node.id
@@ -446,10 +470,17 @@ async function createOutline() {
   try { outline.value=await generateOutline(taskId.value) as WritingOutline; selectedNodeId.value=outline.value.nodes[0]?.id??''; task.value=await getWritingTask(taskId.value); ElMessage.success('已按文种配置生成新提纲版本') }
   catch(error){ElMessage.error(message(error))}
 }
-async function saveNode(node:OutlineNode) { try { outline.value=await updateOutlineNode(taskId.value,outline.value!.version,node); ElMessage.success('章节已保存') } catch(error){ElMessage.error(message(error))} }
-async function appendNode() { if(!outline.value)return; try { outline.value=await addOutlineNode(taskId.value,outline.value.version,outline.value.nodes.length+1); selectedNodeId.value=outline.value.nodes.at(-1)?.id??'' } catch(error){ElMessage.error(message(error))} }
-async function removeNode(node:OutlineNode) { if(!outline.value)return; try { outline.value=await deleteOutlineNode(taskId.value,outline.value.version,node.id); selectedNodeId.value=outline.value.nodes[0]?.id??'' } catch(error){ElMessage.error(message(error))} }
-async function validateOutline() { if(!outline.value)return; try { outline.value=await checkOutline(taskId.value,outline.value.version); ElMessage.success(outline.value.structureCheckResult) } catch(error){ElMessage.error(message(error))} }
+const outlineEditorOpen = ref(false)
+function openOutlineEditor() { outlineEditorOpen.value = true }
+function onOutlineUpdated(next:WritingOutline) {
+  outline.value = next
+  if (!next.nodes.some(item => item.id === selectedNodeId.value)) selectedNodeId.value = next.nodes[0]?.id ?? ''
+}
+async function onOutlineConfirmed(next:WritingOutline) {
+  outline.value = next
+  task.value = await getWritingTask(taskId.value)
+  ElMessage.success('提纲已人工确认，正文生成门禁已开启')
+}
 async function lockOutline() { if(!outline.value)return; try { outline.value=await confirmOutline(taskId.value,outline.value.version); task.value=await getWritingTask(taskId.value); ElMessage.success('提纲已人工确认，正文生成门禁已开启') } catch(error){ElMessage.error(message(error))} }
 
 async function generate(node:OutlineNode) {
@@ -460,7 +491,7 @@ async function generate(node:OutlineNode) {
     return
   }
   if (existing.length) {
-    const manual = existing.filter((paragraph) => paragraph.contentOrigin && paragraph.contentOrigin !== 'AI生成').length
+    const manual = existing.filter((paragraph) => paragraph.contentOrigin && paragraph.contentOrigin !== 'AI生成' && paragraph.contentOrigin !== '提纲标题').length
     try {
       await ElMessageBox.confirm(
         manual
@@ -486,13 +517,15 @@ async function generate(node:OutlineNode) {
 async function rebuildDocument() {
   if (rebuilding.value || generatingId.value) return
   if (!outline.value?.confirmed) { ElMessage.warning('请先确认提纲'); return }
-  try {
-    await ElMessageBox.confirm(
-      `将按已确认的提纲 V${outline.value.version} 重建整份正文（${outline.value.nodes.length} 个章节）。现有正文 V${document.value?.currentVersion ?? 0} 会保留在版本记录中。${allowedMaterials.value ? '' : '当前没有可用材料；提纲和输入不变时，生成文字可能与上一版相同。'}`,
-      '确认重建正文',
-      { confirmButtonText: '确认重建', cancelButtonText: '取消', type: 'warning' },
-    )
-  } catch { return }
+  if (document.value?.paragraphs.length) {
+    try {
+      await ElMessageBox.confirm(
+        `将按已确认的提纲 V${outline.value.version} 重建整份正文（${outline.value.nodes.length} 个章节）。现有正文 V${document.value?.currentVersion ?? 0} 会保留在版本记录中。${allowedMaterials.value ? '' : '当前没有可用材料；提纲和输入不变时，生成文字可能与上一版相同。'}`,
+        '确认重建正文',
+        { confirmButtonText: '确认重建', cancelButtonText: '取消', type: 'warning' },
+      )
+    } catch { return }
+  }
   rebuilding.value = true
   rebuildResult.value = ''
   rebuildProgress.value = ''
@@ -818,6 +851,7 @@ onBeforeUnmount(endEditing)
           </section>
         </aside>
 
+        <OutlineEditorDialog v-if="outline" v-model="outlineEditorOpen" :task-id="taskId" :outline="outline" :focus-id="selectedNodeId" @updated="onOutlineUpdated" @confirmed="onOutlineConfirmed" />
         <aside class="outline-column">
           <header class="column-head">
             <div>
@@ -828,14 +862,17 @@ onBeforeUnmount(endEditing)
             <button class="column-action" type="button" @click="createOutline">{{ outline ? '新版本' : '生成提纲' }}</button>
           </header>
           <template v-if="outline">
-            <article v-for="node in outline.nodes" :key="node.id" class="outline-node" :class="{active:selectedNodeId===node.id,'confirmed-node':outline.confirmed}" role="button" tabindex="0" :aria-label="`定位到${node.title}章节`" @click="selectOutlineNode(node)" @keydown.enter.self.prevent="selectOutlineNode(node)" @keydown.space.self.prevent="selectOutlineNode(node)">
-              <span class="node-order">{{ String(node.order).padStart(2,'0') }}</span>
-              <div v-if="outline.confirmed" class="outline-node-summary"><strong>{{ node.title }}</strong><p>{{ node.purpose }}</p></div>
-              <div v-else class="outline-node-edit"><input v-model="node.title" @click.stop="selectOutlineNode(node)"><textarea v-model="node.purpose" rows="2" @click.stop="selectOutlineNode(node)" /></div>
-              <div v-if="!outline.confirmed" class="outline-node-actions"><button type="button" @click.stop="saveNode(node)">存</button><button type="button" @click.stop="removeNode(node)">×</button></div>
-            </article>
-            <button v-if="!outline.confirmed" class="append-node" type="button" @click="appendNode">＋ 添加章节</button>
-            <footer v-if="!outline.confirmed" class="outline-actions"><button type="button" @click="validateOutline">结构检查</button><button class="confirm" type="button" @click="lockOutline">确认提纲</button></footer>
+            <nav class="outline-tree" aria-label="提纲目录">
+              <button v-for="node in outline.nodes" :key="node.id" type="button" class="outline-item" :class="[`level-${outlineMeta.get(node.id)?.level ?? 1}`, {active:selectedNodeId===node.id,parent:outlineMeta.get(node.id)?.hasChildren}]" :title="node.purpose" @click="selectOutlineNode(node)">
+                <span class="outline-label">{{ outlineLayered ? outlineMeta.get(node.id)?.label : `${node.order}.` }}</span>
+                <span class="outline-text">{{ node.title }}</span>
+                <i v-if="document?.paragraphs.some(p => p.outlineNodeId === node.id && p.contentOrigin !== '提纲标题')" class="outline-done" title="已有正文">●</i>
+              </button>
+            </nav>
+            <footer class="outline-actions">
+              <button type="button" class="arrange" @click="openOutlineEditor()">{{ outline.confirmed ? '查看提纲详情' : '编排提纲' }}</button>
+              <button v-if="!outline.confirmed" class="confirm" type="button" @click="lockOutline">确认提纲</button>
+            </footer>
           </template>
           <div v-else class="editor-empty">生成提纲后可逐节调整写作目的、顺序和篇幅。</div>
         </aside>
@@ -849,7 +886,7 @@ onBeforeUnmount(endEditing)
               </div>
               <div class="ops-actions">
                 <label v-if="document" class="resolved-toggle"><input v-model="showResolved" type="checkbox"> 显示已处理</label>
-                <button class="ops-secondary" type="button" :disabled="!document || rebuilding || Boolean(generatingId)" @click="rebuildDocument">{{ rebuilding ? '重建中…' : '按提纲重建全文' }}</button>
+                <button class="ops-secondary" :class="{'ops-strong':!document?.paragraphs.length}" type="button" :disabled="!outline?.confirmed || rebuilding || Boolean(generatingId)" @click="rebuildDocument">{{ rebuilding ? '生成中…' : document?.paragraphs.length ? '按提纲重建全文' : '一键生成全文' }}</button>
               </div>
             </div>
             <p v-if="rebuilding && rebuildProgress" class="rebuild-result" role="status">{{ rebuildProgress }}</p>
@@ -863,7 +900,7 @@ onBeforeUnmount(endEditing)
                 <strong>{{ selectedNode.title }}</strong>
                 <label class="generation-instruction">生成要求<input v-model="instruction" placeholder="可选：补充本节写作要求"></label>
               </div>
-              <button class="ops-primary" type="button" :disabled="!outline?.confirmed || rebuilding || Boolean(generatingId)" @click="generate(selectedNode)">{{ !outline?.confirmed?'请先确认提纲':generatingId===selectedNode.id?'生成中…':document?.paragraphs.some((paragraph) => paragraph.outlineNodeId === selectedNode?.id)?'重新生成本节':'生成本节' }}</button>
+              <button class="ops-primary" type="button" :disabled="!outline?.confirmed || rebuilding || Boolean(generatingId) || selectedIsParent" @click="generate(selectedNode)">{{ !outline?.confirmed?'请先确认提纲':selectedIsParent?'上级章节只输出标题':generatingId===selectedNode.id?'生成中…':document?.paragraphs.some((paragraph) => paragraph.outlineNodeId === selectedNode?.id)?'重新生成本节':'生成本节' }}</button>
             </div>
             <p v-else-if="outline?.confirmed" class="ops-hint">在左侧提纲中选择章节，再生成或重写本节正文。</p>
             <div v-if="generatingId && streamText" class="stream-preview"><span>生成中</span><p>{{ streamText }}</p></div>
@@ -871,14 +908,14 @@ onBeforeUnmount(endEditing)
           <div ref="documentColumnRef" class="document-scroll">
             <section v-if="document?.paragraphs.length" class="paper-sheet">
               <header><span>{{ task.documentCategory }}</span><h1>{{ document.title }}</h1><small>{{ document.securityLevel }} · AI 辅助内容须人工复核</small></header>
-              <article v-for="(paragraph, paragraphIndex) in document.paragraphs" :key="paragraph.id" :data-paragraph-id="paragraph.id" :class="{active:selectedParagraphId===paragraph.id}" @click="selectParagraph(paragraph)">
+              <article v-for="(paragraph, paragraphIndex) in document.paragraphs" :key="paragraph.id" :data-paragraph-id="paragraph.id" :class="{active:selectedParagraphId===paragraph.id,'outline-heading':paragraph.contentOrigin==='提纲标题'}" @click="selectParagraph(paragraph)">
                 <div class="paragraph-meta"><span><i v-if="paragraph.contentOrigin" class="origin-tag" :class="ORIGIN_CLASS[paragraph.contentOrigin] ?? 'manual'" :title="'证据层级：' + paragraph.contentSourceLevel + (paragraph.sourceMaterialIds.length ? '；引用材料 ' + paragraph.sourceMaterialIds.length + ' 项' : '')">{{ paragraph.contentOrigin }}</i>{{ paragraph.contentSourceLevel }}</span><b>{{ paragraph.locked?'已锁定':leaseBlocked[paragraph.id]?'他人编辑中':lease?.paragraphId===paragraph.id?'编辑中':'可编辑' }}</b></div><p v-if="leaseBlocked[paragraph.id]" class="lease-blocked">{{ leaseBlocked[paragraph.id] }}</p><RichParagraphEditor :key="`${paragraph.id}:${editorEpochs[paragraph.id] ?? 0}`" :ref="(el) => setEditorRef(paragraph.id, el)" :content="toEditorDoc(paragraph.richContent, paragraph.plainText)" :editable="!paragraph.locked && !leaseBlocked[paragraph.id] && !rebuilding && !generatingId" :label="`第 ${paragraph.paragraphOrder} 段正文`" @focus="beginEditing(paragraph)" @update="(doc, text) => onRichUpdate(paragraph, doc, text)" @rewrite-selection="(request) => startRewrite(paragraph, request)" /><footer><span>第 {{ paragraphIndex + 1 }} 段 · {{ paragraph.plainText.length }} 字</span><div><button v-if="!paragraph.locked" type="button" :disabled="rebuilding || Boolean(generatingId)" @click.stop="removeParagraph(paragraph)">删除整段</button><button type="button" title="选中文字后添加批注，可引用该文字" @click.stop="openComment(paragraph)">批注{{ openCount(paragraph) ? `（${openCount(paragraph)}）` : '' }}</button><button type="button" @click.stop="toggleLock(paragraph)">{{ paragraph.locked?'解锁':'锁定' }}</button><button v-if="!paragraph.locked && trackChanges" type="button" class="propose" title="修订模式：提交后由他人或本人接受才会形成新版本" @click.stop="proposeParagraph(paragraph)">提交修订</button><button v-else-if="!paragraph.locked" type="button" :disabled="rebuilding || Boolean(generatingId)" @click.stop="saveParagraph(paragraph)">保存新版本</button></div></footer>
                 <ParagraphSuggestions :suggestions="suggestionsFor(paragraph.id)" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" />
                 <ParagraphComments :comments="commentsFor(paragraph.id)" @resolve="resolveComment" @edit="editComment" @delete="removeComment" @reveal="(text) => revealQuote(paragraph, text)" />
               </article>
               <section v-if="orphanComments.length || orphanSuggestions.length" class="orphan-comments"><h4>原段落已删除的修订和批注</h4><ParagraphSuggestions :suggestions="orphanSuggestions" :busy-id="suggestionBusy" @accept="acceptOne" @reject="rejectOne" /><ParagraphComments :comments="orphanComments" @resolve="resolveComment" @edit="editComment" @delete="removeComment" /></section>
             </section>
-            <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>确认提纲后，在中栏选择章节并逐段生成。每次人工修改都会形成不可变版本。</p></div>
+            <div v-else class="document-empty"><span>稿</span><h3>正文尚未形成</h3><p>{{ outline?.confirmed ? '可一键按提纲生成全文，也可在中栏选择章节逐节生成。' : '确认提纲后，可一键生成全文或逐节生成。' }}每次人工修改都会形成不可变版本。</p><button v-if="outline?.confirmed" class="empty-generate" type="button" :disabled="rebuilding || Boolean(generatingId)" @click="rebuildDocument">{{ rebuilding ? (rebuildProgress || '生成中…') : '一键生成全文' }}</button></div>
             <aside v-if="selectedParagraph" class="paragraph-inspector"><span>当前段落</span><b>{{ selectedParagraph.contentSourceLevel }}</b><small>{{ selectedParagraph.sourceMaterialIds.length }} 项任务材料 · {{ selectedParagraph.sourceKnowledgeIds?.length || 0 }} 项知识依据</small><div v-for="citation in citations.filter(item=>item.paragraphId===selectedParagraph?.id)" :key="citation.id" class="citation-audit"><strong>{{ citation.citationType }} · {{ citation.reviewStatus || '历史引用' }}</strong><small>来源版本 V{{ citation.knowledgeDocumentVersion || '—' }}</small><p>{{ citation.sourceExcerpt?.slice(0,160) || citation.citedFragment }}</p><button v-if="citation.knowledgeDocumentId && citation.reviewStatus!=='已引用'" type="button" @click="openCitation(citation)">核对引用</button></div></aside>
           </div>
         </main>
@@ -965,17 +1002,17 @@ onBeforeUnmount(endEditing)
 <style scoped>
 .pending-suggestions{margin-left:8px;padding:1px 8px;border-radius:999px;background:#e8f0fe;color:#1a56db;font-size:12px}
 .paper-sheet article footer button.propose{color:#1a56db}
-.resolved-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:#6b6860;white-space:nowrap}
-.orphan-comments{margin-top:24px;padding-top:16px;border-top:1px dashed #d8d3c8}
-.orphan-comments h4{margin:0;font-size:13px;color:#5f5b54}
+.resolved-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:#5b626d;white-space:nowrap}
+.orphan-comments{margin-top:24px;padding-top:16px;border-top:1px dashed #e5e7eb}
+.orphan-comments h4{margin:0;font-size:13px;color:#4e5561}
 .comment-form{display:grid;gap:12px}
 .comment-form-quote{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 12px;background:#fdf8ec;border-left:3px solid #d8a43a}
 .comment-form-quote span{font-size:12px;color:#7a5612}
 .comment-form-quote p{margin:0;font-size:14px;line-height:1.7;max-height:120px;overflow:auto;white-space:pre-wrap}
-.comment-form-quote button{border:0;background:none;color:#5f5b54;cursor:pointer;font-size:12px}
-.comment-form-hint{margin:0;color:#5f5b54;font-size:13px}
+.comment-form-quote button{border:0;background:none;color:#4e5561;cursor:pointer;font-size:12px}
+.comment-form-hint{margin:0;color:#4e5561;font-size:13px}
 .comment-form-types{display:flex;gap:16px;font-size:14px}
-.comment-form textarea{border:1px solid #c9c3b7;padding:10px;font:inherit;resize:vertical}
+.comment-form textarea{border:1px solid #d0d5dd;padding:10px;font:inherit;resize:vertical}
 .gate-rules{margin:0;padding:0;list-style:none;display:grid;gap:8px}
 .gate-rules li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb}
 .gate-rules li b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px}
@@ -1008,14 +1045,14 @@ onBeforeUnmount(endEditing)
 .conflict-intro{margin:0 0 14px;color:#646a73;font-size:14px;line-height:1.7}
 .conflict-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .conflict-compare section{padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#f8f9fb}
-.evidence-search{display:flex;gap:8px;margin:14px 0}.evidence-item{padding:12px 0;border-bottom:1px solid #e5e7eb}.evidence-item p{margin:6px 0;color:#555;white-space:pre-wrap;max-height:90px;overflow:auto}.evidence-item button{margin-right:10px;color:#b72b26}.evidence-item small{display:block;color:#9a6a37}.evidence-preview{margin-top:18px;padding:14px;border:1px solid #e5d6ce;background:#fffaf7}.evidence-preview>*{margin-bottom:10px}
-.knowledge-material-guide{padding:12px 14px;border:1px solid #e5d6ce;border-radius:6px;background:#fffaf7;color:#555;line-height:1.6}
-.material-source-tabs{display:flex;gap:8px;margin-bottom:16px}.material-source-tabs button{flex:1;padding:10px;border:1px solid #ddd2cd;border-radius:6px;background:#fff;color:#333;cursor:pointer}.material-source-tabs button.active{border-color:#c8322c;background:#fff3f1;color:#b52c27;font-weight:600}.material-knowledge-pane{max-height:62vh;overflow:auto}.material-oa-pane{min-height:160px;line-height:1.6}.evidence-confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-.evidence-readonly-note{padding:9px 12px;border:1px solid #e5d6ce;border-radius:6px;background:#fffaf7;color:#8b4a33}
-.evidence-browser{display:grid;grid-template-columns:180px 250px minmax(0,1fr);height:350px;border:1px solid #e4e0dc;border-radius:8px;overflow:hidden;background:#fff}
-.evidence-browser>aside,.evidence-browser>section{min-width:0;overflow:auto;padding:12px;border-right:1px solid #e4e0dc}.evidence-browser>section:last-child{border-right:0}
+.evidence-search{display:flex;gap:8px;margin:14px 0}.evidence-item{padding:12px 0;border-bottom:1px solid #e5e7eb}.evidence-item p{margin:6px 0;color:#555;white-space:pre-wrap;max-height:90px;overflow:auto}.evidence-item button{margin-right:10px;color:#b72b26}.evidence-item small{display:block;color:#9a6a37}.evidence-preview{margin-top:18px;padding:14px;border:1px solid #e5e7eb;background:#ffffff}.evidence-preview>*{margin-bottom:10px}
+.knowledge-material-guide{padding:12px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#ffffff;color:#555;line-height:1.6}
+.material-source-tabs{display:flex;gap:8px;margin-bottom:16px}.material-source-tabs button{flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;color:#333;cursor:pointer}.material-source-tabs button.active{border-color:#c8322c;background:#fff3f1;color:#b52c27;font-weight:600}.material-knowledge-pane{max-height:62vh;overflow:auto}.material-oa-pane{min-height:160px;line-height:1.6}.evidence-confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.evidence-readonly-note{padding:9px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#ffffff;color:#8b4a33}
+.evidence-browser{display:grid;grid-template-columns:180px 250px minmax(0,1fr);height:350px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff}
+.evidence-browser>aside,.evidence-browser>section{min-width:0;overflow:auto;padding:12px;border-right:1px solid #e5e7eb}.evidence-browser>section:last-child{border-right:0}
 .evidence-browser strong{display:block;margin-bottom:8px}.evidence-browser button{display:block;width:100%;margin:0 0 4px;padding:9px;text-align:left;border:1px solid transparent;border-radius:5px;background:transparent;color:#333;cursor:pointer;line-height:1.4}.evidence-browser button:hover,.evidence-browser button.active{border-color:#e6bbb5;background:#fff5f3}.evidence-browser button small{display:block;color:#777}.evidence-browser .evidence-item button{width:auto;color:#b72b26;border-color:#e5b8b1}.evidence-browser .evidence-item button:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:760px){.evidence-browser{grid-template-columns:1fr;height:auto}.evidence-browser>aside,.evidence-browser>section{max-height:220px;border-right:0;border-bottom:1px solid #e4e0dc}}
+@media(max-width:760px){.evidence-browser{grid-template-columns:1fr;height:auto}.evidence-browser>aside,.evidence-browser>section{max-height:220px;border-right:0;border-bottom:1px solid #e5e7eb}}
 .conflict-compare h4{margin:0 0 8px;font-size:14px}
 .conflict-compare p{margin:0;white-space:pre-wrap;font-size:14px;line-height:1.8;max-height:320px;overflow:auto}
 .editor-workspace{padding:16px 28px 20px;display:flex;flex-direction:column;height:calc(100vh - 56px);box-sizing:border-box;overflow:hidden}
@@ -1028,84 +1065,88 @@ onBeforeUnmount(endEditing)
 .editor-status b{color:var(--ink);margin-top:2px;font-size:13px}
 .editor-status button{white-space:nowrap;border:1px solid #cbd1db;border-radius:6px;background:#fff;color:var(--ink);padding:7px 11px;cursor:pointer;font-size:13px}
 .editor-status button:hover{color:var(--red);border-color:#e8aaa6;background:var(--red-soft)}
-.editor-columns{flex:1;min-height:0;display:grid;grid-template-columns:260px 300px minmax(480px,1fr);border:1px solid #d8d3c8;border-top:0;background:#f1eee7}
-.material-column,.outline-column{border-right:1px solid #d8d3c8;padding:16px 14px;overflow:auto;min-height:0}
+.editor-columns{flex:1;min-height:0;display:grid;grid-template-columns:260px 300px minmax(480px,1fr);border:1px solid #e5e7eb;border-top:0;background:#f0f2f5}
+.material-column,.outline-column{border-right:1px solid #e5e7eb;padding:16px 14px;overflow:auto;min-height:0;background:#fff}
 .column-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
 .column-head h3,.ops-title-row h3{font:600 17px/1.2 "Noto Sans SC",sans-serif;margin:0}
-.column-sub,.ops-meta{margin:6px 0 0;color:#858078;font-size:12px;line-height:1.5}
-.column-sub b{font-weight:600;color:#a33c32}
+.column-sub,.ops-meta{margin:6px 0 0;color:#7a818c;font-size:12px;line-height:1.5}
+.column-sub b{font-weight:600;color:#c4302b}
 .column-sub b.confirmed{color:#48705a}
-.column-action{flex-shrink:0;border:1px solid #c9c3b7;border-radius:6px;background:#fff;color:var(--ink);padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1.2}
+.column-action{flex-shrink:0;border:1px solid #d0d5dd;border-radius:6px;background:#fff;color:var(--ink);padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap;line-height:1.2}
 .column-action.icon{width:32px;height:32px;padding:0;font-size:18px}
 .column-action:hover{border-color:#e8aaa6;color:var(--red)}
-.material-block+.material-block{margin-top:18px;padding-top:16px;border-top:1px solid #e4dfd6}
+.material-block+.material-block{margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb}
 .material-column article{background:#fff;border-left:3px solid #567363;padding:12px;margin-bottom:10px}
-.material-column article[data-permission=拒绝]{border-color:#a33c32}
+.material-column article[data-permission=拒绝]{border-color:#c4302b}
 .material-column article.knowledge-card{border-left-color:#8a5a44}
-.material-column article header{display:flex;justify-content:space-between;font-size:12px;color:#89837a}
+.material-column article header{display:flex;justify-content:space-between;font-size:12px;color:#7a818c}
 .material-column article h4{font-size:14px;margin:8px 0}
-.material-column article p{font-size:12px;color:#706c65;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.material-column article p{font-size:12px;color:#646a73;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .material-column article footer{display:flex;justify-content:space-between;align-items:end;gap:8px}
 .material-column article footer small{font-size:12px;color:#999}
-.material-column article button{border:0;background:none;color:#a33c32;cursor:pointer;font-size:12px}
-.snapshot-button,.append-node{width:100%;border:1px dashed #9c9589;border-radius:6px;background:transparent;padding:10px;cursor:pointer;color:#59564f;margin-top:8px}
-.outline-node{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;padding:10px 8px;border-top:1px solid #ddd8cf;cursor:pointer;align-items:start}
-.outline-node:not(.confirmed-node){grid-template-columns:28px minmax(0,1fr) auto}
-.outline-node.active{background:#fff;border-left:2px solid #a33c32;padding-left:6px}
-.node-order{font:600 13px/1.4 sans-serif;color:#a8a197;padding-top:2px}
-.outline-node-summary,.outline-node-edit{min-width:0}
-.outline-node-summary strong{display:block;color:var(--ink);font-size:13px;line-height:1.4}
-.outline-node-summary p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.outline-node-edit input,.outline-node-edit textarea{width:100%;box-sizing:border-box;border:0;background:transparent;resize:none;font:inherit}
-.outline-node-edit input{font-weight:700;color:#272d29;font-size:13px}
-.outline-node-edit textarea{font-size:12px;color:#77736b;margin-top:4px;line-height:1.45}
-.outline-node-actions{display:flex;flex-direction:column;gap:2px}
-.outline-node-actions button{border:0;background:none;color:#8e877d;cursor:pointer;padding:2px 4px;font-size:12px}
-.outline-actions{display:flex;gap:8px;padding-top:12px}
-.outline-actions button{flex:1;border:1px solid #aaa397;border-radius:6px;background:#fff;padding:9px;cursor:pointer;font-size:13px}
+.material-column article button{border:0;background:none;color:#c4302b;cursor:pointer;font-size:12px}
+.snapshot-button,.append-node{width:100%;border:1px dashed #aeb4bd;border-radius:6px;background:transparent;padding:10px;cursor:pointer;color:#4e5561;margin-top:8px}
+.outline-tree{display:flex;flex-direction:column;gap:2px}
+.outline-item{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:6px;background:transparent;padding:8px 10px;text-align:left;cursor:pointer;color:var(--ink);font:inherit;font-size:13px;line-height:1.45}
+.outline-item:hover{background:#f4f6f9}
+.outline-item.active{background:var(--red-soft);color:var(--red)}
+.outline-item.level-1{font-weight:600}
+.outline-item.level-2{padding-left:26px;color:#374151}
+.outline-item.level-3{padding-left:44px;color:#4e5561;font-size:12.5px}
+.outline-item.active.level-2,.outline-item.active.level-3{color:var(--red)}
+.outline-label{flex-shrink:0;color:#8a919c;font-variant-numeric:tabular-nums}
+.outline-item.active .outline-label{color:var(--red)}
+.outline-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.outline-done{flex-shrink:0;font-style:normal;font-size:8px;color:#18794e}
+.outline-heading :deep(.ProseMirror){font-weight:700}.outline-actions{position:sticky;bottom:-16px;display:flex;gap:8px;margin-top:12px;padding:12px 0 16px;background:#fff;border-top:1px solid #e5e7eb}
+.outline-actions button{flex:1;border:1px solid #d0d5dd;border-radius:6px;background:#fff;padding:9px;cursor:pointer;font-size:13px;color:var(--ink)}
+.outline-actions button.arrange:hover{border-color:#e8aaa6;color:var(--red)}
 .outline-actions button.confirm{background:var(--red);color:#fff;border-color:var(--red)}
-.document-column{display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative;background:#ebe7df}
-.document-ops{flex-shrink:0;padding:14px 20px 12px;background:#f7f4ee;border-bottom:1px solid #e2ddd3;z-index:2;display:grid;gap:10px}
+.document-column{display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative;background:#eef0f3}
+.document-ops{flex-shrink:0;padding:14px 20px 12px;background:#f4f6f9;border-bottom:1px solid #e5e7eb;z-index:2;display:grid;gap:10px}
 .ops-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .ops-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .ops-secondary,.ops-primary{border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap;line-height:1.2}
-.ops-secondary{border:1px solid #c9b2ad;background:#fff;color:#b8322b}
+.ops-secondary{border:1px solid #d0d5dd;background:#fff;color:#b8322b}
 .ops-secondary:disabled,.ops-primary:disabled{opacity:.55;cursor:not-allowed}
-.ops-primary{border:0;background:#a33c32;color:#fff;min-width:112px}
-.ops-hint{margin:0;color:#858078;font-size:12px}
-.rebuild-result{margin:0;padding:8px 12px;border:1px solid #e6d4b7;border-radius:6px;background:#fffaf0;color:#765a2d;font-size:12px;line-height:1.5}
-.generation-bar{display:flex;align-items:stretch;justify-content:space-between;gap:14px;background:#fff;border:1px solid #ddd7cc;border-radius:8px;padding:12px 14px}
+.ops-primary{border:0;background:#c4302b;color:#fff;min-width:112px}
+.ops-hint{margin:0;color:#7a818c;font-size:12px}
+.rebuild-result{margin:0;padding:8px 12px;border:1px solid #e6d4b7;border-radius:6px;background:#f8f9fb;color:#765a2d;font-size:12px;line-height:1.5}
+.generation-bar{display:flex;align-items:stretch;justify-content:space-between;gap:14px;background:#fff;border:1px solid #d9dde3;border-radius:8px;padding:12px 14px}
 .generation-fields{display:grid;gap:4px;flex:1;min-width:0}
-.generation-label{font-size:11px;color:#8a847b;letter-spacing:.04em}
+.generation-label{font-size:11px;color:#7a818c;letter-spacing:.04em}
 .generation-fields strong{font-size:14px;color:var(--ink)}
-.generation-instruction{display:grid;gap:4px;margin-top:6px;font-size:12px;color:#6b6860}
-.generation-instruction input{border:1px solid #ddd7cc;border-radius:6px;background:#fbfaf7;padding:7px 10px;font:inherit;color:var(--ink)}
+.generation-instruction{display:grid;gap:4px;margin-top:6px;font-size:12px;color:#5b626d}
+.generation-instruction input{border:1px solid #d9dde3;border-radius:6px;background:#f8f9fb;padding:7px 10px;font:inherit;color:var(--ink)}
 .document-scroll{flex:1;min-height:0;overflow:auto;padding:12px 20px 22px}
-.paper-sheet{background:#fff;max-width:760px;margin:0 auto;padding:58px 72px;box-shadow:0 8px 24px rgba(55,50,40,.08)}
-.paper-sheet>header{text-align:center;border-bottom:1px solid #eee9df;padding-bottom:30px}
+.paper-sheet{background:#fff;max-width:760px;margin:0 auto;padding:58px 72px;box-shadow:0 8px 24px rgba(16,24,40,.06)}
+.paper-sheet>header{text-align:center;border-bottom:1px solid #eef0f3;padding-bottom:30px}
 .paper-sheet>header span,.paper-sheet>header small{font-size:13px;color:#999}
 .paper-sheet h1{font:600 26px/1.45 "Noto Sans SC",sans-serif}
-.paper-sheet>article{padding:24px 0;border-bottom:1px solid #eee9df}
+.paper-sheet>article{padding:24px 0;border-bottom:1px solid #eef0f3}
 .paper-sheet>article.dimmed{opacity:.32}
-.paper-sheet>article.active{box-shadow:-3px 0 #a33c32;padding-left:18px}
+.paper-sheet>article.active{box-shadow:-3px 0 #c4302b;padding-left:18px}
 .paragraph-meta{display:flex;justify-content:space-between;font-size:12px;color:#999}
-.paper-sheet textarea{border:0;width:100%;box-sizing:border-box;resize:vertical;font:16px/2 "Noto Sans SC",sans-serif;color:#292d2a;margin-top:8px}
+.paper-sheet textarea{border:0;width:100%;box-sizing:border-box;resize:vertical;font:16px/2 "Noto Sans SC",sans-serif;color:#1f2329;margin-top:8px}
 .paper-sheet article footer{display:flex;justify-content:space-between;color:#999;font-size:12px}
-.paper-sheet article footer button{border:0;background:none;color:#6d6962;cursor:pointer;margin-left:10px}
-.document-empty{text-align:center;padding:130px 30px;color:#817c73}
-.document-empty>span{display:inline-grid;place-items:center;width:70px;height:70px;border:1px solid #aaa397;font:32px sans-serif}
+.paper-sheet article footer button{border:0;background:none;color:#646a73;cursor:pointer;margin-left:10px}
+.document-empty{text-align:center;padding:130px 30px;color:#7a818c}
+.document-empty>span{display:inline-grid;place-items:center;width:70px;height:70px;border:1px solid #c3c8d0;font:32px sans-serif}
 .document-empty h3{font:500 22px sans-serif}
+.empty-generate{margin-top:8px;border:0;border-radius:8px;background:var(--red);color:#fff;padding:11px 28px;font-size:15px;cursor:pointer}
+.empty-generate:disabled{opacity:.6;cursor:wait}
+.ops-secondary.ops-strong:not(:disabled){background:var(--red);border-color:var(--red);color:#fff}
 .paragraph-inspector{position:sticky;bottom:0;margin:20px 0 0 auto;background:#fff;color:var(--ink);padding:10px 16px;width:max-content;display:flex;gap:12px;font-size:13px;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
 .paragraph-inspector small{color:var(--muted)}
-.editor-empty{padding:28px 8px;text-align:center;color:#918b82;font-size:12px;line-height:1.7}
+.editor-empty{padding:28px 8px;text-align:center;color:#8a919c;font-size:12px;line-height:1.7}
 .material-form{display:grid;gap:15px}
 .material-form>div{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.material-form label{display:grid;gap:6px;color:#6c6861;font-size:14px}
-.material-form input,.material-form select,.material-form textarea{border:1px solid #c9c3b7;background:#fbfaf7;padding:10px;font:inherit;resize:vertical}
-.file-drop{border:1px dashed #9b9488;padding:18px;background:#f4f1ea;cursor:pointer}
-.file-drop span{color:#8a847b}
-.manual-divider{text-align:center!important;display:block!important;color:#aaa39a;font-size:13px}
-.manual-divider:before,.manual-divider:after{content:"";display:inline-block;width:32%;border-top:1px solid #ddd7cc;vertical-align:middle;margin:0 10px}
+.material-form label{display:grid;gap:6px;color:#646a73;font-size:14px}
+.material-form input,.material-form select,.material-form textarea{border:1px solid #d0d5dd;background:#f8f9fb;padding:10px;font:inherit;resize:vertical}
+.file-drop{border:1px dashed #9aa1ab;padding:18px;background:#f4f6f9;cursor:pointer}
+.file-drop span{color:#7a818c}
+.manual-divider{text-align:center!important;display:block!important;color:#9aa1ab;font-size:13px}
+.manual-divider:before,.manual-divider:after{content:"";display:inline-block;width:32%;border-top:1px solid #d9dde3;vertical-align:middle;margin:0 10px}
 .stream-preview{background:#f8f9fb;border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;padding:12px 14px;color:var(--ink)}
 .stream-preview span{font-size:12px;color:var(--red)}
 .stream-preview p{font:13px/1.8 "Noto Sans SC",sans-serif;white-space:pre-wrap;margin:8px 0 0}

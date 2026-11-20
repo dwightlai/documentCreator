@@ -69,22 +69,22 @@ function regenerate() { emit('regenerate', operation.value, instruction.value.tr
 </template>
 
 <style scoped>
-.rewrite-original{padding:12px 16px;background:#f6f4ef;border-left:3px solid #8c877e}
+.rewrite-original{padding:12px 16px;background:#f4f6f9;border-left:3px solid #8c877e}
 .rewrite-original header,.rewrite-candidates header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.rewrite-original small,.rewrite-candidates small{color:#5f5b54;font-size:12px}
+.rewrite-original small,.rewrite-candidates small{color:#4e5561;font-size:12px}
 .rewrite-original p{margin:6px 0 0;font-size:15px;line-height:1.9;white-space:pre-wrap}
 .rewrite-request{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
-.rewrite-operations{display:flex;border:1px solid #c9c3b7}
+.rewrite-operations{display:flex;border:1px solid #d0d5dd}
 .rewrite-operations button{border:0;background:#fff;padding:7px 14px;cursor:pointer;color:#2f3430}
-.rewrite-operations button+button{border-left:1px solid #c9c3b7}
+.rewrite-operations button+button{border-left:1px solid #d0d5dd}
 .rewrite-operations button.active{background:#fdf0ef;color:#c4302b}
-.rewrite-request input{flex:1;min-width:220px;border:1px solid #c9c3b7;padding:8px 10px;font:inherit}
-.rewrite-status{color:#5f5b54;padding:28px 0;text-align:center}
+.rewrite-request input{flex:1;min-width:220px;border:1px solid #d0d5dd;padding:8px 10px;font:inherit}
+.rewrite-status{color:#4e5561;padding:28px 0;text-align:center}
 .rewrite-candidates{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.rewrite-candidates article{display:flex;flex-direction:column;border:1px solid #ddd7cc;padding:12px 14px;background:#fff}
+.rewrite-candidates article{display:flex;flex-direction:column;border:1px solid #d9dde3;padding:12px 14px;background:#fff}
 .rewrite-diff{flex:1;margin:8px 0 12px;font-size:15px;line-height:1.9;white-space:pre-wrap}
-.rewrite-diff del{color:#a33c32;background:#fdf0ef;text-decoration:line-through}
+.rewrite-diff del{color:#c4302b;background:#fdf0ef;text-decoration:line-through}
 .rewrite-diff ins{color:#18794e;background:#e8f5ee;text-decoration:none;border-bottom:1px solid #18794e}
 .rewrite-candidates footer{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.rewrite-note{margin:0;color:#5f5b54;font-size:13px;text-align:left}
+.rewrite-note{margin:0;color:#4e5561;font-size:13px;text-align:left}
 </style>

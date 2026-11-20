@@ -45,19 +45,19 @@ const items = computed(() => props.suggestions.map((suggestion) => ({
 .paragraph-suggestions{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
 .paragraph-suggestions li{padding:8px 12px;border-left:3px solid #1a56db;background:#f3f7ff}
 .paragraph-suggestions li.stale{border-left-color:#9a5b13;background:#fff8ee}
-.paragraph-suggestions li.decided{border-left-color:#aaa397;background:#f6f4ef}
-.paragraph-suggestions header{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:#5f5b54}
+.paragraph-suggestions li.decided{border-left-color:#c3c8d0;background:#f4f6f9}
+.paragraph-suggestions header{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:#4e5561}
 .paragraph-suggestions header b{color:#2f3430;font-weight:600}
 .suggestion-tag{padding:0 6px;border:1px solid #1a56db;color:#1a56db;border-radius:999px}
 .suggestion-ai{padding:0 6px;background:#e8f0fe;color:#1a56db;border-radius:999px}
 .suggestion-state,.suggestion-actions{margin-left:auto}
 .suggestion-actions{display:flex;gap:6px}
-.suggestion-actions button{border:1px solid #aaa397;background:#fff;color:#2f3430;padding:2px 10px;cursor:pointer;font-size:12px}
+.suggestion-actions button{border:1px solid #c3c8d0;background:#fff;color:#2f3430;padding:2px 10px;cursor:pointer;font-size:12px}
 .suggestion-actions button.accept:not(:disabled){border-color:#18794e;color:#18794e}
 .suggestion-actions button:disabled{color:#8c877e;cursor:not-allowed}
 .suggestion-stale{margin:6px 0 0;color:#9a5b13;font-size:12px}
-.suggestion-format{margin:6px 0 0;color:#5f5b54;font-size:13px}
+.suggestion-format{margin:6px 0 0;color:#4e5561;font-size:13px}
 .suggestion-diff{margin:6px 0 0;font-size:14px;line-height:1.8;white-space:pre-wrap;color:#2f3430}
-.suggestion-diff del{color:#a33c32;background:#fdf0ef;text-decoration:line-through}
+.suggestion-diff del{color:#c4302b;background:#fdf0ef;text-decoration:line-through}
 .suggestion-diff ins{color:#18794e;background:#e8f5ee;text-decoration:none;border-bottom:1px solid #18794e}
 </style>

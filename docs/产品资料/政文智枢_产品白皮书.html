@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>政文智枢 产品白皮书</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 16mm; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; color: #1d2430; font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+body { font-size: 12px; line-height: 1.75; }
+h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.35; }
+h2 { margin: 0 0 8px; font-size: 18px; line-height: 1.4; break-before: page; }
+h3 { margin: 14px 0 6px; font-size: 14px; }
+p { margin: 0 0 8px; }
+a { color: inherit; text-decoration: none; }
+.cover { min-height: 250mm; padding: 18mm 6mm 0; break-after: page; }
+.cover .brand { color: #b42318; letter-spacing: .16em; font-weight: 700; }
+.cover h1 { margin-top: 28mm; }
+.cover .lead { max-width: 150mm; color: #344054; font-size: 15px; }
+.rule { width: 36mm; height: 3px; margin: 16px 0; background: #b42318; }
+.meta { margin-top: 24mm; color: #667085; font-size: 12px; line-height: 1.8; }
+.toc { break-after: page; }
+.toc ol { margin: 8px 0 0; padding: 0; list-style: none; }
+.toc li { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid #eaecf0; }
+.toc b { color: #b42318; }
+.note { padding: 8px 12px; margin: 10px 0; border-left: 3px solid #b42318; background: #fff6f5; }
+figure { margin: 10px 0 14px; break-inside: avoid; }
+img { width: 100%; border: 1px solid #d0d5dd; }
+figcaption { margin-top: 4px; color: #667085; font-size: 11px; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 11px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid #eaecf0; text-align: left; vertical-align: top; }
+th { background: #1d2939; color: #fff; }
+ul { margin: 4px 0 10px; padding-left: 18px; }
+</style>
+</head>
+<body>
+<section class="cover">
+  <div class="brand">政文智枢</div>
+  <h1>智能公文写作与政务审校平台<br>产品白皮书</h1>
+  <div class="rule"></div>
+  <p class="lead">把材料、提纲、正文、审校和套红放在同一条工作链上。生成内容保留来源，审校问题回到原文，配置由管理员治理。</p>
+  <p class="meta">版本：2026 年 11 月<br>依据：当前已实现的产品界面与规则<br>本文用于产品介绍，不作为验收指标或准确率承诺。</p>
+</section>
+
+<section class="toc">
+  <h2 style="break-before:auto">目录</h2>
+  <ol>
+    <li><b>1</b><a href="#s1">产品定位</a></li>
+    <li><b>2</b><a href="#s2">使用对象与边界</a></li>
+    <li><b>3</b><a href="#s3">工作台</a></li>
+    <li><b>4</b><a href="#s4">写作与文种</a></li>
+    <li><b>5</b><a href="#s5">材料、提纲与正文</a></li>
+    <li><b>6</b><a href="#s6">智能审校</a></li>
+    <li><b>7</b><a href="#s7">规则与词库</a></li>
+    <li><b>8</b><a href="#s8">知识依据</a></li>
+    <li><b>9</b><a href="#s9">套红与输出模板</a></li>
+    <li><b>10</b><a href="#s10">治理、权限与开放接口</a></li>
+    <li><b>11</b><a href="#s11">部署与不作的承诺</a></li>
+  </ol>
+</section>
+
+<h2 id="s1">1. 产品定位</h2>
+<p>政文智枢是面向机关公文处理的写作与审校平台。起草人员在平台内完成任务、材料、提纲和正文；核稿人员对着原文处理审校问题；管理员维护规则、词库、知识、模板、模型和接入应用。</p>
+<p>平台可以单独使用，也可以由 OA 等业务系统通过开放接口调用写作辅助和审校。开放接口上的摘要、润色、扩写和正文审校直接提交正文，平台不保存这些文稿。</p>
+
+<h2 id="s2">2. 使用对象与边界</h2>
+<table>
+  <tr><th>角色</th><th>主要工作</th></tr>
+  <tr><td>起草人员</td><td>创建写作任务，准备材料，确认提纲，生成并修改正文，发起审校和套红。</td></tr>
+  <tr><td>核稿人员</td><td>查看审校问题，在原文中定位、修改、忽略或转人工，并重新审校。</td></tr>
+  <tr><td>管理员</td><td>维护规则、词库、知识库、输出模板、模型路由、用户权限和第三方应用。</td></tr>
+</table>
+<div class="note">AI 生成、改写和审校建议都要人工复核后使用。本文不给出审校准确率，也不把模型建议写成已核实结论。</div>
+
+<h2 id="s3">3. 工作台</h2>
+<p>登录后左侧为固定导航：智能写作、智能审校、规则词库、知识依据、任务运行、输出模板、模型治理、数据字典、开放文档、第三方、用户权限。右上角显示所在单位和「内网安全环境」。</p>
+<figure>
+  <img src="界面/02-writing-notice.png" alt="智能写作工作台">
+  <figcaption>图 1　智能写作工作台。左侧是任务，中间是任务简报和进度，右侧是文种建议。</figcaption>
+</figure>
+<p>一篇平台内公文按「草稿、材料准备、提纲准备、正文编辑、审校、已提交」推进。进度条只反映任务状态，不代替核稿结论。</p>
+
+<h2 id="s4">4. 写作与文种</h2>
+<p>创建任务时填写任务名称、文种、密级、写作主题、写作目的和篇幅。任务上保存的文种是创建或编辑时选定的，智能参谋不会自动改掉它。</p>
+<p>文种推荐按《党政机关公文处理工作条例》执行，不靠写作目的里的零散词默认文种：</p>
+<ul>
+  <li>任务名称或写作主题以「的＋法定文种」结尾时，采用标题中的文种。</li>
+  <li>「印发」「批转」「转发」仍定为通知，并在说明中区分印发类、批转性、转发性。书名号里的方案、办法、计划不是法定文种。</li>
+  <li>标题没有法定文种时，再按行文关系和写作目的对照条例第八条，只给一个文种。</li>
+  <li>标题和目的都对不上时，返回「未能判定」，不默认函或报告。</li>
+</ul>
+<figure>
+  <img src="界面/02-writing-notice.png" alt="印发类通知的文种推荐">
+  <figcaption>图 2　标题为「关于印发《……实施方案》的通知」。推荐结果是通知，并说明属于发布性通知中的印发类通知。任务卡片上仍保留创建时选择的文种。</figcaption>
+</figure>
+
+<h2 id="s5">5. 材料、提纲与正文</h2>
+<p>正文工作区分为通篇材料、本节材料、写作提纲和正文纸面。通篇材料供各章节使用，本节材料只供当前章节使用。材料可从上传、知识库或 OA 加入。固化材料权限快照后，生成使用的是当时的权限范围。</p>
+<p>提纲按文种配置给出章节。确认提纲后，才按当前章节和已选材料生成本节。正文段落标出 AI 生成、待核实和可编辑。导出时可附 AI 辅助说明。</p>
+<figure>
+  <img src="界面/03-editor.png" alt="正文协同工作区">
+  <figcaption>图 3　正文协同工作区。左侧材料、中间提纲、右侧正文。知识条目标有「仅供参考」或「待核验」时，不直接当作现行依据。</figcaption>
+</figure>
+
+<h2 id="s6">6. 智能审校</h2>
+<p>审校可以从已生成文稿发起，也可以上传本地 DOCX。页面左侧是原文，右侧是问题清单。点一条问题，回到对应段落。处理动作包括忽略、修改完成和转人工。修改后应重新审校。报告可导出 PDF 或 DOCX。</p>
+<p>页面上的页眉评分是这次审校的汇总展示，不是准确率。标成「模型提出，须人工确认」的条目，只是待核对建议。</p>
+<figure>
+  <img src="界面/04-review.png" alt="审校问题与原文对照">
+  <figcaption>图 4　审校工作台。同一屏对照公文原文和问题清单，并保留审校历史。</figcaption>
+</figure>
+
+<h2 id="s7">7. 规则与词库</h2>
+<p>审校规则只有生效和停用。生效规则参与审校，停用后不再使用。命中测试不改变启用状态。导入时，已有规则代码跳过，不覆盖单位已经改过的规则。</p>
+<p>当前内置的是「党政机关公文可执行审校规则包」。界面显示 56 条可执行规则，以及参与匹配的词条。两可词、历史旧称和已废止法律只提示，不自动替换。</p>
+<figure>
+  <img src="界面/05-rules.png" alt="规则与词库">
+  <figcaption>图 5　规则与词库。规则按语言文字、公文业务规范、格式与版式等分类浏览，状态为生效或停用。</figcaption>
+</figure>
+
+<h2 id="s8">8. 知识依据</h2>
+<p>知识库按权限、用途、完整性和核验状态管理。检索和查看切片只供阅读。选用到写作任务并选定章节后，才作为本节依据。原文摘录仍要在插入前确认，引用由人工核对。</p>
+<p>公开资料保留来源和本地正文。页面能打开，不表示该文件仍然现行。政策效力、机构职务和历史名称需要按版本核验。</p>
+<figure>
+  <img src="界面/06-knowledge.png" alt="知识与依据">
+  <figcaption>图 6　知识与依据。资料按范例、规范、权威事实、案例和表述分类，并标出权限与核验状态。</figcaption>
+</figure>
+
+<h2 id="s9">9. 套红与输出模板</h2>
+<p>输出模板是 DOCX。上传后为生效，停用后不再选用。模板用占位符对应发文机关、字号、签发人、标题、主送、正文、成文日期、抄送和印发信息。模拟填充不改变生效或停用状态。</p>
+<p>正文和套红后的定稿稿是两份结果。正文改过之后，需要重新套红。正式发出前，应在目标办公软件里复核下载的 DOCX。在线预览字体取决于部署环境是否安装并获得字体授权。</p>
+<figure>
+  <img src="界面/07-templates.png" alt="输出模板">
+  <figcaption>图 7　输出模板。左侧是已上传模板，右侧是占位符和版式要素。</figcaption>
+</figure>
+
+<h2 id="s10">10. 治理、权限与开放接口</h2>
+<p>模型治理登记端点、适用场景、最高数据级别和调用额度。凭据字段只保存环境变量名，不保存密钥。调用日志不保存可还原的正文。</p>
+<figure>
+  <img src="界面/08-governance.png" alt="模型路由">
+  <figcaption>图 8　模型路由。不同场景可以指向不同端点，并限制数据级别和每日额度。</figcaption>
+</figure>
+<p>第三方应用使用应用编码和 API Key 调用开放接口。管理员配置密钥和能力白名单。未加入白名单不能调用。密钥只在生成时显示一次。</p>
+<figure>
+  <img src="界面/09-open-apps.png" alt="第三方应用">
+  <figcaption>图 9　第三方应用。每个应用单独配置 API Key 和可调用的开放能力。</figcaption>
+</figure>
+<p>开放文档说明请求头 <code>X-Open-App-Code</code>、<code>X-Open-Api-Key</code>，以及创建写作或提交审校正文时需要的 <code>Idempotency-Key</code>。</p>
+
+<h2 id="s11">11. 部署与不作的承诺</h2>
+<p>平台按 Java 17 和 Vue 3 组织，可在单机 Linux 上使用已有 PostgreSQL 部署。规则、词库和已保存的知识正文可以在本地运行。需要模型生成时，模型服务必须能从部署网络访问。</p>
+<ul>
+  <li>不把工程测试结果写成审校准确率。</li>
+  <li>不把模型建议写成已经核实的事实或政策结论。</li>
+  <li>不自动替换两可词、历史旧称和已废止法律名称。</li>
+  <li>不覆盖单位已经修改过的规则。</li>
+</ul>
+<p>试点时应先选定文种和样本，核验规则来源与模板版式，再接入身份认证和 OA。</p>
+</body>
+</html>

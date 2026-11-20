@@ -12,7 +12,11 @@ import java.util.List;
 public final class WritingOutlineDtos {
     private WritingOutlineDtos() {}
 
-    public record NodeDraft(String title, String purpose, int targetWordCount, boolean required) {}
+    public record NodeDraft(String title, String purpose, int targetWordCount, boolean required, int level) {
+        public NodeDraft(String title, String purpose, int targetWordCount, boolean required) {
+            this(title, purpose, targetWordCount, required, 1);
+        }
+    }
 
     public record NodeRequest(
             String parentNodeId,

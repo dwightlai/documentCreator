@@ -62,10 +62,13 @@ public class WritingOutlineService {
 
         List<NodeDraft> drafts = assistant.generateOutline(task, Math.toIntExact(materialService.countUsable(taskId)));
         int order = 1;
+        String[] parents = new String[OutlineStructure.MAX_LEVEL + 1];
         for (NodeDraft draft : drafts) {
+            int level = Math.max(1, Math.min(draft.level(), OutlineStructure.MAX_LEVEL));
             WritingOutlineNodeEntity node = new WritingOutlineNodeEntity();
             node.setTenantId(RequestContext.tenantId());
             node.setOutlineId(outline.getId());
+            node.setParentNodeId(level == 1 ? null : parents[level - 1]);
             node.setNodeOrder(order++);
             node.setNodeTitle(draft.title());
             node.setWritingPurpose(draft.purpose());
@@ -74,6 +77,7 @@ public class WritingOutlineService {
             node.setReferencedMaterialIds("[]");
             node.setGenerationStatus("待生成");
             nodeMapper.insert(node);
+            parents[level] = node.getId();
         }
         task.setStatus(WritingTaskStatus.OUTLINE_PENDING.code());
         taskMapper.updateById(task);
@@ -114,6 +118,7 @@ public class WritingOutlineService {
         applyNode(node, request);
         node.setGenerationStatus("待生成");
         nodeMapper.insert(node);
+        normalizeOrders(outline.getId());
         return get(taskId, version);
     }
 
@@ -141,10 +146,13 @@ public class WritingOutlineService {
     public Response deleteNode(String taskId, int version, String nodeId) {
         WritingOutlineEntity outline = requireEditable(taskId, version);
         WritingOutlineNodeEntity node = requireNode(outline, nodeId);
-        if (nodeMapper.selectCount(new LambdaQueryWrapper<WritingOutlineNodeEntity>()
-                        .eq(WritingOutlineNodeEntity::getParentNodeId, nodeId))
-                > 0) throw BusinessException.conflict("请先删除或移动子节点");
-        nodeMapper.deleteById(node.getId());
+        OutlineStructure structure = new OutlineStructure(nodes(outline.getId()));
+        java.util.ArrayDeque<WritingOutlineNodeEntity> pending = new java.util.ArrayDeque<>(List.of(node));
+        while (!pending.isEmpty()) {
+            WritingOutlineNodeEntity current = pending.pop();
+            pending.addAll(structure.children(current.getId()));
+            nodeMapper.deleteById(current.getId());
+        }
         normalizeOrders(outline.getId());
         return get(taskId, version);
     }
@@ -168,11 +176,8 @@ public class WritingOutlineService {
     @Transactional
     public Response structureCheck(String taskId, int version) {
         Response response = get(taskId, version);
-        boolean valid = response.nodes().size() >= 2
-                && response.nodes().stream()
-                        .allMatch(node -> node.title() != null && !node.title().isBlank());
         WritingOutlineEntity outline = outlineMapper.selectById(response.id());
-        outline.setStructureCheckResult(valid ? "通过：结构完整，可确认" : "不通过：至少需要两个具名节点");
+        outline.setStructureCheckResult(checkStructure(outline.getId()));
         outlineMapper.updateById(outline);
         return get(taskId, version);
     }
@@ -194,6 +199,26 @@ public class WritingOutlineService {
         task.setStatus(WritingTaskStatus.GENERATING.code());
         taskMapper.updateById(task);
         return get(taskId, version);
+    }
+
+    private String checkStructure(String outlineId) {
+        List<WritingOutlineNodeEntity> nodes = nodes(outlineId);
+        OutlineStructure structure = new OutlineStructure(nodes);
+        if (structure.children(null).size() < 2) return "不通过：至少需要两个一级章节";
+        for (WritingOutlineNodeEntity node : structure.ordered()) {
+            if (node.getNodeTitle() == null || node.getNodeTitle().isBlank()) return "不通过：存在未命名章节";
+            if (structure.level(node.getId()) > OutlineStructure.MAX_LEVEL)
+                return "不通过：「" + node.getNodeTitle() + "」超过三级，公文正文层次最多用到“1.”";
+            if (structure.children(node.getId()).size() == 1)
+                return "不通过：「" + node.getNodeTitle() + "」只有一个下级章节，应至少分为两项或取消分级";
+        }
+        return "通过：结构完整，可确认";
+    }
+
+    private List<WritingOutlineNodeEntity> nodes(String outlineId) {
+        return nodeMapper.selectList(new LambdaQueryWrapper<WritingOutlineNodeEntity>()
+                .eq(WritingOutlineNodeEntity::getOutlineId, outlineId)
+                .orderByAsc(WritingOutlineNodeEntity::getNodeOrder));
     }
 
     private WritingOutlineEntity requireEditable(String taskId, int version) {
@@ -219,11 +244,22 @@ public class WritingOutlineService {
         if (parentId.equals(selfId)) throw BusinessException.unprocessable("节点不能以自身为父节点");
         WritingOutlineNodeEntity parent = requireNode(outline, parentId);
         String cursor = parent.getParentNodeId();
+        int parentLevel = 1;
         while (cursor != null) {
             if (cursor.equals(selfId)) throw BusinessException.unprocessable("不能形成大纲节点循环");
             WritingOutlineNodeEntity next = nodeMapper.selectById(cursor);
             cursor = next == null ? null : next.getParentNodeId();
+            parentLevel++;
         }
+        int height = selfId == null ? 1 : height(new OutlineStructure(nodes(outline.getId())), selfId);
+        if (parentLevel + height > OutlineStructure.MAX_LEVEL) throw BusinessException.unprocessable("提纲最多三级");
+    }
+
+    private int height(OutlineStructure structure, String nodeId) {
+        return 1 + structure.children(nodeId).stream()
+                .mapToInt(child -> height(structure, child.getId()))
+                .max()
+                .orElse(0);
     }
 
     private void applyNode(
@@ -256,11 +292,8 @@ public class WritingOutlineService {
     }
 
     private void normalizeOrders(String outlineId) {
-        List<WritingOutlineNodeEntity> nodes = nodeMapper.selectList(new LambdaQueryWrapper<WritingOutlineNodeEntity>()
-                .eq(WritingOutlineNodeEntity::getOutlineId, outlineId)
-                .orderByAsc(WritingOutlineNodeEntity::getNodeOrder));
         int order = 1;
-        for (WritingOutlineNodeEntity node : nodes) {
+        for (WritingOutlineNodeEntity node : new OutlineStructure(nodes(outlineId)).ordered()) {
             if (node.getNodeOrder() != order) {
                 node.setNodeOrder(order);
                 nodeMapper.updateById(node);
@@ -281,6 +314,7 @@ public class WritingOutlineService {
             node.setNodeOrder(order++);
             nodeMapper.updateById(node);
         }
+        normalizeOrders(outlineId);
     }
 
     private String write(List<String> values) {

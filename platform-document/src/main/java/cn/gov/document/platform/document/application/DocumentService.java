@@ -23,6 +23,7 @@ import cn.gov.document.platform.document.persistence.DocumentMapper;
 import cn.gov.document.platform.document.persistence.DocumentParagraphMapper;
 import cn.gov.document.platform.document.persistence.DocumentVersionMapper;
 import cn.gov.document.platform.document.persistence.GenerationRecordMapper;
+import cn.gov.document.platform.writing.application.OutlineStructure;
 import cn.gov.document.platform.writing.application.WritingKnowledgeService;
 import cn.gov.document.platform.writing.application.WritingMaterialService;
 import cn.gov.document.platform.writing.application.WritingQaService;
@@ -70,6 +71,7 @@ public class DocumentService {
 
     private static final Duration DOCUMENT_WRITE_TTL = Duration.ofMinutes(10);
     private static final Duration GENERATION_TTL = Duration.ofMinutes(10);
+    private static final String HEADING_ORIGIN = "提纲标题";
 
     public DocumentService(
             DocumentMapper documentMapper,
@@ -142,13 +144,24 @@ public class DocumentService {
             document.setCurrentVersion(document.getCurrentVersion() + 1);
             createVersion(document, "AI生成", "人工确认", "按当前提纲重建正文");
         }
+        OutlineStructure structure = new OutlineStructure(nodes);
+        boolean headings = OutlineStructure.usesHeadings(task.getDocumentTypeCode(), nodes);
         int order = 1;
-        for (WritingOutlineNodeEntity node : nodes) {
+        int index = 0;
+        for (WritingOutlineNodeEntity node : structure.ordered()) {
+            index++;
             progress.accept(
-                    (order - 1) * 90 / nodes.size() + 5,
-                    "正在生成第 " + order + "/" + nodes.size() + " 节：" + node.getNodeTitle());
+                    (index - 1) * 90 / nodes.size() + 5,
+                    "正在生成第 " + index + "/" + nodes.size() + " 节：" + node.getNodeTitle());
+            if (headings) paragraphMapper.insert(headingParagraph(document, node, structure, order++));
+            if (structure.hasChildren(node.getId())) {
+                node.setGenerationStatus("已生成");
+                outlineNodeMapper.updateById(node);
+                continue;
+            }
             long started = System.nanoTime();
-            Generated generated = generateSectionText(task, node, regenerationContext(prior, node.getId(), null));
+            Generated generated = generateSectionText(
+                    task, node, regenerationContext(prior, node.getId(), null), headings ? structure.path(node) : null);
             DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
             paragraph.setTenantId(RequestContext.tenantId());
             paragraph.setDocumentId(document.getId());
@@ -253,6 +266,13 @@ public class DocumentService {
                 .eq(WritingOutlineNodeEntity::getId, request.outlineNodeId())
                 .eq(WritingOutlineNodeEntity::getOutlineId, outline.getId()));
         if (node == null) throw BusinessException.notFound("大纲节点不存在");
+        List<WritingOutlineNodeEntity> outlineNodes =
+                outlineNodeMapper.selectList(new LambdaQueryWrapper<WritingOutlineNodeEntity>()
+                        .eq(WritingOutlineNodeEntity::getOutlineId, outline.getId()));
+        OutlineStructure structure = new OutlineStructure(outlineNodes);
+        if (structure.hasChildren(node.getId()))
+            throw BusinessException.unprocessable("「" + node.getNodeTitle() + "」是上级章节，只输出标题，请选择下级章节生成正文");
+        boolean headings = OutlineStructure.usesHeadings(task.getDocumentTypeCode(), outlineNodes);
 
         DocumentEntity document = findDocument(taskId);
         if (document == null) document = createDocument(task);
@@ -264,15 +284,34 @@ public class DocumentService {
                 .toList();
         if (previousSection.stream().anyMatch(item -> Boolean.TRUE.equals(item.getIsLocked())))
             throw BusinessException.conflict("本节有锁定段落，请先解锁后再重新生成");
+        List<String> following = structure.ordered().stream()
+                .dropWhile(item -> !item.getId().equals(node.getId()))
+                .skip(1)
+                .map(WritingOutlineNodeEntity::getId)
+                .toList();
         int order = previousSection.stream()
                 .mapToInt(DocumentParagraphEntity::getParagraphOrder)
                 .min()
                 .orElseGet(() -> current.stream()
-                                .mapToInt(DocumentParagraphEntity::getParagraphOrder)
-                                .max()
-                                .orElse(0)
-                        + 1);
+                        .filter(item -> following.contains(item.getOutlineNodeId()))
+                        .mapToInt(DocumentParagraphEntity::getParagraphOrder)
+                        .min()
+                        .orElseGet(() -> current.stream()
+                                        .mapToInt(DocumentParagraphEntity::getParagraphOrder)
+                                        .max()
+                                        .orElse(0)
+                                + 1));
         previousSection.forEach(item -> paragraphMapper.deleteById(item.getId()));
+        int inserted = headings ? 2 : 1;
+        int insertAt = order;
+        current.stream()
+                .filter(item -> !node.getId().equals(item.getOutlineNodeId()))
+                .filter(item -> item.getParagraphOrder() >= insertAt)
+                .forEach(item -> {
+                    item.setParagraphOrder(item.getParagraphOrder() + inserted);
+                    paragraphMapper.updateById(item);
+                });
+        if (headings) paragraphMapper.insert(headingParagraph(document, node, structure, order++));
         DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
         paragraph.setTenantId(RequestContext.tenantId());
         paragraph.setDocumentId(document.getId());
@@ -285,7 +324,10 @@ public class DocumentService {
                 node.getReferencedMaterialIds() == null ? "[]" : node.getReferencedMaterialIds());
         paragraph.setIsLocked(false);
         Generated generated = generateSectionText(
-                task, node, regenerationContext(previousSection, node.getId(), request.instruction()));
+                task,
+                node,
+                regenerationContext(previousSection, node.getId(), request.instruction()),
+                headings ? structure.path(node) : null);
         paragraph.setSourceMaterialIds(toJsonArray(generated.sourceMaterialIds()));
         paragraph.setSourceKnowledgeIds(toJsonArray(writingKnowledgeService.selections(taskId, node.getId()).stream()
                 .map(cn.gov.document.platform.writing.domain.WritingKnowledgeSelectionEntity::getId)
@@ -928,6 +970,7 @@ public class DocumentService {
     private String regenerationContext(List<DocumentParagraphEntity> paragraphs, String nodeId, String instruction) {
         String existing = paragraphs.stream()
                 .filter(p -> nodeId.equals(p.getOutlineNodeId()))
+                .filter(p -> !HEADING_ORIGIN.equals(p.getContentOrigin()))
                 .map(p -> ("人工录入".equals(p.getContentOrigin()) ? "[人工修改]" : "") + p.getPlainText())
                 .collect(java.util.stream.Collectors.joining("\n"));
         if (existing.isBlank()) return instruction;
@@ -936,11 +979,32 @@ public class DocumentService {
                 + existing;
     }
 
-    private Generated generateSectionText(WritingTaskEntity task, WritingOutlineNodeEntity node, String instruction) {
+    private DocumentParagraphEntity headingParagraph(
+            DocumentEntity document, WritingOutlineNodeEntity node, OutlineStructure structure, int order) {
+        DocumentParagraphEntity heading = new DocumentParagraphEntity();
+        heading.setTenantId(RequestContext.tenantId());
+        heading.setDocumentId(document.getId());
+        heading.setVersionNumber(document.getCurrentVersion());
+        heading.setOutlineNodeId(node.getId());
+        heading.setParagraphOrder(order);
+        heading.setContentSourceLevel("手工");
+        heading.setContentOrigin(HEADING_ORIGIN);
+        heading.setSourceMaterialIds("[]");
+        heading.setSourceKnowledgeIds("[]");
+        heading.setIsLocked(false);
+        heading.setPlainText(structure.heading(node));
+        return heading;
+    }
+
+    private Generated generateSectionText(
+            WritingTaskEntity task, WritingOutlineNodeEntity node, String instruction, String position) {
         var materials = materialService.prepareGenerationContext(task.getId(), node.getId());
         String selectedKnowledge = writingKnowledgeService.generationContext(task.getId(), node.getId());
+        String layout = position == null
+                ? ""
+                : "\n章节位置：" + position + "\n标题和序号由系统按层级单独排版，本节只输出正文，不要重复标题和序号；需要再分项时用“1.”“（1）”。";
         String input = "文种：" + task.getDocumentTypeCode() + "\n主题：" + task.getWritingTopic() + "\n章节："
-                + node.getNodeTitle() + "\n写作目的：" + task.getWritingPurpose()
+                + node.getNodeTitle() + layout + "\n写作目的：" + task.getWritingPurpose()
                 + "\n章节要点：" + node.getWritingPurpose() + "\n要求：" + (instruction == null ? "" : instruction)
                 + "\n\n任务材料：\n" + materials.text()
                 + "\n\n本节经人工选用的知识依据（只能使用这里列出的片段；写法参考不得作为事实）："

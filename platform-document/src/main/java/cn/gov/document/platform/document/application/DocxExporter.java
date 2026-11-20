@@ -117,7 +117,7 @@ public class DocxExporter {
     /** 只为 AI 参与的段落添加批注；人工录入段落不打标，避免干扰正式文稿阅读。 */
     private static String sourceNote(DocumentParagraphEntity paragraph) {
         String origin = paragraph.getContentOrigin();
-        if (origin == null || "人工录入".equals(origin)) return null;
+        if (origin == null || "人工录入".equals(origin) || "提纲标题".equals(origin)) return null;
         String materials = paragraph.getSourceMaterialIds() == null
                         || paragraph.getSourceMaterialIds().isBlank()
                         || "[]".equals(paragraph.getSourceMaterialIds())

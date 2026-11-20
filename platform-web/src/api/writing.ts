@@ -148,9 +148,9 @@ export const getCurrentOutline = (taskId:string) => data(http.get<ApiEnvelope<Wr
 export const checkOutline = (taskId:string,version:number) => data(http.post<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/structure-check`))
 export const confirmOutline = (taskId:string,version:number) => data(http.post<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/confirm`))
 export const updateOutlineNode = (taskId:string,version:number,node:OutlineNode) => data(http.put<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/nodes/${node.id}`,{
-  order:node.order,title:node.title,purpose:node.purpose,keyFacts:node.keyFacts,referencedMaterialIds:parseReferencedIds(node.referencedMaterialIds),targetWordCount:node.targetWordCount,required:node.required,humanNote:node.humanNote,lockVersion:node.lockVersion,
+  parentNodeId:node.parentNodeId,order:node.order,title:node.title,purpose:node.purpose,keyFacts:node.keyFacts,referencedMaterialIds:parseReferencedIds(node.referencedMaterialIds),targetWordCount:node.targetWordCount,required:node.required,humanNote:node.humanNote,lockVersion:node.lockVersion,
 }))
-export const addOutlineNode = (taskId:string,version:number,order:number) => data(http.post<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/nodes`,{order,title:'新增章节',purpose:'请补充本节写作目的',referencedMaterialIds:[],targetWordCount:300,required:false}))
+export const addOutlineNode = (taskId:string,version:number,order:number,parentNodeId?:string) => data(http.post<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/nodes`,{parentNodeId,order,title:parentNodeId?'新增下级章节':'新增章节',purpose:'请补充本节写作目的',referencedMaterialIds:[],targetWordCount:300,required:false}))
 export const deleteOutlineNode = (taskId:string,version:number,nodeId:string) => data(http.delete<ApiEnvelope<WritingOutline>>(`/writing-tasks/${taskId}/outlines/${version}/nodes/${nodeId}`))
 
 export const getWritingDocument = (taskId:string) => data(http.get<ApiEnvelope<WritingDocument>>(`/writing-tasks/${taskId}/document`))
