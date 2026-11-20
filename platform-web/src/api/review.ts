@@ -40,7 +40,7 @@ export interface ReviewIssue {
 
 export interface ReviewContentBlock {
   anchor: string
-  kind: 'title' | 'paragraph' | 'tableRow'
+  kind: 'head' | 'title' | 'paragraph' | 'tableRow'
   paragraphNumber: number
   originalText: string
   currentText: string

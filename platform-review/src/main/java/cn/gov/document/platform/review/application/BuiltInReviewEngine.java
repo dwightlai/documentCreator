@@ -146,7 +146,11 @@ public class BuiltInReviewEngine {
                 result.add(new Candidate(
                         "L3",
                         null,
-                        1,
+                        paragraphs.stream()
+                                .filter(p -> documentTitle.equals(p.getPlainText()))
+                                .mapToInt(DocumentParagraphEntity::getParagraphOrder)
+                                .findFirst()
+                                .orElse(1),
                         "公文规则",
                         "重要",
                         0,

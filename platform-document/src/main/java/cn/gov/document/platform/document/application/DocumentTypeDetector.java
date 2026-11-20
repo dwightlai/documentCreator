@@ -25,6 +25,11 @@ public final class DocumentTypeDetector {
                 .filter(StringUtils::hasText)
                 .limit(15)
                 .toList();
+        OfficialDocumentHead.Result parsed = OfficialDocumentHead.detectText(head);
+        if (parsed.hasTitle()) {
+            String type = titleType(parsed.title());
+            if (type != null) return type;
+        }
         for (String line : head) {
             String type = titleType(line);
             if (type != null) return type;
@@ -32,7 +37,7 @@ public final class DocumentTypeDetector {
         StringBuilder title = new StringBuilder();
         for (String line : head) {
             if (line.endsWith("：") || line.endsWith(":")) break;
-            if (line.matches(".*[〔\\[]\\d{4}[〕\\]].*")) continue;
+            if (line.matches(".*[〔\\[]\\d{4}[〕\\]].*") || line.endsWith("文件")) continue;
             title.append(line);
         }
         return titleType(title.toString());

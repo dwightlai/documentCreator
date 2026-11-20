@@ -74,6 +74,8 @@ class L3StructureInspector {
     private void inspectAddressee(String type, String direction, List<Line> lines, List<Finding> result) {
         Line first = lines.stream()
                 .filter(line -> !line.text().isBlank())
+                .limit(4)
+                .filter(line -> ADDRESSEE.matcher(line.text().strip()).find())
                 .findFirst()
                 .orElse(null);
         if (first == null) return;

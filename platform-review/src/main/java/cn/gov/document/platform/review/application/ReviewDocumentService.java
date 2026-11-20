@@ -158,8 +158,11 @@ public class ReviewDocumentService {
                     now == null ? original.style : now.style));
         }
         int version = task.getEditVersion() == null ? 0 : task.getEditVersion();
-        String title =
-                blocks.isEmpty() ? task.getSourceFileName() : blocks.get(0).currentText();
+        String title = blocks.stream()
+                .filter(b -> "title".equals(b.kind()))
+                .map(Block::currentText)
+                .findFirst()
+                .orElse(task.getReviewTitle() == null ? task.getSourceFileName() : task.getReviewTitle());
         return new Content("upload", title, 0, version, version > 0, blocks);
     }
 
@@ -175,8 +178,10 @@ public class ReviewDocumentService {
                     .filter(b -> b.anchor.equals(edit.anchor()))
                     .findFirst()
                     .orElseThrow(() -> BusinessException.notFound("原文位置不存在，请刷新后重试"));
-            if (target.paragraph != null) replaceText(target.paragraph, edit.text());
-            else {
+            if (!target.paragraphs.isEmpty()) {
+                replaceText(target.paragraphs.get(0), edit.text());
+                for (int i = 1; i < target.paragraphs.size(); i++) replaceText(target.paragraphs.get(i), "");
+            } else {
                 String[] cells = edit.text().split("\\t", -1);
                 if (cells.length != target.row.getTableCells().size())
                     throw BusinessException.unprocessable("表格行应保留原有列数，请用 Tab 分隔单元格");
@@ -254,14 +259,14 @@ public class ReviewDocumentService {
             String kind,
             int paragraphNumber,
             String text,
-            XWPFParagraph paragraph,
+            List<XWPFParagraph> paragraphs,
             XWPFTableRow row,
             BlockStyle style) {}
 
     private static List<DocxBlock> readBlocks(byte[] bytes) {
         try (XWPFDocument word = new XWPFDocument(new ByteArrayInputStream(bytes))) {
             return blocks(word).stream()
-                    .map(b -> new DocxBlock(b.anchor, b.kind, b.paragraphNumber, b.text, null, null, b.style))
+                    .map(b -> new DocxBlock(b.anchor, b.kind, b.paragraphNumber, b.text, List.of(), null, b.style))
                     .toList();
         } catch (IOException e) {
             throw BusinessException.unprocessable("DOCX 文件无法读取");
@@ -270,46 +275,16 @@ public class ReviewDocumentService {
 
     // 展示采用 DOCX 原始顺序；段落编号仍与审校引擎的“正文段落、表格行”顺序一致。
     private static List<DocxBlock> blocks(XWPFDocument word) {
-        var paragraphs = new java.util.IdentityHashMap<XWPFParagraph, DocxBlock>();
-        var rowsByTable = new java.util.IdentityHashMap<XWPFTableRow, DocxBlock>();
-        int number = 0;
-        for (int i = 0; i < word.getParagraphs().size(); i++) {
-            XWPFParagraph paragraph = word.getParagraphs().get(i);
-            String value = paragraph.getText().trim();
-            if (!value.isBlank()) {
-                number++;
-                paragraphs.put(
-                        paragraph,
-                        new DocxBlock(
-                                "p-" + i,
-                                number == 1 ? "title" : "paragraph",
-                                number,
-                                value,
-                                paragraph,
-                                null,
-                                style(paragraph)));
-            }
-        }
-        for (int t = 0; t < word.getTables().size(); t++) {
-            var rows = word.getTables().get(t).getRows();
-            for (int r = 0; r < rows.size(); r++) {
-                XWPFTableRow row = rows.get(r);
-                String value = row.getTableCells().stream()
-                        .map(c -> c.getText())
-                        .collect(java.util.stream.Collectors.joining("\t"));
-                if (!value.isBlank())
-                    rowsByTable.put(
-                            row, new DocxBlock("table-" + t + "-" + r, "tableRow", ++number, value, null, row, null));
-            }
-        }
-        List<DocxBlock> result = new ArrayList<>();
-        for (var element : word.getBodyElements()) {
-            if (element instanceof XWPFParagraph paragraph && paragraphs.containsKey(paragraph))
-                result.add(paragraphs.get(paragraph));
-            else if (element instanceof org.apache.poi.xwpf.usermodel.XWPFTable table)
-                for (var row : table.getRows()) if (rowsByTable.containsKey(row)) result.add(rowsByTable.get(row));
-        }
-        return result;
+        return DocxUnits.read(word).stream()
+                .map(u -> new DocxBlock(
+                        u.anchor(),
+                        u.kind(),
+                        u.number(),
+                        u.text(),
+                        u.paragraphs(),
+                        u.row(),
+                        u.paragraphs().isEmpty() ? null : style(u.paragraphs().get(0))))
+                .toList();
     }
 
     private static BlockStyle style(XWPFParagraph paragraph) {

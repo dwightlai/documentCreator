@@ -4,147 +4,390 @@
 <meta charset="utf-8">
 <title>政文智枢 系统演示汇报</title>
 <style>
-@page { size: A4; margin: 16mm 15mm 16mm; }
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; color: #1d2430; font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; }
-body { font-size: 12px; line-height: 1.75; }
-h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.35; }
-h2 { margin: 0 0 8px; font-size: 18px; line-height: 1.4; break-before: page; }
-h3 { margin: 12px 0 4px; font-size: 14px; }
-p { margin: 0 0 8px; }
-a { color: inherit; text-decoration: none; }
-.cover { min-height: 250mm; padding: 18mm 6mm 0; break-after: page; }
-.cover .brand { color: #b42318; letter-spacing: .16em; font-weight: 700; }
-.cover h1 { margin-top: 28mm; }
-.cover .lead { max-width: 150mm; color: #344054; font-size: 15px; }
-.rule { width: 36mm; height: 3px; margin: 16px 0; background: #b42318; }
-.meta { margin-top: 24mm; color: #667085; font-size: 12px; line-height: 1.8; }
-.toc { break-after: page; }
-.toc ol { margin: 8px 0 0; padding: 0; list-style: none; }
-.toc li { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid #eaecf0; }
-.toc b { color: #b42318; }
-.say { padding: 8px 12px; margin: 8px 0 12px; background: #f2f4f7; }
-figure { margin: 10px 0 14px; break-inside: avoid; }
-img { width: 100%; border: 1px solid #d0d5dd; }
-figcaption { margin-top: 4px; color: #667085; font-size: 11px; }
-ol.steps { margin: 4px 0 10px; padding-left: 18px; }
+@page{size:297mm 167.06mm;margin:0}
+:root{--ink:#1f2937;--sub:#5b6472;--line:#e5e7eb;--soft:#f5f6f8;--red:#b42318;--red2:#d92d20}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.s{width:297mm;height:167.06mm;position:relative;overflow:hidden;page-break-after:always;background:#fff;padding:13mm 15mm 11mm}
+.s:last-child{page-break-after:auto}
+.s::before{content:"";position:absolute;left:0;top:0;width:100%;height:3px;background:var(--red)}
+.hd{display:flex;align-items:baseline;gap:12px;margin-bottom:7mm}
+.hd .no{color:var(--red);font-weight:700;font-size:11pt;letter-spacing:1px}
+.hd h2{margin:0;font-size:20pt;color:#111827}
+.hd small{color:var(--sub);font-size:10.5pt;margin-left:auto}
+.ft{position:absolute;left:15mm;right:15mm;bottom:5mm;display:flex;justify-content:space-between;font-size:8pt;color:#9ca3af}
+.cover{background:linear-gradient(115deg,#fff 0 56%,#f3f4f6 56% 100%);display:flex;flex-direction:column;justify-content:center;padding-left:22mm}
+.cover .brand{display:flex;align-items:center;gap:10px;color:var(--sub);font-size:12pt;position:absolute;top:14mm;left:22mm}
+.logo{width:40px;height:40px;border-radius:9px;background:var(--red);color:#fff;display:grid;place-items:center;font-size:19pt;font-weight:700}
+.cover h1{font-size:34pt;margin:0 0 6px;letter-spacing:2px;color:#111827}
+.cover .sub{font-size:15pt;color:#374151}
+.cover .line{width:60px;height:4px;background:var(--red);margin:9mm 0 7mm}
+.cover .meta{font-size:10.5pt;color:var(--sub);line-height:1.9}
+.cover .shot{position:absolute;right:-10mm;top:28mm;width:142mm;border-radius:8px;box-shadow:0 12px 30px rgba(17,24,39,.18);border:1px solid var(--line)}
+.agenda{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:10mm}
+.agenda div{border:1px solid var(--line);border-radius:10px;padding:16px 14px;min-height:62mm;background:#fff}
+.agenda b{display:block;color:var(--red);font-size:26pt;line-height:1;margin-bottom:10px}
+.agenda strong{font-size:13pt;display:block;margin-bottom:8px}
+.agenda span{color:var(--sub);font-size:10pt;line-height:1.7}
+.grid{display:grid;gap:9px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:#fff}
+.card b{display:block;font-size:12pt;margin-bottom:4px;color:#111827}
+.card span{font-size:9.8pt;color:var(--sub);line-height:1.65;display:block}
+.card.red b{color:var(--red)}
+.big{font-size:13pt;color:#374151;line-height:1.8;margin:0 0 6mm}
+.big em{font-style:normal;color:var(--red);font-weight:700}
+.flow{display:flex;align-items:stretch;margin:4mm 0 6mm}
+.flow .st{flex:1;border:1px solid #d1d5db;border-radius:8px;padding:10px 6px;text-align:center;background:#fff}
+.flow .st i{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-style:normal;font-size:10pt;line-height:22px;margin-bottom:5px}
+.flow .st b{display:block;font-size:12pt}
+.flow .st span{font-size:9pt;color:var(--sub)}
+.flow .ar{width:18px;display:grid;place-items:center;color:#9ca3af;font-size:15pt}
+.arch .row{display:grid;grid-template-columns:28mm 1fr;gap:8px;margin-bottom:6px}
+.arch .lbl{background:#374151;color:#fff;border-radius:6px;display:grid;place-items:center;font-size:10.5pt;font-weight:700}
+.arch .row.app .lbl{background:var(--red)}
+.arch .boxes{display:grid;gap:6px}
+.arch .box{border:1px solid #d1d5db;border-radius:6px;padding:7px;text-align:center;font-size:9.5pt;color:var(--sub);background:#fff}
+.arch .box b{display:block;font-size:11pt;color:#111827}
+.arch .wrap{display:grid;grid-template-columns:1fr 46mm;gap:8px}
+.arch .pillar{border:1px dashed #9ca3af;border-radius:6px;padding:10px;font-size:10pt;line-height:1.9;background:#fafafa}
+.arch .pillar b{display:block;font-size:11pt}
+.demo{display:grid;grid-template-columns:183mm 1fr;gap:8mm;height:126mm}
+.demo .img{border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 6px 18px rgba(17,24,39,.08);align-self:start}
+.demo .img img{width:100%;display:block}
+.demo .side{display:flex;flex-direction:column;gap:5mm}
+.demo h4{margin:0 0 5px;font-size:11.5pt;color:#111827;padding-left:8px;border-left:3px solid var(--red)}
+.demo ul{margin:0;padding-left:17px;font-size:10pt;line-height:1.7;color:#374151}
+.demo ol{margin:0;padding-left:18px;font-size:9.6pt;line-height:1.7;color:var(--sub)}
+.demo .val{background:var(--soft);border-radius:8px;padding:9px 11px;font-size:9.8pt;color:#374151;line-height:1.65}
+.demo .val b{color:var(--red)}
+.seq{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fafafa;font-size:9.6pt}
+.seq .r{display:grid;grid-template-columns:24mm 1fr 24mm;align-items:center;margin:5px 0}
+.seq .h{background:#374151;color:#fff;text-align:center;border-radius:5px;padding:4px;font-weight:700}
+.seq .ln{white-space:nowrap;border-bottom:1.5px solid #6b7280;text-align:center;padding:0 6px 2px;position:relative;color:#374151}
+.seq .ln.r::after{content:"▶";position:absolute;right:-5px;bottom:-8px;font-size:8pt;color:#6b7280}
+.seq .ln.l::before{content:"◀";position:absolute;left:-5px;bottom:-8px;font-size:8pt;color:#6b7280}
+.card .tag,.tag{display:inline-block;font-size:9pt;padding:1px 8px;border-radius:10px;background:#fdecea;color:var(--red);margin:3px 4px 0 0}
+table{width:100%;border-collapse:collapse;font-size:9.6pt}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left}
+th{background:#f3f4f6}
+code{font-family:Consolas,monospace;font-size:9pt;background:#f3f4f6;padding:0 4px;border-radius:3px}
+.end{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:linear-gradient(180deg,#fff,#f3f4f6)}
+.end h1{font-size:30pt;margin:0 0 6mm;color:#111827}
+.end p{color:var(--sub);font-size:12pt;margin:0}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.steps .card{position:relative;padding-top:30px;min-height:40mm}
+.steps .card i{position:absolute;top:9px;left:13px;font-style:normal;color:var(--red);font-weight:700}
 </style>
 </head>
 <body>
-<section class="cover">
-  <div class="brand">政文智枢</div>
-  <h1>系统演示汇报</h1>
-  <div class="rule"></div>
-  <p class="lead">按真实界面讲一篇通知：先看任务和文种，再看材料与正文，然后对照原文处理审校问题，最后看规则、知识和对外接入。</p>
-  <p class="meta">建议时长：15 分钟<br>样本：关于印发《构建“多维协同联动”立体经营机制的实施方案》的通知<br>版本：2026 年 11 月</p>
-</section>
 
-<section class="toc">
-  <h2 style="break-before:auto">目录</h2>
-  <ol>
-    <li><b>1</b><a href="#s1">开场：这条链路做什么</a></li>
-    <li><b>2</b><a href="#s2">写作任务与文种推荐</a></li>
-    <li><b>3</b><a href="#s3">材料、提纲与正文</a></li>
-    <li><b>4</b><a href="#s4">对着原文审校</a></li>
-    <li><b>5</b><a href="#s5">规则与词库</a></li>
-    <li><b>6</b><a href="#s6">知识依据</a></li>
-    <li><b>7</b><a href="#s7">套红模板</a></li>
-    <li><b>8</b><a href="#s8">模型、第三方与运行记录</a></li>
-    <li><b>9</b><a href="#s9">收束时要说明的边界</a></li>
-  </ol>
-</section>
+<div class="s cover">
+  <div class="brand"><div class="logo">文</div>政文智枢</div>
+  <h1>政文智枢</h1>
+  <div class="sub">政务公文智能写作与审校平台 · 系统演示汇报</div>
+  <div class="line"></div>
+  <div class="meta">汇报内容：产品定位 · 架构 · 功能演示 · 集成与部署<br>2026 年 11 月</div>
+  <img class="shot" src="界面/04-editor.png">
+</div>
 
-<h2 id="s1">1. 开场：这条链路做什么</h2>
-<p>用一句话开场：平台把起草、核稿和管理员配置放在同一套界面里。演示不从功能清单开始，从一篇已经写过的通知开始。</p>
-<div class="say">讲解：左侧导航就是演示路线。今天按写作、审校、规则、知识、模板、治理走一遍。生成内容和审校建议都要人工确认。</div>
-<ol class="steps">
-  <li>登录后停在智能写作，指出左侧导航。</li>
-  <li>打开印发通知任务，先讲文种，再进正文工作区。</li>
-  <li>切到智能审校，点开一条问题，让原文定位可见。</li>
-  <li>用规则、知识、模板各停 1 分钟，说明这些配置决定前面的结果。</li>
-</ol>
+<div class="s">
+  <div class="hd"><span class="no">CONTENTS</span><h2>汇报提纲</h2></div>
+  <div class="agenda">
+    <div><b>01</b><strong>为什么做</strong><span>公文起草与审核中的常见难点，通用 AI 工具的不足</span></div>
+    <div><b>02</b><strong>是什么</strong><span>产品定位、核心主线与总体架构</span></div>
+    <div><b>03</b><strong>现场演示</strong><span>以一份“实施意见”为例，走完从任务到审校的全过程</span></div>
+    <div><b>04</b><strong>怎么管</strong><span>规则、知识、模板、模型治理与安全合规</span></div>
+    <div><b>05</b><strong>怎么用起来</strong><span>第三方集成、部署方式与实施路径</span></div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>02</span></div>
+</div>
 
-<h2 id="s2">2. 写作任务与文种推荐</h2>
-<p>打开「关于印发《构建“多维协同联动”立体经营机制的实施方案》的通知」。先指进度条，说明任务已经过材料、提纲，当前在正文编辑之后、审校之前。</p>
-<p>点「智能推荐文种」。结果是通知，说明写明：标题以「的通知」结尾，事由是印发方案、办法、细则或计划，法定文种是通知，书名号内的文件名称不是法定文种。</p>
-<div class="say">讲解：任务卡片上的文种是创建时保存的。推荐结果不会自动改掉它。这篇标题已经写明通知，所以不看写作目的里有没有「部署」「安排」这些词。</div>
-<figure>
-  <img src="界面/02-writing-notice.png" alt="文种推荐为通知">
-  <figcaption>图 1　写作任务与文种推荐。右侧给出通知及印发类说明。</figcaption>
-</figure>
-<p>如果标题没有法定文种，再按行文关系和写作目的对照条例第八条。对不上就显示「未能判定」，不要讲成系统会猜一个文种。</p>
+<div class="s">
+  <div class="hd"><span class="no">01</span><h2>公文起草中的现实难点</h2><small>规范要求高 · 时效要求紧 · 材料来源多</small></div>
+  <div class="grid g3">
+    <div class="card red"><b>初稿慢</b><span>领会意图、收集材料、搭建结构往往要反复多轮，长文种尤其耗时。</span></div>
+    <div class="card red"><b>结构乱</b><span>层次序号错用、同级标题不并列、只拆出一个下级标题等问题常见。</span></div>
+    <div class="card red"><b>依据难核</b><span>政策文件和数据来源分散，核对出处和时效依赖个人经验。</span></div>
+    <div class="card red"><b>版本难追</b><span>多人多轮修改靠文件传递，说不清哪一版、谁改的、为什么改。</span></div>
+    <div class="card red"><b>排版重复</b><span>红头、发文字号、版记等要素逐项调整，容易遗漏。</span></div>
+    <div class="card red"><b>通用 AI 不适配</b><span>外网工具有数据风险；整篇生成不好改；内容无依据、无留痕。</span></div>
+  </div>
+  <p class="big" style="margin-top:7mm">我们的思路：<em>不做“自动写稿器”</em>，而是把 AI 放进规范的公文生产流程——结构先行、依据可查、版本可追、人工定稿。</p>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>03</span></div>
+</div>
 
-<h2 id="s3">3. 材料、提纲与正文</h2>
-<p>点「进入材料 / 提纲 / 正文工作区」。按从左到右讲三栏。</p>
-<ol class="steps">
-  <li>通篇材料：各章节都能用。本节材料只给当前章节。知识条目如果写着仅供参考或待核验，就说明还不能当现行依据。</li>
-  <li>写作提纲：章节来自文种配置。演示时指出「确认提纲」是生成正文前的门槛。</li>
-  <li>正文纸面：当前章节、生成要求和正文。段落上的「AI 生成」「待核实」要停留一下。</li>
-</ol>
-<div class="say">讲解：生成使用的是已选材料和已确认提纲。模型没有返回时，这一步不能现场编造成功结果，改用已经生成的版本继续讲。</div>
-<figure>
-  <img src="界面/03-editor.png" alt="正文协同工作区">
-  <figcaption>图 2　材料、提纲和正文在同一屏。正文标题下标明须人工复核。</figcaption>
-</figure>
+<div class="s">
+  <div class="hd"><span class="no">02</span><h2>产品定位：一条主线，四项保障</h2><small>单位内部的公文生产与质量控制平台</small></div>
+  <div class="flow">
+    <div class="st"><i>1</i><b>建任务</b><span>文种 · 目的 · 篇幅</span></div><div class="ar">›</div>
+    <div class="st"><i>2</i><b>备材料</b><span>来源 · 权威级别</span></div><div class="ar">›</div>
+    <div class="st"><i>3</i><b>编提纲</b><span>三级层次 · 结构检查</span></div><div class="ar">›</div>
+    <div class="st"><i>4</i><b>成正文</b><span>一键全文 · 逐节生成</span></div><div class="ar">›</div>
+    <div class="st"><i>5</i><b>改正文</b><span>段落 · 批注 · 修订</span></div><div class="ar">›</div>
+    <div class="st"><i>6</i><b>审校</b><span>问题清单 · 报告</span></div><div class="ar">›</div>
+    <div class="st"><i>7</i><b>排版提交</b><span>套红 · 门禁</span></div>
+  </div>
+  <div class="grid g4">
+    <div class="card"><b>人工定稿</b><span>提纲确认后才生成正文；审校问题逐条人工处理；提交前门禁检查。</span></div>
+    <div class="card"><b>依据可溯</b><span>材料标注权威级别和使用许可；段落记录生成来源；可附 AI 参与说明。</span></div>
+    <div class="card"><b>版本可追</b><span>每次形成正文都产生只读版本；修订、批注、审校处理全程留痕。</span></div>
+    <div class="card"><b>配置可控</b><span>模型、提示词、文种、规则、门禁统一治理，变更审核后生效。</span></div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>04</span></div>
+</div>
 
-<h2 id="s4">4. 对着原文审校</h2>
-<p>进入智能审校，选中同一篇通知。左侧原文，右侧问题清单。点一条问题，让听众看到它回到对应段落。处理按钮是忽略、修改完成、转人工。</p>
-<div class="say">讲解：页眉上的分数只是这次结果的汇总，不要说成准确率。写着「模型提出，须人工确认」的，就按待核对建议讲。改完原文后要点重新审校，历史记录留着。</div>
-<figure>
-  <img src="界面/04-review.png" alt="审校对照">
-  <figcaption>图 3　审校页面。问题与公文原文对照，可导出 PDF 或 DOCX 报告。</figcaption>
-</figure>
-<p>另外指出两个入口：「已有文稿」审已经在平台里的正文，「上传本地文件」审单位自己的 DOCX。不必先建写作任务。</p>
+<div class="s">
+  <div class="hd"><span class="no">02</span><h2>总体架构</h2><small>前后端分离 · 模块化 · 配置驱动</small></div>
+  <div class="arch">
+    <div class="row"><div class="lbl">接入层</div><div class="boxes grid g3"><div class="box"><b>Web 工作台</b>写作 · 审校 · 管理</div><div class="box"><b>开放 API</b>OA 等业务系统</div><div class="box"><b>在线编辑（可选）</b>浏览器内版式微调</div></div></div>
+    <div class="wrap">
+      <div>
+        <div class="row app"><div class="lbl">业务应用</div><div class="boxes grid g3"><div class="box"><b>智能写作</b>任务·材料·提纲·正文</div><div class="box"><b>智能审校</b>问题清单·审校报告</div><div class="box"><b>规则词库</b>审校规则·标准词</div><div class="box"><b>知识依据</b>知识库·检索·切片</div><div class="box"><b>输出模板</b>DOCX 模板·套红</div><div class="box"><b>任务运行</b>后台任务·执行轨迹</div></div></div>
+        <div class="row"><div class="lbl">能力支撑</div><div class="boxes grid g4"><div class="box"><b>模型路由</b>场景×数据级别</div><div class="box"><b>提示词模板</b>版本化</div><div class="box"><b>文种配置</b>27 个文种</div><div class="box"><b>文档解析</b>DOCX/PDF</div></div></div>
+        <div class="row" style="margin-bottom:0"><div class="lbl">数据层</div><div class="boxes grid g3"><div class="box"><b>PostgreSQL</b>业务数据·版本</div><div class="box"><b>文件存储</b>材料·模板·导出件</div><div class="box"><b>审计台账</b>调用日志·变更</div></div></div>
+      </div>
+      <div class="pillar"><b>横向支撑</b>统一身份认证<br>多租户隔离<br>角色权限<br>数据密级<br>操作审计<br><b style="margin-top:6px">技术栈</b>Java 17 · Spring Boot 3<br>Vue 3 · PostgreSQL</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>05</span></div>
+</div>
 
-<h2 id="s5">5. 规则与词库</h2>
-<p>打开规则与词库。先读页首一句：生效规则参与审校，停用后不再使用，命中测试不改变启用状态。</p>
-<div class="say">讲解：内置规则包目前显示 56 条可执行规则。导入时已有代码会跳过，不覆盖单位改过的规则。两可词和历史旧称只提示，不自动改名。</div>
-<figure>
-  <img src="界面/05-rules.png" alt="审校规则列表">
-  <figcaption>图 4　审校规则。可按分类筛选，每条规则有生效状态和查看详情。</figcaption>
-</figure>
-<p>如果现场要打开一条规则，只演示停用、启用和命中测试。不要找送审或发布按钮，当前界面没有这些操作。</p>
+<div class="s">
+  <div class="hd"><span class="no">03</span><h2>演示场景与路线</h2><small>示例材料为演示用虚构内容</small></div>
+  <div class="grid g2" style="grid-template-columns:1.05fr 1fr;gap:10mm">
+    <div>
+      <div class="card" style="margin-bottom:9px"><b>演示文稿</b><span style="font-size:11pt;color:#111827">关于推进政务服务“高效办成一件事”的实施意见</span></div>
+      <table>
+        <tr><th style="width:30%">要素</th><th>设置</th></tr>
+        <tr><td>文种</td><td>意见（法定公文，长文种）</td></tr>
+        <tr><td>写作目的</td><td>部署推进“高效办成一件事”，明确总体要求、主要任务和保障措施</td></tr>
+        <tr><td>主送机关</td><td>各区人民政府，市政府各部门</td></tr>
+        <tr><td>篇幅</td><td>3000—4500 字</td></tr>
+        <tr><td>材料</td><td>本市政务服务现状摘要（虚构数据）</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="flow" style="flex-direction:column;gap:6px;margin:0">
+        <div class="st" style="text-align:left;padding:8px 12px"><b>① 建任务</b><span>选择文种，填写目的与篇幅，上传材料</span></div>
+        <div class="st" style="text-align:left;padding:8px 12px"><b>② 编提纲</b><span>自动生成分级提纲，在编排窗口调整并确认</span></div>
+        <div class="st" style="text-align:left;padding:8px 12px"><b>③ 一键生成全文</b><span>后台逐节生成，进度实时可见</span></div>
+        <div class="st" style="text-align:left;padding:8px 12px"><b>④ 改正文</b><span>段落修改、重新生成本节、批注与版本</span></div>
+        <div class="st" style="text-align:left;padding:8px 12px"><b>⑤ 审校与排版</b><span>一键发起审校，处理问题，套红输出</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>06</span></div>
+</div>
 
-<h2 id="s6">6. 知识依据</h2>
-<p>打开知识与依据。先读页面上的使用说明，再点开一个公开资料库。</p>
-<div class="say">讲解：检索和查看切片只是阅读。要参与写作，必须在写作任务里选用，并指定章节。来源页面能打开，不表示文件仍然有效。</div>
-<figure>
-  <img src="界面/06-knowledge.png" alt="知识库">
-  <figcaption>图 5　知识库按来源和核验状态列出文档，可查看本地原文和切片。</figcaption>
-</figure>
+<div class="s">
+  <div class="hd"><span class="no">演示 ①</span><h2>建任务：从写作意图开始</h2><small>智能写作工作台</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/01-writing.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>每份公文是一个写作任务，顶部进度条显示所处阶段</li><li>内置 27 个文种，每个文种配置必备要素和推荐结构</li><li>简报区可推荐文种、生成写作思路和标题候选</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>点击“+”新建任务，选择“意见”</li><li>填写写作目的、主送机关、篇幅</li><li>进入材料 / 提纲 / 正文工作区</li></ol></div>
+      <div class="val"><b>价值：</b>动笔前先把文种、目的和篇幅说清楚，后续提纲和正文都围绕它展开。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>07</span></div>
+</div>
 
-<h2 id="s7">7. 套红模板</h2>
-<p>打开输出模板。说明上传的 DOCX 生效后才能套红，停用后不再选用。占位符对应发文机关、字号、标题、主送、正文、日期和印发信息。</p>
-<div class="say">讲解：模拟填充只检查模板能不能填上，不改变生效或停用。正文改了以后要重新套红。下载的 DOCX 还要在单位常用的办公软件里看一遍版式。</div>
-<figure>
-  <img src="界面/07-templates.png" alt="输出模板与占位符">
-  <figcaption>图 6　公文模板及占位符。状态为生效。</figcaption>
-</figure>
+<div class="s">
+  <div class="hd"><span class="no">演示 ②</span><h2>编提纲：分级结构，所见即所得</h2><small>提纲编排窗口</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/02-outline.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>最多三级，序号自动编排为“一、（一）1.”</li><li>长文种自动为“主要任务”“保障措施”拆出下级标题</li><li>上移、下移、升级、降级，支持 Alt+方向键</li><li>确认前检查：一级不少于两项、同级至少两项、无空标题</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>选中“（二）”，修改标题和写作要点</li><li>演示升级 / 降级与新增下级</li><li>点击“结构检查”，再“确认提纲”</li></ol></div>
+      <div class="val"><b>价值：</b>先定骨架再写内容，层次规范在提纲阶段就得到保证。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>08</span></div>
+</div>
 
-<h2 id="s8">8. 模型、第三方与运行记录</h2>
-<p>模型治理里指出三件事：场景、最高数据级别、调用额度。凭据只登记环境变量名。不要在演示里打开或念出密钥。</p>
-<figure>
-  <img src="界面/08-governance.png" alt="模型路由">
-  <figcaption>图 7　模型路由按场景和数据级别分开配置。</figcaption>
-</figure>
-<p>第三方应用页按页面上的流程讲：新增应用，配置 API Key 与白名单，生成密钥，选择可调用能力。密钥只显示一次。开放文档里的两个必填头是 <code>X-Open-App-Code</code> 和 <code>X-Open-Api-Key</code>。</p>
-<figure>
-  <img src="界面/09-open-apps.png" alt="第三方应用">
-  <figcaption>图 8　第三方应用及白名单入口。</figcaption>
-</figure>
-<p>任务运行页用来回答「生成进行到哪一步」。可以展开一条已完成记录，看开始、排队和按章节生成。失败记录只说明可以查看和重试，不要现场重跑一个会失败的任务。</p>
-<figure>
-  <img src="界面/11-operations.png" alt="后台任务">
-  <figcaption>图 9　后台任务的执行轨迹。</figcaption>
-</figure>
+<div class="s">
+  <div class="hd"><span class="no">演示 ③</span><h2>一键生成全文，也可逐节生成</h2><small>正文协同工作区</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/03-empty.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>提纲确认后才开放生成，保证“结构先行”</li><li>一键生成全文：后台按提纲顺序逐节生成</li><li>上级章节只输出标题，内容落在最末一级，不重复</li><li>逐节生成保留，可补充本节要求单独生成</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>点击“一键生成全文”</li><li>切换到任务运行中心查看进度</li><li>返回正文纸面查看成稿</li></ol></div>
+      <div class="val"><b>价值：</b>长文种不用一节节点，几分钟内拿到结构完整的初稿。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>09</span></div>
+</div>
 
-<h2 id="s9">9. 收束时要说明的边界</h2>
-<div class="say">收束：今天看到的是一条可以操作的链路。正式使用前，还要按单位要求核对身份、模型、规则来源、模板版式和真实文稿。</div>
-<ol class="steps">
-  <li>不报审校准确率，不把页眉分数说成质量认证。</li>
-  <li>不把模型建议说成已经核实的事实。</li>
-  <li>不承诺断网时仍能调用外部模型。</li>
-  <li>开放接口上的摘要、润色、扩写和直接提交的正文审校，不在平台保存文稿。</li>
-</ol>
+<div class="s">
+  <div class="hd"><span class="no">演示 ④</span><h2>改正文：段落级协同与留痕</h2><small>正文协同工作区</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/04-editor.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>正文层次标题与提纲一致，每段标注来源</li><li>逐段修改、锁定、批注；修订模式下修改需接受后生效</li><li>重新生成本节不影响其他章节</li><li>顶部显示 AI 参与比例，导出可附说明</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>在提纲中点选“（一）”，定位正文</li><li>修改一段并保存为新版本</li><li>打开“版本记录”查看历史</li></ol></div>
+      <div class="val"><b>价值：</b>谁在什么时候改了什么、依据是什么，都能说清楚。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>10</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">演示 ⑤</span><h2>后台任务：生成过程透明可查</h2><small>任务与运行中心</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/12-operations.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>一键生成全文作为后台任务执行，不阻塞页面</li><li>执行事件逐条记录“正在生成第 N 节”</li><li>失败可重试，异常进入死信便于排查</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>打开刚才的生成任务</li><li>查看进度条和执行事件</li></ol></div>
+      <div class="val"><b>价值：</b>长耗时操作有进度、有记录，运维人员可追查问题。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>11</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">演示 ⑥</span><h2>智能审校：问题可定位、可处理、可报告</h2><small>政务智能审校</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/05-review.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>三类来源：内置结构检查、规则词库、模型逻辑审校</li><li>问题定位到段落，标注依据、风险和置信度</li><li>采纳、忽略、定位修改、转人工；支持批量处理</li><li>导出 PDF / DOCX 审校报告，可重新审校</li></ul></div>
+      <div><h4>演示操作</h4><ol><li>在正文工作区点击“一键发起审校”</li><li>点选问题定位原文并处理</li><li>导出审校报告</li></ol></div>
+      <div class="val"><b>提示：</b>模型审校是辅助提示，政策口径和事实数据需人工复核。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>12</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">04</span><h2>规则词库：把单位规范沉淀为可执行规则</h2><small>规则与词库中心</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/06-rules.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>四类规则：政策法规与事实依据、公文业务规范、语言文字、格式与版式</li><li>正则与词表两种检测方式，可做命中测试</li><li>导入导出，便于多单位、多环境同步</li><li>标准词库统一规范表述</li></ul></div>
+      <div class="val"><b>价值：</b>老同志的“经验”变成平台规则，新同志写稿也能对照检查。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>13</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">04</span><h2>知识依据：引用有出处</h2><small>知识与依据中心</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/07-knowledge.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>按分类建知识库：政策文件、制度规范、范例公文等</li><li>文档解析为切片，标注权限、权威性和核验状态</li><li>起草时在章节上“选用本节依据”，只有选用的片段进入生成</li></ul></div>
+      <div class="val"><b>提示：</b>检索结果仅作参考，引用前须核对原文及其有效性。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>14</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">04</span><h2>输出模板：一键套红</h2><small>输出模板中心</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/08-templates.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>上传单位 DOCX 模板，识别红色版头和版记</li><li>占位符映射：发文机关、字号、签发人、主送、正文、附件、抄送等</li><li>条件区块：有附件、有抄送时才输出</li><li>输出 DOCX / PDF，可选在线微调</li></ul></div>
+      <div class="val"><b>价值：</b>按 GB/T 9704 要素组织模板，减少排版重复劳动。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>15</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">04</span><h2>模型与配置治理：AI 可控</h2><small>模型与配置治理</small></div>
+  <div class="demo">
+    <div class="img"><img src="界面/09-governance.png"></div>
+    <div class="side">
+      <div><h4>讲解要点</h4><ul><li>模型按“场景 × 最高数据级别”路由，更换模型不影响业务</li><li>端点白名单；凭据只存环境变量名，不落库</li><li>提示词、文种配置、提交门禁版本化管理</li><li>调用日志与审计台账</li></ul></div>
+      <div class="val"><b>价值：</b>用什么模型、处理什么级别的数据、怎么提示，都由管理员说了算。</div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>16</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">05</span><h2>第三方集成：两种接入方式</h2><small>开放 API · 应用编码 + 密钥鉴权</small></div>
+  <div class="grid g2" style="gap:9mm">
+    <div>
+      <div class="card" style="margin-bottom:8px"><b>方式一：能力调用（平台不保存文稿）</b><span>OA 编辑器中嵌入按钮，直接提交正文、即时返回结果。</span><div><span class="tag">摘要</span><span class="tag">润色</span><span class="tag">扩写</span><span class="tag">审校</span></div></div>
+      <div class="card" style="margin-bottom:8px"><b>方式二：写作任务托管</b><span>OA 提交写作要求和材料，起草人在平台内完成写作与审校，OA 读取已提交文稿或接收回调。</span></div>
+      <table>
+        <tr><th>请求头</th><th>说明</th></tr>
+        <tr><td><code>X-Open-App-Code</code></td><td>应用编码（必填）</td></tr>
+        <tr><td><code>X-Open-Api-Key</code></td><td>应用密钥（必填）</td></tr>
+        <tr><td><code>Idempotency-Key</code></td><td>发起类接口必填，防重复</td></tr>
+        <tr><td><code>X-Open-User-Id</code> 等</td><td>调用方用户与部门，仅用于审计</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="seq">
+        <div class="r"><div class="h">OA 系统</div><div></div><div class="h">政文智枢</div></div>
+        <div class="r"><span></span><div class="ln r">① 发起写作（要求 + 材料）</div><span></span></div>
+        <div class="r"><span></span><div class="ln l">② 返回写作任务 ID</div><span></span></div>
+        <div class="r"><span></span><div style="text-align:center;color:var(--sub)">③ 平台内编提纲 · 成正文 · 审校 · 提交</div><span></span></div>
+        <div class="r"><span></span><div class="ln l">④ HTTPS 回调通知（可选）</div><span></span></div>
+        <div class="r"><span></span><div class="ln r">⑤ 读取文稿、审校报告</div><span></span></div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:8px;height:52mm"><img src="界面/11-open-api.png" style="width:100%;display:block"></div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>17</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">05</span><h2>安全与合规</h2><small>内网部署 · 数据分级 · 全程留痕</small></div>
+  <div class="grid g3">
+    <div class="card"><b>部署与数据边界</b><span>平台与数据在单位内网；任务按密级标注，模型按最高数据级别匹配端点。</span></div>
+    <div class="card"><b>身份与权限</b><span>统一登录，租户隔离，按角色控制菜单与操作。</span></div>
+    <div class="card"><b>密钥管理</b><span>模型凭据只存环境变量名；应用密钥只显示一次，可吊销。</span></div>
+    <div class="card"><b>接口安全</b><span>按授权能力调用；发起类接口强制幂等；回调限白名单 HTTPS。</span></div>
+    <div class="card"><b>全程留痕</b><span>材料快照、生成记录、正文版本、审校处理、配置变更、接口调用均可审计。</span></div>
+    <div class="card"><b>AI 内容标识</b><span>段落标注来源，统计 AI 参与比例，导出可附说明。</span></div>
+  </div>
+  <p class="big" style="margin-top:7mm;font-size:11pt">参考依据：《党政机关公文处理工作条例》、GB/T 9704—2012、《数据安全法》、《个人信息保护法》、《生成式人工智能服务管理暂行办法》。等保测评、涉密系统审批等需由使用单位结合部署环境另行办理。</p>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>18</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">05</span><h2>部署方式与实施路径</h2></div>
+  <div class="grid g2" style="margin-bottom:7mm">
+    <div class="card"><b>单机部署</b><span>应用 JAR + Nginx 前端 + PostgreSQL，一至两台服务器即可，适合试点。</span></div>
+    <div class="card"><b>多实例部署</b><span>应用多实例 + 负载均衡，数据库独立并备份，容量结合并发与模型能力评估。</span></div>
+  </div>
+  <div class="steps">
+    <div class="card"><i>01</i><b>需求调研</b><span>常用文种、模板、审校规范、集成系统</span></div>
+    <div class="card"><i>02</i><b>环境部署</b><span>内网部署，接入模型服务，配置权限</span></div>
+    <div class="card"><i>03</i><b>内容初始化</b><span>导入模板、规则词库、知识库、文种配置</span></div>
+    <div class="card"><i>04</i><b>试点运行</b><span>选部门、选文种试用，调优提示词和规则</span></div>
+    <div class="card"><i>05</i><b>推广集成</b><span>扩大范围，对接 OA，常态化运维</span></div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>19</span></div>
+</div>
+
+<div class="s">
+  <div class="hd"><span class="no">05</span><h2>能力边界与使用约定</h2></div>
+  <div class="grid g2" style="gap:9mm">
+    <div>
+      <div class="card" style="margin-bottom:8px"><b>AI 内容须人工审核</b><span>提纲、正文、审校意见均为草稿和建议，定稿责任在起草和审核人员。</span></div>
+      <div class="card" style="margin-bottom:8px"><b>质量依赖材料与模型</b><span>材料越充分、要点越具体，生成越贴近实际；不同模型表现有差异。</span></div>
+      <div class="card"><b>审校不替代法定程序</b><span>模型审校可能漏报误报，不能替代法制审核、保密审查。</span></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:8px"><b>知识检索仅作参考</b><span>引用政策与数据前须核对原文及有效性。</span></div>
+      <div class="card" style="margin-bottom:8px"><b>不处理涉密信息</b><span>未经涉密信息系统审批的环境，不得处理涉密内容。</span></div>
+      <div class="card"><b>演示数据说明</b><span>本次演示的文稿与材料为虚构内容，不代表任何单位的真实情况。</span></div>
+    </div>
+  </div>
+  <div class="ft"><span>政文智枢 · 系统演示汇报</span><span>20</span></div>
+</div>
+
+<div class="s end">
+  <div class="logo" style="width:56px;height:56px;font-size:26pt;margin-bottom:8mm">文</div>
+  <h1>谢谢！欢迎交流</h1>
+  <p>政文智枢 · 让公文起草更规范、更高效、更可控</p>
+</div>
+
 </body>
 </html>

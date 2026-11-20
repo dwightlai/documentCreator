@@ -8,6 +8,7 @@ import cn.gov.document.platform.common.storage.ObjectStorage;
 import cn.gov.document.platform.document.api.DocumentDtos.UpdateParagraphRequest;
 import cn.gov.document.platform.document.application.DocumentService;
 import cn.gov.document.platform.document.application.DocumentTypeDetector;
+import cn.gov.document.platform.document.application.OfficialDocumentHead;
 import cn.gov.document.platform.document.domain.DocumentParagraphEntity;
 import cn.gov.document.platform.document.template.DocxFormatReviewService;
 import cn.gov.document.platform.document.template.OutputTemplateDtos;
@@ -94,10 +95,7 @@ public class ReviewService {
     public String detectDocumentType(String originalFileName, byte[] content) {
         if (content == null || content.length == 0) throw BusinessException.unprocessable("待审 DOCX 文件不能为空");
         DocxSecurityValidator.validate(originalFileName, content, 50L * 1024 * 1024, "待审文稿");
-        List<String> lines = extractParagraphs(content).stream()
-                .map(DocumentParagraphEntity::getPlainText)
-                .toList();
-        String detected = DocumentTypeDetector.fromLines(lines);
+        String detected = DocumentTypeDetector.fromLines(extractParagraphs(content).lines());
         if (detected != null) return detected;
         String name = originalFileName == null ? "" : originalFileName.replaceAll("(?i)\\.docx$", "");
         return DocumentTypeDetector.fromLines(List.of(name));
@@ -128,11 +126,11 @@ public class ReviewService {
         DocxSecurityValidator.validate(originalFileName, content, 50L * 1024 * 1024, "待审文稿");
         String planId = StringUtils.hasText(reviewPlanId) ? reviewPlanId : planService.defaultPlanId();
         ReviewPlanService.RuntimePlan runtimePlan = planService.runtime(planId);
-        List<DocumentParagraphEntity> imported = extractParagraphs(content);
+        Parsed parsed = extractParagraphs(content);
+        List<DocumentParagraphEntity> imported = parsed.paragraphs();
         if (imported.isEmpty()) throw BusinessException.unprocessable("DOCX 中未提取到可审校的正文文字");
         if (!StringUtils.hasText(documentTypeCode)) {
-            documentTypeCode = DocumentTypeDetector.fromLines(
-                    imported.stream().map(DocumentParagraphEntity::getPlainText).toList());
+            documentTypeCode = DocumentTypeDetector.fromLines(parsed.lines());
             if (!StringUtils.hasText(documentTypeCode) && StringUtils.hasText(originalFileName))
                 documentTypeCode =
                         DocumentTypeDetector.fromLines(List.of(originalFileName.replaceAll("(?i)\\.docx$", "")));
@@ -162,7 +160,8 @@ public class ReviewService {
         fileName = fileName.substring(fileName.lastIndexOf('/') + 1);
         if (fileName.length() > 255) throw BusinessException.unprocessable("文件名过长");
         task.setSourceFileName(fileName);
-        task.setReviewTitle(imported.get(0).getPlainText());
+        String title = parsed.titleOr(fileName);
+        task.setReviewTitle(title);
         task.setStatus("审校处理中");
         task.setInitiatorId(RequestContext.userId());
         taskMapper.insert(task);
@@ -172,7 +171,7 @@ public class ReviewService {
         task.setDocumentFileId(key);
         task.setDocumentFileHash(sha256(content));
         int number = insertInspection(
-                task.getId(), documentTypeCode, imported.get(0).getPlainText(), imported, runtimePlan, "内部");
+                task.getId(), documentTypeCode, title, imported, runtimePlan, "内部");
         for (DocxFormatReviewService.Deviation deviation : formatDeviations) {
             if (!atOrAboveThreshold(deviation.riskLevel(), runtimePlan.riskThreshold())) continue;
             ReviewIssueEntity issue = new ReviewIssueEntity();
@@ -242,7 +241,8 @@ public class ReviewService {
         String planId =
                 StringUtils.hasText(request.reviewPlanId()) ? request.reviewPlanId() : planService.defaultPlanId();
         ReviewPlanService.RuntimePlan runtimePlan = planService.runtime(planId);
-        List<DocumentParagraphEntity> importedParagraphs = extractParagraphs(content);
+        Parsed parsed = extractParagraphs(content);
+        List<DocumentParagraphEntity> importedParagraphs = parsed.paragraphs();
         // 先完成格式解析，确保无效/恶意 DOCX 不会留下审校任务记录。
         DocxFormatReviewService.Result formatResult = runtimePlan.categories().contains(ReviewCategory.FORMAT)
                 ? formatReviewService.compare(outputTemplateId, content)
@@ -274,7 +274,7 @@ public class ReviewService {
         int number = insertInspection(
                 task.getId(),
                 writingTask.getDocumentTypeCode(),
-                importedParagraphs.isEmpty() ? null : importedParagraphs.get(0).getPlainText(),
+                parsed.titleOr(null),
                 importedParagraphs,
                 runtimePlan,
                 writingTask.getSecurityLevel());
@@ -314,21 +314,12 @@ public class ReviewService {
     public ReviewDtos.TaskResponse createFromSubmittedText(String text, String documentTypeCode, String reviewPlanId) {
         if (!StringUtils.hasText(text)) throw BusinessException.unprocessable("请提供正文");
         String type = DocumentTypeDetector.resolve(documentTypeCode, text);
-        List<DocumentParagraphEntity> paragraphs = new java.util.ArrayList<>();
-        int order = 1;
-        for (String line : text.strip().split("\\n+")) {
-            if (!StringUtils.hasText(line)) continue;
-            DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
-            paragraph.setId(String.valueOf(order));
-            paragraph.setParagraphOrder(order++);
-            paragraph.setPlainText(line.strip());
-            paragraphs.add(paragraph);
-        }
+        Parsed parsed = parseText(text);
+        List<DocumentParagraphEntity> paragraphs = parsed.paragraphs();
         if (paragraphs.isEmpty()) throw BusinessException.unprocessable("请提供正文");
         String planId = StringUtils.hasText(reviewPlanId) ? reviewPlanId : planService.defaultPlanId();
         ReviewPlanService.RuntimePlan runtimePlan = planService.runtime(planId);
-        String title = paragraphs.get(0).getPlainText();
-        if (title.length() > 200) title = title.substring(0, 200);
+        String title = parsed.titleOr(null);
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setTenantId(RequestContext.tenantId());
         task.setSourceSystem("OA");
@@ -794,37 +785,51 @@ public class ReviewService {
         issueMapper.insert(issue);
     }
 
-    private List<DocumentParagraphEntity> extractParagraphs(byte[] content) {
+    private record Parsed(String title, List<DocumentParagraphEntity> paragraphs, List<String> lines) {
+        String titleOr(String fallback) {
+            String value = title != null ? title : paragraphs.isEmpty() ? fallback : paragraphs.get(0).getPlainText();
+            return value != null && value.length() > 200 ? value.substring(0, 200) : value;
+        }
+    }
+
+    private Parsed extractParagraphs(byte[] content) {
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(content))) {
-            List<String> parts = new java.util.ArrayList<>();
-            document.getParagraphs().stream()
-                    .map(value -> value.getText().trim())
-                    .filter(value -> !value.isBlank())
-                    .forEach(parts::add);
-            for (var table : document.getTables()) {
-                for (var row : table.getRows()) {
-                    String text = row.getTableCells().stream()
-                            .map(cell -> cell.getText())
-                            .collect(Collectors.joining("\t"));
-                    if (!text.isBlank()) {
-                        parts.add(text);
-                    }
-                }
-            }
-            if (parts.isEmpty()) {
-                return List.of();
-            }
+            List<DocxUnits.Unit> units = DocxUnits.read(document);
             List<DocumentParagraphEntity> imported = new java.util.ArrayList<>();
-            int order = 1;
-            for (String part : parts) {
+            for (DocxUnits.Unit unit : units) {
+                if ("head".equals(unit.kind())) continue;
                 DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
-                paragraph.setParagraphOrder(order++);
-                paragraph.setPlainText(part);
+                paragraph.setParagraphOrder(unit.number());
+                paragraph.setPlainText(unit.text());
                 imported.add(paragraph);
             }
-            return imported;
+            imported.sort(java.util.Comparator.comparingInt(DocumentParagraphEntity::getParagraphOrder));
+            return new Parsed(
+                    DocxUnits.title(units), imported, units.stream().map(DocxUnits.Unit::text).toList());
         } catch (IOException invalidDocument) {
             throw BusinessException.unprocessable("待审文稿不是有效 DOCX 文件");
         }
+    }
+
+    private static Parsed parseText(String text) {
+        List<String> lines = java.util.Arrays.stream(text.strip().split("\\n+"))
+                .map(String::strip)
+                .filter(StringUtils::hasText)
+                .toList();
+        OfficialDocumentHead.Result head = OfficialDocumentHead.detectText(lines);
+        List<DocumentParagraphEntity> paragraphs = new java.util.ArrayList<>();
+        int order = 1;
+        for (int i = 0; i < lines.size(); i++) {
+            if (head.isHead(i) || (head.inTitle(i) && i != head.titleStart())) {
+                order++;
+                continue;
+            }
+            DocumentParagraphEntity paragraph = new DocumentParagraphEntity();
+            paragraph.setId(String.valueOf(order));
+            paragraph.setParagraphOrder(order++);
+            paragraph.setPlainText(i == head.titleStart() ? head.title() : lines.get(i));
+            paragraphs.add(paragraph);
+        }
+        return new Parsed(head.title(), paragraphs, lines);
     }
 }

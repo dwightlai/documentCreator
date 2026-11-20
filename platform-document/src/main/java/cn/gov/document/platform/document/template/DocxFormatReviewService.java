@@ -1,6 +1,7 @@
 package cn.gov.document.platform.document.template;
 
 import cn.gov.document.platform.common.error.BusinessException;
+import cn.gov.document.platform.document.application.OfficialDocumentHead;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,18 +49,19 @@ public class DocxFormatReviewService {
 
             List<XWPFParagraph> standardParagraphs = meaningful(standard);
             List<XWPFParagraph> actualParagraphs = meaningful(actual);
-            XWPFParagraph standardTitle = paragraph(standardParagraphs, 0);
-            XWPFParagraph actualTitle = paragraph(actualParagraphs, 0);
-            compare(deviations, "TITLE_FONT", "重要", "标题字体", font(standardTitle), font(actualTitle), 1);
-            compare(deviations, "TITLE_SIZE", "重要", "标题字号", size(standardTitle), size(actualTitle), 1);
-            XWPFParagraph standardBody =
-                    paragraph(standardParagraphs, Math.min(2, Math.max(0, standardParagraphs.size() - 1)));
-            XWPFParagraph actualBody =
-                    paragraph(actualParagraphs, Math.min(2, Math.max(0, actualParagraphs.size() - 1)));
-            compare(deviations, "BODY_FONT", "重要", "正文字体", font(standardBody), font(actualBody), 3);
-            compare(deviations, "BODY_SIZE", "重要", "正文字号", size(standardBody), size(actualBody), 3);
-            compare(deviations, "LINE_SPACING", "一般", "正文行距", spacing(standardBody), spacing(actualBody), 3);
-            compare(deviations, "FIRST_LINE_INDENT", "一般", "正文首行缩进", indent(standardBody), indent(actualBody), 3);
+            int standardTitleIndex = titleIndex(standardParagraphs);
+            int actualTitleIndex = titleIndex(actualParagraphs);
+            XWPFParagraph standardTitle = paragraph(standardParagraphs, standardTitleIndex);
+            XWPFParagraph actualTitle = paragraph(actualParagraphs, actualTitleIndex);
+            compare(deviations, "TITLE_FONT", "重要", "标题字体", font(standardTitle), font(actualTitle), actualTitleIndex + 1);
+            compare(deviations, "TITLE_SIZE", "重要", "标题字号", size(standardTitle), size(actualTitle), actualTitleIndex + 1);
+            int actualBodyIndex = bodyIndex(actualParagraphs, actualTitleIndex);
+            XWPFParagraph standardBody = paragraph(standardParagraphs, bodyIndex(standardParagraphs, standardTitleIndex));
+            XWPFParagraph actualBody = paragraph(actualParagraphs, actualBodyIndex);
+            compare(deviations, "BODY_FONT", "重要", "正文字体", font(standardBody), font(actualBody), actualBodyIndex + 1);
+            compare(deviations, "BODY_SIZE", "重要", "正文字号", size(standardBody), size(actualBody), actualBodyIndex + 1);
+            compare(deviations, "LINE_SPACING", "一般", "正文行距", spacing(standardBody), spacing(actualBody), actualBodyIndex + 1);
+            compare(deviations, "FIRST_LINE_INDENT", "一般", "正文首行缩进", indent(standardBody), indent(actualBody), actualBodyIndex + 1);
             compare(
                     deviations,
                     "HEADER_PRESENCE",
@@ -213,6 +215,25 @@ public class DocxFormatReviewService {
         return document.getParagraphs().stream()
                 .filter(value -> !value.getText().isBlank())
                 .toList();
+    }
+
+    private static int titleIndex(List<XWPFParagraph> paragraphs) {
+        for (int i = 0; i < paragraphs.size(); i++) if (paragraphs.get(i).getText().contains("{title}")) return i;
+        OfficialDocumentHead.Result head = OfficialDocumentHead.detect(
+                paragraphs.stream().map(OfficialDocumentHead.Line::of).toList());
+        return head.hasTitle() ? head.titleStart() : 0;
+    }
+
+    private static int bodyIndex(List<XWPFParagraph> paragraphs, int titleIndex) {
+        for (int i = 0; i < paragraphs.size(); i++) if (paragraphs.get(i).getText().contains("{content}")) return i;
+        OfficialDocumentHead.Result head = OfficialDocumentHead.detect(
+                paragraphs.stream().map(OfficialDocumentHead.Line::of).toList());
+        int from = head.hasTitle() ? head.titleEnd() : titleIndex + 1;
+        for (int i = from; i < paragraphs.size(); i++) {
+            String text = paragraphs.get(i).getText().strip();
+            if (!text.endsWith("：") && !text.endsWith(":")) return i;
+        }
+        return Math.max(0, paragraphs.size() - 1);
     }
 
     private XWPFParagraph paragraph(List<XWPFParagraph> paragraphs, int index) {

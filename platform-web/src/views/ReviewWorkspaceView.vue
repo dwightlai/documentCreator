@@ -405,12 +405,12 @@ onMounted(load)
                     <div v-if="block.kind === 'tableRow'" class="review-table-edit"><label v-for="(_, cellIndex) in editingCells" :key="cellIndex">第 {{ cellIndex + 1 }} 列<input v-model="editingCells[cellIndex]" :aria-label="`编辑表格第 ${cellIndex + 1} 列`" /></label></div>
                     <template v-else>
                       <p v-if="editingHint" class="review-advice">{{ editingHint }}</p>
-                      <textarea v-model="editingText" class="review-edit-area" :aria-label="`编辑${block.kind === 'title' ? '标题或首段' : '正文段落'}`" rows="4" />
+                      <textarea v-model="editingText" class="review-edit-area" :aria-label="`编辑${block.kind === 'title' ? '标题' : block.kind === 'head' ? '版头' : '正文段落'}`" rows="4" />
                     </template>
                     <div class="review-edit-actions"><button type="button" :disabled="savingContent" @click="saveEdit">保存新版本</button><button type="button" @click="editingAnchor = ''">取消</button></div>
                   </template>
                   <template v-else>
-                    <div class="review-block-line"><span>{{ block.kind === 'title' && content.sourceSystem !== 'upload' ? '标题' : block.kind === 'tableRow' ? `表格 · 第 ${block.paragraphNumber} 段` : `第 ${block.paragraphNumber} 段` }}</span><button type="button" :disabled="block.locked" @click="beginEdit(block)">修改</button></div>
+                    <div class="review-block-line"><span>{{ block.kind === 'title' ? '标题' : block.kind === 'head' ? `版头 · 第 ${block.paragraphNumber} 段` : block.kind === 'tableRow' ? `表格 · 第 ${block.paragraphNumber} 段` : `第 ${block.paragraphNumber} 段` }}</span><button type="button" :disabled="block.locked" @click="beginEdit(block)">修改</button></div>
                     <p :style="originalParagraphStyle(block)">{{ highlightParts(block).before }}<mark v-if="highlightParts(block).match">{{ highlightParts(block).match }}</mark>{{ highlightParts(block).after }}</p>
                   </template>
                 </div>
